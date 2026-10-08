@@ -6,7 +6,7 @@
 
 ```sh
 make test                                   # test
-make pack OUT=<folder> SOK=<core>/target/debug/sok   # plugin package
+make pack OUT=<folder> SOK=<core>/target/debug/sok   # plugin release
 ```
 
 Checklist는 [docs/features.md](docs/features.md)다.

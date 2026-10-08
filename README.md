@@ -6,7 +6,7 @@ Editor plugin: opens text files of the project in CodeMirror and saves them thro
 
 ```sh
 make test                                   # tests
-make pack OUT=<folder> SOK=<core>/target/debug/sok   # the plugin package
+make pack OUT=<folder> SOK=<core>/target/debug/sok   # the plugin release
 ```
 
 The checklist is [docs/features.md](docs/features.md).
