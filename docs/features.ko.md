@@ -1,0 +1,10 @@
+# 기능
+
+[English](features.md)
+
+- [o] E1 — P1: 프로젝트의 text 파일을 열고 고치고 저장한다. core checklist 항목 F102.3, F102.4, F102.5, F102.10을 위한 것이다. `surface.opens`는 `*`를, `surface.params`는 `{path}`를 선언한다. page는 files sidecar로 파일을 읽고, 줄바꿈(`lf`, `crlf`, `cr`, 없음)과 byte order mark를 지키며, 줄바꿈이 섞인 파일은 읽기 전용으로 열고, `tab.modified`를 알리고, `editor.save`로 읽은 version을 조건으로 제자리에 쓰며, `watch`로 디스크의 변경을 따르고, 변경이 오면 수정하지 않은 text는 바꾸고 수정한 text에는 다시 읽기와 덮어쓰기가 있는 banner를 보이며, 실패한 저장은 `tab.error`로 보인다. 2026-10-08에 완료했다. `test/editor.test.mjs`가 열기, 고치기, 저장, 바뀐 파일 위 저장 거절, 덮어쓰기, CRLF 유지, 자기 쓰기 무시를 확인하고, macOS 26.6.2 arm64에서 `pnpm test`가 테스트 11개를 통과한다.
+- [o] E2 — P1: 선언된 명령으로 된 찾기 막대로 열린 파일에서 찾고 바꾼다: `editor.find`, `editor.find.open`, `editor.find.close`, `editor.find.next`, `editor.find.previous`, `editor.replace`, `editor.replace.all`. 대소문자 구분과 정규식 일치, 바꿀 글의 `$&`와 `$1`을 지원하고, 잘못된 정규식은 막대의 상태로 보인다. Command-F는 막대를 열고, Command-Option-F는 바꿀 글 칸과 함께 열며, Command-S는 저장한다. 2026-10-08에 완료했다. 찾기와 단축키 테스트가 통과하고, 막대가 열린 page의 binder 감사가 비어 있다.
+- [o] E3 — P1: 편집기의 언어를 강조하고 TODO, FIXME, XXX를 표시한다: JavaScript(`js`, `mjs`, `cjs`, `jsx`), TypeScript(`ts`, `mts`, `cts`, `tsx`), JSON, CSS, HTML(`html`, `htm`, `svelte`, `vue`), Markdown, Python, Rust, Go, shell(`sh`, `bash`, `zsh`). token 색은 애플리케이션 theme의 dark와 light scheme을 따른다. 2026-10-08에 완료했다. TODO 테스트가 세 단어를 표시하고 `TODOLIST`는 표시하지 않는다.
+- [o] E4 — P1: 확장 지점 `editor.extension`과 `editor.formatter`를 선언한다([확장 지점](extension-points.ko.md)). core checklist 항목 F102.1을 위한 것이다. `scripts/build-vendor.mjs`는 공유 CodeMirror package마다 `plugin.json`이 정한 파일로 bundle하고, page는 공유 package를 `@soksak/shared/editor.extension/`에서 import한다. 2026-10-08에 완료했다. 기여 테스트가 기여된 extension을 그 이름 확장자에 적용하고, `extension(file)`이 없는 module을 invalid로 보고하며, 기여된 formatter로 서식을 맞춘다.
+- [~] E5 — P1: CI와 release workflow를 더한다. `ci.yml`은 macOS runner에서 `make test`를 실행하고, tag `v*`는 `release.yml`을 실행하며, 이는 선언한 core release의 `sok`으로 plugin을 pack한다.
+- [ ] E6 — P1: version 0.0.1을 릴리스하고 registry에 올린다. page는 core 0.0.7이 더하는 `tab.error`를 부르므로(core F102.10), release는 `engines.soksak` `>=0.0.7`을 선언하고 core `v0.0.7`의 `@soksak/plugin-api`로 테스트한다.
