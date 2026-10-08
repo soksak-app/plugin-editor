@@ -1,4 +1,4 @@
-// Resolves @soksak/shared/editor.extension/<package> in tests to the file that plugin.json names for the package in
+// Resolves @soksak/shared/editor.extension/<package>.js in tests to the file that plugin.json names for the package in
 // the modules of the extension point editor.extension, as the page import map and the host do in the application
 // (core docs/spec/plugins.md#extension-points).
 import { readFileSync } from "node:fs";
@@ -10,7 +10,8 @@ const MODULES = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.ur
 registerHooks({
   resolve(specifier, context, next) {
     if (!specifier.startsWith(POINT)) return next(specifier, context);
-    const name = specifier.slice(POINT.length);
+    if (!specifier.endsWith(".js")) throw new Error(`${specifier}: a shared module URL ends in .js`);
+    const name = specifier.slice(POINT.length, -".js".length);
     if (!Object.hasOwn(MODULES, name)) throw new Error(`${specifier}: plugin.json shares no module ${name}`);
     return { url: new URL(`../${MODULES[name]}`, import.meta.url).href, shortCircuit: true };
   },

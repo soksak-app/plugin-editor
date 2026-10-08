@@ -8,7 +8,7 @@ The editor declares two extension points in `plugin.json` (core `docs/spec/plugi
 
 The module exports `extension(file)`, where `file` is `{path, extension, language}`: the path relative to the project root, the lowercase name extension or `""`, and the editor's language of the file or `null`. It returns a CodeMirror extension, which the editor adds to the editor of that file. Language support, decorations, key bindings and themes are such extensions.
 
-The point shares the CodeMirror packages of the editor: `@codemirror/state`, `@codemirror/view`, `@codemirror/language`, `@codemirror/commands`, `@lezer/common`, `@lezer/highlight`, `@lezer/lr`, `@marijn/find-cluster-break`, `crelt`, `style-mod` and `w3c-keyname`. A contributor imports each of them as `@soksak/shared/editor.extension/<package>` and bundles it as that external import, so the contributor and the editor use one instance. A contributor bundles every other package itself; a language package that it bundles imports the shared packages in the same way.
+The point shares the CodeMirror packages of the editor: `@codemirror/state`, `@codemirror/view`, `@codemirror/language`, `@codemirror/commands`, `@lezer/common`, `@lezer/highlight`, `@lezer/lr`, `@marijn/find-cluster-break`, `crelt`, `style-mod` and `w3c-keyname`. A contributor imports each of them as `@soksak/shared/editor.extension/<package>.js` and bundles it as that external import, so the contributor and the editor use one instance. A contributor bundles every other package itself; a language package that it bundles imports the shared packages in the same way.
 
 | Point version | Packages |
 | --- | --- |

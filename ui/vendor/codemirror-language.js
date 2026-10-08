@@ -1,9 +1,9 @@
 // node_modules/.pnpm/@codemirror+language@6.13.1/node_modules/@codemirror/language/dist/index.js
-import { NodeProp, Tree, TreeFragment, Parser, IterMode, NodeType, NodeSet } from "@soksak/shared/editor.extension/@lezer/common";
-import { StateEffect, StateField, Facet, EditorState, countColumn, combineConfig, RangeSetBuilder, RangeSet, Prec } from "@soksak/shared/editor.extension/@codemirror/state";
-import { ViewPlugin, logException, EditorView, Decoration, WidgetType, gutter, GutterMarker, Direction } from "@soksak/shared/editor.extension/@codemirror/view";
-import { tags, highlightTree, tagHighlighter, styleTags } from "@soksak/shared/editor.extension/@lezer/highlight";
-import { StyleModule } from "@soksak/shared/editor.extension/style-mod";
+import { NodeProp, Tree, TreeFragment, Parser, IterMode, NodeType, NodeSet } from "@soksak/shared/editor.extension/@lezer/common.js";
+import { StateEffect, StateField, Facet, EditorState, countColumn, combineConfig, RangeSetBuilder, RangeSet, Prec } from "@soksak/shared/editor.extension/@codemirror/state.js";
+import { ViewPlugin, logException, EditorView, Decoration, WidgetType, gutter, GutterMarker, Direction } from "@soksak/shared/editor.extension/@codemirror/view.js";
+import { tags, highlightTree, tagHighlighter, styleTags } from "@soksak/shared/editor.extension/@lezer/highlight.js";
+import { StyleModule } from "@soksak/shared/editor.extension/style-mod.js";
 
 // node_modules/.pnpm/@codemirror+streamparser@6.0.0/node_modules/@codemirror/streamparser/dist/index.js
 function countCol(string, end, tabSize, startIndex = 0, startValue = 0) {

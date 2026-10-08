@@ -1,5 +1,5 @@
 // node_modules/.pnpm/@codemirror+state@6.7.6/node_modules/@codemirror/state/dist/index.js
-import { findClusterBreak as findClusterBreak$1 } from "@soksak/shared/editor.extension/@marijn/find-cluster-break";
+import { findClusterBreak as findClusterBreak$1 } from "@soksak/shared/editor.extension/@marijn/find-cluster-break.js";
 var Text = class _Text {
   /**
   Get the line description around the given position.

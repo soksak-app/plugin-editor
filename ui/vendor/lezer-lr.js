@@ -1,5 +1,5 @@
 // node_modules/.pnpm/@lezer+lr@1.4.11/node_modules/@lezer/lr/dist/index.js
-import { Parser, NodeProp, NodeSet, NodeType, DefaultBufferLength, Tree, IterMode } from "@soksak/shared/editor.extension/@lezer/common";
+import { Parser, NodeProp, NodeSet, NodeType, DefaultBufferLength, Tree, IterMode } from "@soksak/shared/editor.extension/@lezer/common.js";
 var Stack = class _Stack {
   /**
   @internal

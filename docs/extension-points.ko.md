@@ -8,7 +8,7 @@
 
 module은 `extension(file)`을 export한다. `file`은 `{path, extension, language}`로, project root 기준 경로, 소문자 이름 확장자 또는 `""`, 편집기가 정한 파일의 언어 또는 `null`이다. 이 함수는 CodeMirror extension을 반환하고, 편집기는 그것을 그 파일의 편집기에 더한다. 언어 지원, decoration, key binding, theme이 그런 extension이다.
 
-이 지점은 편집기의 CodeMirror package를 공유한다: `@codemirror/state`, `@codemirror/view`, `@codemirror/language`, `@codemirror/commands`, `@lezer/common`, `@lezer/highlight`, `@lezer/lr`, `@marijn/find-cluster-break`, `crelt`, `style-mod`, `w3c-keyname`. 기여자는 각각을 `@soksak/shared/editor.extension/<package>`로 import하고 그 external import로 bundle하므로, 기여자와 편집기는 instance 하나를 쓴다. 다른 package는 기여자가 직접 bundle하며, 기여자가 bundle하는 언어 package도 공유 package를 같은 방법으로 import한다.
+이 지점은 편집기의 CodeMirror package를 공유한다: `@codemirror/state`, `@codemirror/view`, `@codemirror/language`, `@codemirror/commands`, `@lezer/common`, `@lezer/highlight`, `@lezer/lr`, `@marijn/find-cluster-break`, `crelt`, `style-mod`, `w3c-keyname`. 기여자는 각각을 `@soksak/shared/editor.extension/<package>.js`로 import하고 그 external import로 bundle하므로, 기여자와 편집기는 instance 하나를 쓴다. 다른 package는 기여자가 직접 bundle하며, 기여자가 bundle하는 언어 package도 공유 package를 같은 방법으로 import한다.
 
 | 지점 version | Package |
 | --- | --- |

@@ -1,7 +1,7 @@
 // Bundles CodeMirror into ui/vendor/ (core docs/spec/plugins.md#third-party-libraries).
 // Each package that plugin.json lists in the modules of the extension point editor.extension becomes the file
 // that plugin.json names for it, so the editor and its contributors load one instance of each from
-// @soksak/shared/editor.extension/<package>. libraries.js holds the packages that only the editor imports:
+// @soksak/shared/editor.extension/<package>.js. libraries.js holds the packages that only the editor imports:
 // the language packages and @codemirror/search. A bundle imports every shared package as that external URL.
 // --check fails when a new build differs from the committed files.
 import { readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs";
@@ -25,7 +25,7 @@ const externals = (own) => ({
   setup(builder) {
     builder.onResolve({ filter: /.*/ }, (args) => {
       if (args.kind === "entry-point" || !SHARED.includes(args.path) || args.path === own) return undefined;
-      return { path: `${POINT}${args.path}`, external: true };
+      return { path: `${POINT}${args.path}.js`, external: true };
     });
   },
 });

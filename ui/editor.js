@@ -1,14 +1,14 @@
 // The editor surface: opens the file tab.params.path of the project through the files sidecar in CodeMirror, saves it
 // in place, and follows changes on disk. The contributions to editor.extension add CodeMirror extensions and the
 // contributions to editor.formatter format the text (docs/features.md).
-import { Compartment, EditorState, StateEffect, StateField } from "@soksak/shared/editor.extension/@codemirror/state";
+import { Compartment, EditorState, StateEffect, StateField } from "@soksak/shared/editor.extension/@codemirror/state.js";
 import {
   Decoration, EditorView, drawSelection, highlightActiveLine, highlightActiveLineGutter, highlightSpecialChars, keymap,
   lineNumbers,
-} from "@soksak/shared/editor.extension/@codemirror/view";
-import { bracketMatching, indentOnInput, syntaxHighlighting } from "@soksak/shared/editor.extension/@codemirror/language";
-import { defaultKeymap, history, historyKeymap, indentWithTab } from "@soksak/shared/editor.extension/@codemirror/commands";
-import { classHighlighter } from "@soksak/shared/editor.extension/@lezer/highlight";
+} from "@soksak/shared/editor.extension/@codemirror/view.js";
+import { bracketMatching, indentOnInput, syntaxHighlighting } from "@soksak/shared/editor.extension/@codemirror/language.js";
+import { defaultKeymap, history, historyKeymap, indentWithTab } from "@soksak/shared/editor.extension/@codemirror/commands.js";
+import { classHighlighter } from "@soksak/shared/editor.extension/@lezer/highlight.js";
 import { createQuery, findMatches, replacementOf } from "./find.js";
 import { extensionOf, languageOf, languageSupport } from "./languages.js";
 import { connect } from "./requests.js";
@@ -27,13 +27,6 @@ button{padding:2px 6px;border:0;border-radius:var(--r-xs);background:transparent
 button:hover{background:var(--inset);color:var(--fg)}
 button[aria-pressed="true"]{background:var(--chip-on);color:var(--fg)}
 #view{flex:1;min-height:0}
-.cm-editor{height:100%;font:var(--size)/1.5 var(--font)}
-.cm-editor.cm-focused{outline:none}
-.cm-gutters{background:var(--card);color:var(--muted);border-right:1px solid var(--rule)}
-.cm-activeLine,.cm-activeLineGutter{background:color-mix(in srgb,var(--fg) 5%,transparent)}
-.cm-cursor{border-left-color:var(--fg)}
-.cm-selectionBackground,.cm-focused .cm-selectionBackground{background:color-mix(in srgb,var(--rail) 35%,transparent)!important}
-.cm-matchingBracket{outline:1px solid var(--muted)}
 .cm-todo{background:color-mix(in srgb,var(--focus) 25%,transparent);outline:1px solid color-mix(in srgb,var(--focus) 60%,transparent);border-radius:2px}
 .cm-found{background:color-mix(in srgb,var(--rail) 30%,transparent)}
 .cm-found-current{background:color-mix(in srgb,var(--focus) 45%,transparent)}
@@ -52,7 +45,7 @@ button[aria-pressed="true"]{background:var(--chip-on);color:var(--fg)}
 .tok-invalid{color:var(--no)}`;
 
 const HTML = `<style>${css}</style><div id="frame" data-expose="editor.frame">
-<div id="banner" data-expose="editor.banner" hidden><span></span><button data-command="editor.reload" data-expose="editor.reload">다시 읽기</button><button data-command="editor.save" data-params='{"overwrite":true}' data-expose="editor.overwrite">덮어쓰기</button></div>
+<div id="banner" data-expose="editor.banner" hidden><span></span><button data-expose="editor.reload">다시 읽기</button><button data-expose="editor.overwrite">덮어쓰기</button></div>
 <div id="find" data-expose="editor.find.bar" hidden>
 <form id="find-form" data-expose="editor.find.form"><input id="query" data-expose="editor.find.query" aria-label="찾기" placeholder="찾기"><button type="button" id="case" data-expose="editor.find.case" aria-label="대소문자 구분" aria-pressed="false">Aa</button><button type="button" id="regexp" data-expose="editor.find.regexp" aria-label="정규식" aria-pressed="false">.*</button><output id="count"></output><button type="button" data-command="editor.find.previous" data-expose="editor.find.previous" aria-label="이전">↑</button><button type="button" data-command="editor.find.next" data-expose="editor.find.next" aria-label="다음">↓</button><button type="button" data-command="editor.find.close" data-expose="editor.find.close" aria-label="닫기">×</button></form>
 <form id="replace-form" data-expose="editor.replace.form" hidden><input id="replacement" data-expose="editor.find.replacement" aria-label="바꿀 글" placeholder="바꿀 글"><button type="button" data-command="editor.replace" data-expose="editor.replace">바꾸기</button><button type="button" data-command="editor.replace.all" data-expose="editor.replace.all">모두 바꾸기</button></form>
@@ -71,6 +64,20 @@ const onShortcut = (key, modifiers) => (event) => {
   event.preventDefault();
   return true;
 };
+
+// The colors of the editor come from the theme tokens of the application. A CodeMirror theme outranks the base theme of
+// CodeMirror, whose light colors a plain stylesheet rule of the page does not override.
+const frameTheme = EditorView.theme({
+  "&": { height: "100%", backgroundColor: "var(--card)", color: "var(--fg)", font: "var(--size)/1.5 var(--font)" },
+  "&.cm-focused": { outline: "none" },
+  ".cm-content": { caretColor: "var(--fg)" },
+  ".cm-gutters": { backgroundColor: "var(--card)", color: "var(--muted)", borderRight: "1px solid var(--rule)" },
+  ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "color-mix(in srgb, var(--fg) 5%, transparent)" },
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--fg)" },
+  "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground":
+    { backgroundColor: "color-mix(in srgb, var(--rail) 35%, transparent)" },
+  ".cm-matchingBracket": { backgroundColor: "transparent", outline: "1px solid var(--muted)" },
+});
 
 const setFound = StateEffect.define();
 const foundMark = Decoration.mark({ class: "cm-found" });
@@ -105,6 +112,7 @@ export async function mount(root, context) {
   const language = languageOf(path);
   const extension = extensionOf(path);
   const file = Object.freeze({ path, extension, language });
+  context.tab.title(path.slice(path.lastIndexOf("/") + 1));
 
   // The document as the editor read or last wrote it, and the state of the file on disk.
   let saved = null;
@@ -141,6 +149,7 @@ export async function mount(root, context) {
   const contributed = new Compartment();
   const editable = new Compartment();
   const separator = new Compartment();
+  const scheme = new Compartment();
 
   let view = null;
   const modified = () => saved !== null && !view.state.doc.eq(saved);
@@ -208,7 +217,13 @@ export async function mount(root, context) {
   };
 
   const reload = async () => {
-    const body = await read();
+    let body;
+    try {
+      body = await read();
+    } catch (error) {
+      context.tab.error(`다시 읽지 못했습니다 · ${error.message}`);
+      throw error;
+    }
     load(body);
     context.tab.error(null);
     return { version: body.version };
@@ -357,7 +372,7 @@ export async function mount(root, context) {
         indentOnInput(), bracketMatching(), highlightActiveLine(), syntaxHighlighting(classHighlighter), todoMarks, found,
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         languageSlot.of(languageSupport(language)), contributed.of(contributions.extensions),
-        editable.of([]), separator.of([]),
+        editable.of([]), separator.of([]), frameTheme, scheme.of(EditorView.darkTheme.of(true)),
         EditorView.contentAttributes.of({ "data-expose": "editor.content", "aria-label": path }),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged && !update.selectionSet) return;
@@ -379,6 +394,7 @@ export async function mount(root, context) {
     ? context.runtime.theme((value) => {
       if (value?.scheme !== "dark" && value?.scheme !== "light") throw new Error("the theme must have scheme dark or light");
       frame.dataset.scheme = value.scheme;
+      view.dispatch({ effects: scheme.reconfigure(EditorView.darkTheme.of(value.scheme === "dark")) });
     })
     : null;
   if (subscription) await subscription.ready;
@@ -408,8 +424,12 @@ export async function mount(root, context) {
   await expose.bind(content, "editor.focus", {}, { event: "focus" });
   await expose.bind(frame, "editor.find.open", (event) => ({ replace: event.altKey }), {
     event: "keydown", when: (event) => onShortcut("f")(event) || onShortcut("f", { alt: true })(event) });
-  await expose.bind(host, "editor.save", {}, { event: "keydown", when: onShortcut("s") });
-  await expose.bind(view.scrollDOM, "editor.format", {}, { event: "keydown", when: onShortcut("f", { alt: true, shift: true }) });
+  // save, reload and format show their failures as the tab error, so a control that runs them does not report them again.
+  const shown = () => {};
+  await expose.bind(host, "editor.save", {}, { event: "keydown", when: onShortcut("s"), failed: shown });
+  await expose.bind(view.scrollDOM, "editor.format", {}, { event: "keydown", when: onShortcut("f", { alt: true, shift: true }), failed: shown });
+  await expose.bind(banner.querySelector('[data-expose="editor.reload"]'), "editor.reload", {}, { failed: shown });
+  await expose.bind(banner.querySelector('[data-expose="editor.overwrite"]'), "editor.save", { overwrite: true }, { failed: shown });
   await expose.bind(bar, "editor.find.close", {}, { event: "keydown", when: (event) => event.key === "Escape" });
   await expose.bind(findForm, "editor.find.next", {}, { event: "submit", when: (event) => { event.preventDefault(); return true; } });
   await expose.bind(replaceForm, "editor.replace", {}, { event: "submit", when: (event) => { event.preventDefault(); return true; } });

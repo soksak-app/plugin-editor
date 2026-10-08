@@ -1,7 +1,7 @@
 // node_modules/.pnpm/@codemirror+search@6.7.2/node_modules/@codemirror/search/dist/index.js
-import { getDialog, showDialog, EditorView, Decoration, ViewPlugin, showPanel, runScopeHandlers, getPanel } from "@soksak/shared/editor.extension/@codemirror/view";
-import { codePointAt, fromCodePoint, codePointSize, EditorSelection, Facet, combineConfig, CharCategory, StateEffect, StateField, RangeSetBuilder, Prec, EditorState, findClusterBreak } from "@soksak/shared/editor.extension/@codemirror/state";
-import elt from "@soksak/shared/editor.extension/crelt";
+import { getDialog, showDialog, EditorView, Decoration, ViewPlugin, showPanel, runScopeHandlers, getPanel } from "@soksak/shared/editor.extension/@codemirror/view.js";
+import { codePointAt, fromCodePoint, codePointSize, EditorSelection, Facet, combineConfig, CharCategory, StateEffect, StateField, RangeSetBuilder, Prec, EditorState, findClusterBreak } from "@soksak/shared/editor.extension/@codemirror/state.js";
+import elt from "@soksak/shared/editor.extension/crelt.js";
 var basicNormalize = typeof String.prototype.normalize == "function" ? (x) => x.normalize("NFKD") : (x) => x;
 var SearchCursor = class {
   /**
@@ -483,8 +483,8 @@ var RegExpQuery = class extends QueryType {
 };
 
 // node_modules/.pnpm/@lezer+css@1.3.8/node_modules/@lezer/css/dist/index.js
-import { ExternalTokenizer, LRParser, LocalTokenGroup } from "@soksak/shared/editor.extension/@lezer/lr";
-import { styleTags, tags } from "@soksak/shared/editor.extension/@lezer/highlight";
+import { ExternalTokenizer, LRParser, LocalTokenGroup } from "@soksak/shared/editor.extension/@lezer/lr.js";
+import { styleTags, tags } from "@soksak/shared/editor.extension/@lezer/highlight.js";
 var descendantOp = 148;
 var Unit = 1;
 var identifier = 149;
@@ -664,8 +664,8 @@ var parser = LRParser.deserialize({
 });
 
 // node_modules/.pnpm/@codemirror+lang-css@6.3.1/node_modules/@codemirror/lang-css/dist/index.js
-import { syntaxTree, LRLanguage, indentNodeProp, continuedIndent, foldNodeProp, foldInside, LanguageSupport } from "@soksak/shared/editor.extension/@codemirror/language";
-import { NodeWeakMap, IterMode } from "@soksak/shared/editor.extension/@lezer/common";
+import { syntaxTree, LRLanguage, indentNodeProp, continuedIndent, foldNodeProp, foldInside, LanguageSupport } from "@soksak/shared/editor.extension/@codemirror/language.js";
+import { NodeWeakMap, IterMode } from "@soksak/shared/editor.extension/@lezer/common.js";
 var _properties = null;
 function properties() {
   if (!_properties && typeof document == "object" && document.body) {
@@ -1527,8 +1527,8 @@ function css() {
 }
 
 // node_modules/.pnpm/@lezer+go@1.0.1/node_modules/@lezer/go/dist/index.js
-import { ExternalTokenizer as ExternalTokenizer2, ContextTracker, LRParser as LRParser2, LocalTokenGroup as LocalTokenGroup2 } from "@soksak/shared/editor.extension/@lezer/lr";
-import { styleTags as styleTags2, tags as tags3 } from "@soksak/shared/editor.extension/@lezer/highlight";
+import { ExternalTokenizer as ExternalTokenizer2, ContextTracker, LRParser as LRParser2, LocalTokenGroup as LocalTokenGroup2 } from "@soksak/shared/editor.extension/@lezer/lr.js";
+import { styleTags as styleTags2, tags as tags3 } from "@soksak/shared/editor.extension/@lezer/highlight.js";
 var insertedSemi = 177;
 var space$1 = 179;
 var identifier3 = 184;
@@ -1638,12 +1638,12 @@ var parser2 = LRParser2.deserialize({
 });
 
 // node_modules/.pnpm/@codemirror+lang-go@6.0.1/node_modules/@codemirror/lang-go/dist/index.js
-import { syntaxTree as syntaxTree3, LRLanguage as LRLanguage2, indentNodeProp as indentNodeProp2, continuedIndent as continuedIndent2, flatIndent, delimitedIndent, foldNodeProp as foldNodeProp2, foldInside as foldInside2, LanguageSupport as LanguageSupport2 } from "@soksak/shared/editor.extension/@codemirror/language";
+import { syntaxTree as syntaxTree3, LRLanguage as LRLanguage2, indentNodeProp as indentNodeProp2, continuedIndent as continuedIndent2, flatIndent, delimitedIndent, foldNodeProp as foldNodeProp2, foldInside as foldInside2, LanguageSupport as LanguageSupport2 } from "@soksak/shared/editor.extension/@codemirror/language.js";
 
 // node_modules/.pnpm/@codemirror+autocomplete@6.20.3/node_modules/@codemirror/autocomplete/dist/index.js
-import { Annotation, StateEffect as StateEffect2, EditorSelection as EditorSelection2, codePointAt as codePointAt2, codePointSize as codePointSize2, fromCodePoint as fromCodePoint2, Facet as Facet2, combineConfig as combineConfig2, StateField as StateField2, Prec as Prec2, Text, Transaction, MapMode, RangeValue, RangeSet, CharCategory as CharCategory2 } from "@soksak/shared/editor.extension/@codemirror/state";
-import { Direction, logException, showTooltip, EditorView as EditorView2, ViewPlugin as ViewPlugin2, getTooltip, Decoration as Decoration2, WidgetType, keymap } from "@soksak/shared/editor.extension/@codemirror/view";
-import { syntaxTree as syntaxTree2, indentUnit } from "@soksak/shared/editor.extension/@codemirror/language";
+import { Annotation, StateEffect as StateEffect2, EditorSelection as EditorSelection2, codePointAt as codePointAt2, codePointSize as codePointSize2, fromCodePoint as fromCodePoint2, Facet as Facet2, combineConfig as combineConfig2, StateField as StateField2, Prec as Prec2, Text, Transaction, MapMode, RangeValue, RangeSet, CharCategory as CharCategory2 } from "@soksak/shared/editor.extension/@codemirror/state.js";
+import { Direction, logException, showTooltip, EditorView as EditorView2, ViewPlugin as ViewPlugin2, getTooltip, Decoration as Decoration2, WidgetType, keymap } from "@soksak/shared/editor.extension/@codemirror/view.js";
+import { syntaxTree as syntaxTree2, indentUnit } from "@soksak/shared/editor.extension/@codemirror/language.js";
 var CompletionContext = class {
   /**
   Create a new completion context. (Mostly useful for testing
@@ -2109,7 +2109,7 @@ closedBracket.endSide = -1;
 var android = typeof navigator == "object" && /* @__PURE__ */ /Android\b/.test(navigator.userAgent);
 
 // node_modules/.pnpm/@codemirror+lang-go@6.0.1/node_modules/@codemirror/lang-go/dist/index.js
-import { NodeWeakMap as NodeWeakMap2, IterMode as IterMode2 } from "@soksak/shared/editor.extension/@lezer/common";
+import { NodeWeakMap as NodeWeakMap2, IterMode as IterMode2 } from "@soksak/shared/editor.extension/@lezer/common.js";
 var snippets = [
   /* @__PURE__ */ snippetCompletion("func ${name}(${params}) ${type} {\n	${}\n}", {
     label: "func",
@@ -2328,9 +2328,9 @@ function go() {
 }
 
 // node_modules/.pnpm/@lezer+html@1.3.13/node_modules/@lezer/html/dist/index.js
-import { ContextTracker as ContextTracker2, ExternalTokenizer as ExternalTokenizer3, LRParser as LRParser3 } from "@soksak/shared/editor.extension/@lezer/lr";
-import { styleTags as styleTags3, tags as tags4 } from "@soksak/shared/editor.extension/@lezer/highlight";
-import { parseMixed } from "@soksak/shared/editor.extension/@lezer/common";
+import { ContextTracker as ContextTracker2, ExternalTokenizer as ExternalTokenizer3, LRParser as LRParser3 } from "@soksak/shared/editor.extension/@lezer/lr.js";
+import { styleTags as styleTags3, tags as tags4 } from "@soksak/shared/editor.extension/@lezer/highlight.js";
+import { parseMixed } from "@soksak/shared/editor.extension/@lezer/common.js";
 var scriptText = 55;
 var StartCloseScriptTag = 1;
 var styleText = 56;
@@ -2675,8 +2675,8 @@ function configureNesting(tags10 = [], attributes = []) {
 }
 
 // node_modules/.pnpm/@lezer+javascript@1.5.6/node_modules/@lezer/javascript/dist/index.js
-import { ContextTracker as ContextTracker3, ExternalTokenizer as ExternalTokenizer4, LRParser as LRParser4, LocalTokenGroup as LocalTokenGroup3 } from "@soksak/shared/editor.extension/@lezer/lr";
-import { styleTags as styleTags4, tags as tags5 } from "@soksak/shared/editor.extension/@lezer/highlight";
+import { ContextTracker as ContextTracker3, ExternalTokenizer as ExternalTokenizer4, LRParser as LRParser4, LocalTokenGroup as LocalTokenGroup3 } from "@soksak/shared/editor.extension/@lezer/lr.js";
+import { styleTags as styleTags4, tags as tags5 } from "@soksak/shared/editor.extension/@lezer/highlight.js";
 var noSemi = 317;
 var noSemiType = 318;
 var incdec = 1;
@@ -2889,10 +2889,10 @@ var parser4 = LRParser4.deserialize({
 });
 
 // node_modules/.pnpm/@codemirror+lang-javascript@6.2.5/node_modules/@codemirror/lang-javascript/dist/index.js
-import { syntaxTree as syntaxTree4, LRLanguage as LRLanguage3, indentNodeProp as indentNodeProp3, continuedIndent as continuedIndent3, flatIndent as flatIndent2, delimitedIndent as delimitedIndent2, foldNodeProp as foldNodeProp3, foldInside as foldInside3, defineLanguageFacet, sublanguageProp, LanguageSupport as LanguageSupport3 } from "@soksak/shared/editor.extension/@codemirror/language";
-import { EditorSelection as EditorSelection3 } from "@soksak/shared/editor.extension/@codemirror/state";
-import { EditorView as EditorView3 } from "@soksak/shared/editor.extension/@codemirror/view";
-import { NodeWeakMap as NodeWeakMap3, IterMode as IterMode3 } from "@soksak/shared/editor.extension/@lezer/common";
+import { syntaxTree as syntaxTree4, LRLanguage as LRLanguage3, indentNodeProp as indentNodeProp3, continuedIndent as continuedIndent3, flatIndent as flatIndent2, delimitedIndent as delimitedIndent2, foldNodeProp as foldNodeProp3, foldInside as foldInside3, defineLanguageFacet, sublanguageProp, LanguageSupport as LanguageSupport3 } from "@soksak/shared/editor.extension/@codemirror/language.js";
+import { EditorSelection as EditorSelection3 } from "@soksak/shared/editor.extension/@codemirror/state.js";
+import { EditorView as EditorView3 } from "@soksak/shared/editor.extension/@codemirror/view.js";
+import { NodeWeakMap as NodeWeakMap3, IterMode as IterMode3 } from "@soksak/shared/editor.extension/@lezer/common.js";
 var snippets2 = [
   /* @__PURE__ */ snippetCompletion("function ${name}(${params}) {\n	${}\n}", {
     label: "function",
@@ -3205,9 +3205,9 @@ var autoCloseTags = /* @__PURE__ */ EditorView3.inputHandler.of((view, from, to,
 });
 
 // node_modules/.pnpm/@codemirror+lang-html@6.4.12/node_modules/@codemirror/lang-html/dist/index.js
-import { EditorView as EditorView4 } from "@soksak/shared/editor.extension/@codemirror/view";
-import { EditorSelection as EditorSelection4 } from "@soksak/shared/editor.extension/@codemirror/state";
-import { syntaxTree as syntaxTree5, LRLanguage as LRLanguage4, indentNodeProp as indentNodeProp4, foldNodeProp as foldNodeProp4, bracketMatchingHandle, LanguageSupport as LanguageSupport4 } from "@soksak/shared/editor.extension/@codemirror/language";
+import { EditorView as EditorView4 } from "@soksak/shared/editor.extension/@codemirror/view.js";
+import { EditorSelection as EditorSelection4 } from "@soksak/shared/editor.extension/@codemirror/state.js";
+import { syntaxTree as syntaxTree5, LRLanguage as LRLanguage4, indentNodeProp as indentNodeProp4, foldNodeProp as foldNodeProp4, bracketMatchingHandle, LanguageSupport as LanguageSupport4 } from "@soksak/shared/editor.extension/@codemirror/language.js";
 var Targets = ["_blank", "_self", "_top", "_parent"];
 var Charsets = ["ascii", "utf-8", "utf-16", "latin1", "latin1"];
 var Methods = ["get", "post", "put", "delete"];
@@ -3948,8 +3948,8 @@ var autoCloseTags2 = /* @__PURE__ */ EditorView4.inputHandler.of((view, from, to
 });
 
 // node_modules/.pnpm/@lezer+json@1.0.3/node_modules/@lezer/json/dist/index.js
-import { LRParser as LRParser5 } from "@soksak/shared/editor.extension/@lezer/lr";
-import { styleTags as styleTags5, tags as tags6 } from "@soksak/shared/editor.extension/@lezer/highlight";
+import { LRParser as LRParser5 } from "@soksak/shared/editor.extension/@lezer/lr.js";
+import { styleTags as styleTags5, tags as tags6 } from "@soksak/shared/editor.extension/@lezer/highlight.js";
 var jsonHighlighting = styleTags5({
   String: tags6.string,
   Number: tags6.number,
@@ -3982,7 +3982,7 @@ var parser5 = LRParser5.deserialize({
 });
 
 // node_modules/.pnpm/@codemirror+lang-json@6.0.2/node_modules/@codemirror/lang-json/dist/index.js
-import { LRLanguage as LRLanguage5, indentNodeProp as indentNodeProp5, continuedIndent as continuedIndent4, foldNodeProp as foldNodeProp5, foldInside as foldInside4, LanguageSupport as LanguageSupport5 } from "@soksak/shared/editor.extension/@codemirror/language";
+import { LRLanguage as LRLanguage5, indentNodeProp as indentNodeProp5, continuedIndent as continuedIndent4, foldNodeProp as foldNodeProp5, foldInside as foldInside4, LanguageSupport as LanguageSupport5 } from "@soksak/shared/editor.extension/@codemirror/language.js";
 var jsonLanguage = /* @__PURE__ */ LRLanguage5.define({
   name: "json",
   parser: /* @__PURE__ */ parser5.configure({
@@ -4006,13 +4006,13 @@ function json() {
 }
 
 // node_modules/.pnpm/@codemirror+lang-markdown@6.5.2/node_modules/@codemirror/lang-markdown/dist/index.js
-import { EditorSelection as EditorSelection5, countColumn, Prec as Prec3, EditorState as EditorState2 } from "@soksak/shared/editor.extension/@codemirror/state";
-import { EditorView as EditorView5, keymap as keymap2 } from "@soksak/shared/editor.extension/@codemirror/view";
-import { defineLanguageFacet as defineLanguageFacet2, foldNodeProp as foldNodeProp6, indentNodeProp as indentNodeProp6, languageDataProp, foldService, syntaxTree as syntaxTree6, Language, LanguageDescription, ParseContext, indentUnit as indentUnit2, LanguageSupport as LanguageSupport6 } from "@soksak/shared/editor.extension/@codemirror/language";
+import { EditorSelection as EditorSelection5, countColumn, Prec as Prec3, EditorState as EditorState2 } from "@soksak/shared/editor.extension/@codemirror/state.js";
+import { EditorView as EditorView5, keymap as keymap2 } from "@soksak/shared/editor.extension/@codemirror/view.js";
+import { defineLanguageFacet as defineLanguageFacet2, foldNodeProp as foldNodeProp6, indentNodeProp as indentNodeProp6, languageDataProp, foldService, syntaxTree as syntaxTree6, Language, LanguageDescription, ParseContext, indentUnit as indentUnit2, LanguageSupport as LanguageSupport6 } from "@soksak/shared/editor.extension/@codemirror/language.js";
 
 // node_modules/.pnpm/@lezer+markdown@1.7.2/node_modules/@lezer/markdown/dist/index.js
-import { NodeType, NodeProp, NodeSet, Tree, Parser, parseMixed as parseMixed2 } from "@soksak/shared/editor.extension/@lezer/common";
-import { styleTags as styleTags6, tags as tags7, Tag } from "@soksak/shared/editor.extension/@lezer/highlight";
+import { NodeType, NodeProp, NodeSet, Tree, Parser, parseMixed as parseMixed2 } from "@soksak/shared/editor.extension/@lezer/common.js";
+import { styleTags as styleTags6, tags as tags7, Tag } from "@soksak/shared/editor.extension/@lezer/highlight.js";
 var CompositeBlock = class _CompositeBlock {
   static create(type, value, from, parentHash, end) {
     let hash3 = parentHash + (parentHash << 8) + type + (value << 4) | 0;
@@ -6077,7 +6077,7 @@ var Emoji = {
 };
 
 // node_modules/.pnpm/@codemirror+lang-markdown@6.5.2/node_modules/@codemirror/lang-markdown/dist/index.js
-import { NodeProp as NodeProp2 } from "@soksak/shared/editor.extension/@lezer/common";
+import { NodeProp as NodeProp2 } from "@soksak/shared/editor.extension/@lezer/common.js";
 var data = /* @__PURE__ */ defineLanguageFacet2({ commentTokens: { block: { open: "<!--", close: "-->" } } });
 var headingProp = /* @__PURE__ */ new NodeProp2();
 var commonmark = /* @__PURE__ */ parser6.configure({
@@ -6499,8 +6499,8 @@ var pasteURLAsLink = /* @__PURE__ */ EditorView5.domEventHandlers({
 });
 
 // node_modules/.pnpm/@lezer+python@1.1.19/node_modules/@lezer/python/dist/index.js
-import { ExternalTokenizer as ExternalTokenizer5, ContextTracker as ContextTracker4, LRParser as LRParser6 } from "@soksak/shared/editor.extension/@lezer/lr";
-import { styleTags as styleTags7, tags as tags8 } from "@soksak/shared/editor.extension/@lezer/highlight";
+import { ExternalTokenizer as ExternalTokenizer5, ContextTracker as ContextTracker4, LRParser as LRParser6 } from "@soksak/shared/editor.extension/@lezer/lr.js";
+import { styleTags as styleTags7, tags as tags8 } from "@soksak/shared/editor.extension/@lezer/highlight.js";
 var printKeyword = 1;
 var indent = 194;
 var dedent = 195;
@@ -6837,8 +6837,8 @@ var parser7 = LRParser6.deserialize({
 });
 
 // node_modules/.pnpm/@codemirror+lang-python@6.2.1/node_modules/@codemirror/lang-python/dist/index.js
-import { syntaxTree as syntaxTree7, LRLanguage as LRLanguage6, indentNodeProp as indentNodeProp7, delimitedIndent as delimitedIndent3, foldNodeProp as foldNodeProp7, foldInside as foldInside5, LanguageSupport as LanguageSupport7 } from "@soksak/shared/editor.extension/@codemirror/language";
-import { NodeWeakMap as NodeWeakMap4, IterMode as IterMode4 } from "@soksak/shared/editor.extension/@lezer/common";
+import { syntaxTree as syntaxTree7, LRLanguage as LRLanguage6, indentNodeProp as indentNodeProp7, delimitedIndent as delimitedIndent3, foldNodeProp as foldNodeProp7, foldInside as foldInside5, LanguageSupport as LanguageSupport7 } from "@soksak/shared/editor.extension/@codemirror/language.js";
+import { NodeWeakMap as NodeWeakMap4, IterMode as IterMode4 } from "@soksak/shared/editor.extension/@lezer/common.js";
 var cache3 = /* @__PURE__ */ new NodeWeakMap4();
 var ScopeNodes3 = /* @__PURE__ */ new Set([
   "Script",
@@ -7259,8 +7259,8 @@ function python() {
 }
 
 // node_modules/.pnpm/@lezer+rust@1.0.3/node_modules/@lezer/rust/dist/index.js
-import { ExternalTokenizer as ExternalTokenizer6, LRParser as LRParser7 } from "@soksak/shared/editor.extension/@lezer/lr";
-import { styleTags as styleTags8, tags as tags9 } from "@soksak/shared/editor.extension/@lezer/highlight";
+import { ExternalTokenizer as ExternalTokenizer6, LRParser as LRParser7 } from "@soksak/shared/editor.extension/@lezer/lr.js";
+import { styleTags as styleTags8, tags as tags9 } from "@soksak/shared/editor.extension/@lezer/highlight.js";
 var closureParamDelim = 1;
 var tpOpen = 2;
 var tpClose = 3;
@@ -7431,7 +7431,7 @@ var parser8 = LRParser7.deserialize({
 });
 
 // node_modules/.pnpm/@codemirror+lang-rust@6.0.2/node_modules/@codemirror/lang-rust/dist/index.js
-import { LRLanguage as LRLanguage7, indentNodeProp as indentNodeProp8, continuedIndent as continuedIndent5, foldNodeProp as foldNodeProp8, foldInside as foldInside6, LanguageSupport as LanguageSupport8 } from "@soksak/shared/editor.extension/@codemirror/language";
+import { LRLanguage as LRLanguage7, indentNodeProp as indentNodeProp8, continuedIndent as continuedIndent5, foldNodeProp as foldNodeProp8, foldInside as foldInside6, LanguageSupport as LanguageSupport8 } from "@soksak/shared/editor.extension/@codemirror/language.js";
 var rustLanguage = /* @__PURE__ */ LRLanguage7.define({
   name: "rust",
   parser: /* @__PURE__ */ parser8.configure({
@@ -7462,7 +7462,7 @@ function rust() {
 }
 
 // <stdin>
-import { StreamLanguage } from "@soksak/shared/editor.extension/@codemirror/language";
+import { StreamLanguage } from "@soksak/shared/editor.extension/@codemirror/language.js";
 
 // node_modules/.pnpm/@codemirror+legacy-modes@6.5.5/node_modules/@codemirror/legacy-modes/mode/shell.js
 var words = {};

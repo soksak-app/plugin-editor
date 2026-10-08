@@ -1,8 +1,8 @@
 // node_modules/.pnpm/@codemirror+commands@6.11.1/node_modules/@codemirror/commands/dist/index.js
-import { Annotation, Facet, combineConfig, StateField, Transaction, ChangeSet, ChangeDesc, EditorSelection, StateEffect, Text, findClusterBreak, countColumn, CharCategory } from "@soksak/shared/editor.extension/@codemirror/state";
-import { EditorView, Direction } from "@soksak/shared/editor.extension/@codemirror/view";
-import { IndentContext, getIndentation, indentString, matchBrackets, syntaxTree, getIndentUnit, indentUnit } from "@soksak/shared/editor.extension/@codemirror/language";
-import { NodeProp } from "@soksak/shared/editor.extension/@lezer/common";
+import { Annotation, Facet, combineConfig, StateField, Transaction, ChangeSet, ChangeDesc, EditorSelection, StateEffect, Text, findClusterBreak, countColumn, CharCategory } from "@soksak/shared/editor.extension/@codemirror/state.js";
+import { EditorView, Direction } from "@soksak/shared/editor.extension/@codemirror/view.js";
+import { IndentContext, getIndentation, indentString, matchBrackets, syntaxTree, getIndentUnit, indentUnit } from "@soksak/shared/editor.extension/@codemirror/language.js";
+import { NodeProp } from "@soksak/shared/editor.extension/@lezer/common.js";
 var toggleComment = (target) => {
   let { state } = target, line = state.doc.lineAt(state.selection.main.from), config = getConfig(target.state, line.from);
   return config.line ? toggleLineComment(target) : config.block ? toggleBlockCommentByLine(target) : false;

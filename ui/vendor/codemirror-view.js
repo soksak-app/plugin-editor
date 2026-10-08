@@ -1,8 +1,8 @@
 // node_modules/.pnpm/@codemirror+view@6.43.14/node_modules/@codemirror/view/dist/index.js
-import { RangeSet, MapMode, RangeValue, findClusterBreak, EditorSelection, Facet, StateEffect, ChangeSet, Text, findColumn, CharCategory, EditorState, Annotation, Transaction, Prec, codePointAt, codePointSize, combineConfig, StateField, RangeSetBuilder, countColumn } from "@soksak/shared/editor.extension/@codemirror/state";
-import { StyleModule } from "@soksak/shared/editor.extension/style-mod";
-import { keyName, base, shift } from "@soksak/shared/editor.extension/w3c-keyname";
-import elt from "@soksak/shared/editor.extension/crelt";
+import { RangeSet, MapMode, RangeValue, findClusterBreak, EditorSelection, Facet, StateEffect, ChangeSet, Text, findColumn, CharCategory, EditorState, Annotation, Transaction, Prec, codePointAt, codePointSize, combineConfig, StateField, RangeSetBuilder, countColumn } from "@soksak/shared/editor.extension/@codemirror/state.js";
+import { StyleModule } from "@soksak/shared/editor.extension/style-mod.js";
+import { keyName, base, shift } from "@soksak/shared/editor.extension/w3c-keyname.js";
+import elt from "@soksak/shared/editor.extension/crelt.js";
 var nav = typeof navigator != "undefined" ? navigator : { userAgent: "", vendor: "", platform: "" };
 var doc = typeof document != "undefined" ? document : { documentElement: { style: {} } };
 var ie_edge = /* @__PURE__ */ /Edge\/(\d+)/.exec(nav.userAgent);

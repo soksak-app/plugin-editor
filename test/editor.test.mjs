@@ -43,13 +43,13 @@ function fakeFiles(files) {
   return port;
 }
 
-async function setup(t, { path = "src/main.js", files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {} } = {}) {
+async function setup(t, { path = "src/main.js", files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark" } = {}) {
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const root = host.attachShadow({ mode: "open" });
   const commands = new Map();
   const statuses = new Map();
-  const reports = { modified: [], error: [] };
+  const reports = { modified: [], error: [], title: [] };
   const binder = createBinder((name, params) => commands.get(name)(params), {
     check(name) { assert.ok(declared("commands", name), `undeclared command ${name}`); },
   });
@@ -57,9 +57,9 @@ async function setup(t, { path = "src/main.js", files = new Map([["src/main.js",
   const controller = await mount(root, {
     surfaceId: "editor-1",
     project: { root: "/project" },
-    tab: { params: { path }, title() {}, footer() {}, directory() {}, notify() {},
+    tab: { params: { path }, title: (text) => reports.title.push(text), footer() {}, directory() {}, notify() {},
       modified: (value) => reports.modified.push(value), error: (text) => reports.error.push(text) },
-    runtime: { sidecar: () => sidecar },
+    runtime: { sidecar: () => sidecar, theme: (fn) => ({ ready: Promise.resolve(fn({ scheme, tokens: {} })), dispose: Promise.resolve(() => {}) }) },
     // default: a test without contributions connects none to either point.
     contributions: (point) => contributions[point] ?? [],
     exposure: {
@@ -202,4 +202,29 @@ test("a contributed extension applies to its name extensions and a failing modul
 test("TODO, FIXME and XXX are marked in every file", async (t) => {
   const { root } = await setup(t, { path: "notes", files: new Map([["notes", "TODO one FIXME two XXX TODOLIST\n"]]) });
   assert.deepEqual([...root.querySelectorAll(".cm-todo")].map((element) => element.textContent), ["TODO", "FIXME", "XXX"]);
+});
+
+test("the tab is named after its file", async (t) => {
+  const { reports } = await setup(t);
+  assert.deepEqual(reports.title, ["main.js"]);
+});
+
+test("the editor colors come from a CodeMirror theme of the theme tokens and follow the scheme", async (t) => {
+  const { EditorView } = await import("@soksak/shared/editor.extension/@codemirror/view.js");
+  const { root } = await setup(t, { scheme: "light" });
+  const view = EditorView.findFromDOM(root.querySelector(".cm-editor"));
+  assert.equal(view.state.facet(EditorView.darkTheme), false);
+  const css = [...root.querySelectorAll("style")].map((style) => style.textContent).join("\n");
+  assert.match(css, /\.ͼ[0-9a-z]+ \.cm-gutters \{[^}]*background-color: var\(--card\)/);
+  const { root: dark } = await setup(t, { scheme: "dark" });
+  assert.equal(EditorView.findFromDOM(dark.querySelector(".cm-editor")).state.facet(EditorView.darkTheme), true);
+});
+
+test("every shared package is imported from a URL that ends in .js", () => {
+  const vendor = new URL("../ui/vendor/", import.meta.url);
+  const sources = ["codemirror-view.js", "codemirror-language.js", "libraries.js"].map((file) => readFileSync(new URL(file, vendor), "utf8"))
+    .concat(readFileSync(new URL("../ui/editor.js", import.meta.url), "utf8"));
+  const specifiers = sources.flatMap((source) => [...source.matchAll(/from "(@soksak\/shared\/[^"]+)"/g)].map((match) => match[1]));
+  assert.ok(specifiers.length > 0);
+  assert.deepEqual(specifiers.filter((specifier) => !specifier.endsWith(".js")), []);
 });

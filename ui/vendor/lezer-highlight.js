@@ -1,5 +1,5 @@
 // node_modules/.pnpm/@lezer+highlight@1.2.5/node_modules/@lezer/highlight/dist/index.js
-import { NodeProp } from "@soksak/shared/editor.extension/@lezer/common";
+import { NodeProp } from "@soksak/shared/editor.extension/@lezer/common.js";
 var nextTagID = 0;
 var Tag = class _Tag {
   /**

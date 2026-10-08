@@ -1,5 +1,5 @@
 // Marks the words TODO, FIXME and XXX with the class cm-todo in every file.
-import { Decoration, MatchDecorator, ViewPlugin } from "@soksak/shared/editor.extension/@codemirror/view";
+import { Decoration, MatchDecorator, ViewPlugin } from "@soksak/shared/editor.extension/@codemirror/view.js";
 
 const mark = Decoration.mark({ class: "cm-todo" });
 const decorator = new MatchDecorator({ regexp: /\b(?:TODO|FIXME|XXX)\b/g, decoration: () => mark });
