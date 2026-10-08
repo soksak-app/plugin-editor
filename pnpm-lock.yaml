@@ -63,8 +63,8 @@ importers:
         specifier: 1.0.4
         version: 1.0.4
       '@soksak/plugin-api':
-        specifier: git+https://github.com/soksak-app/core.git#v0.0.7&path:/packages/plugin-api
-        version: https://codeload.github.com/soksak-app/core/tar.gz/15e4e9eec0261ad19b3a523d708427e77fa651bb#path:/packages/plugin-api
+        specifier: git+https://github.com/soksak-app/core.git#v0.0.8&path:/packages/plugin-api
+        version: https://codeload.github.com/soksak-app/core/tar.gz/b20f71a2de3a0e335355fcaec71b4754c8a46a33#path:/packages/plugin-api
       crelt:
         specifier: 1.0.7
         version: 1.0.7
@@ -392,9 +392,9 @@ packages:
   '@marijn/find-cluster-break@1.0.4':
     resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
 
-  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/15e4e9eec0261ad19b3a523d708427e77fa651bb#path:/packages/plugin-api':
-    resolution: {gitHosted: true, integrity: sha512-TurvLpOqPmkaVsi81aIimIau+jrVAs48c4GN1wnb2groS3gEMKFF5YIP6TRUmNxZHnj7PPNjl41xYjCak6wxLw==, path: /packages/plugin-api, tarball: https://codeload.github.com/soksak-app/core/tar.gz/15e4e9eec0261ad19b3a523d708427e77fa651bb}
-    version: 0.0.7
+  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/b20f71a2de3a0e335355fcaec71b4754c8a46a33#path:/packages/plugin-api':
+    resolution: {gitHosted: true, integrity: sha512-O/ltv2by7wVOB/gEkbGxal2irN5UPiexLncaeyG7eMiNnKadMila/woz/S7HOiqWGXRL3r2rcEAjEnlJWdEleQ==, path: /packages/plugin-api, tarball: https://codeload.github.com/soksak-app/core/tar.gz/b20f71a2de3a0e335355fcaec71b4754c8a46a33}
+    version: 0.0.8
     hasBin: true
 
   bidi-js@1.1.0:
@@ -836,7 +836,7 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.4': {}
 
-  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/15e4e9eec0261ad19b3a523d708427e77fa651bb#path:/packages/plugin-api': {}
+  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/b20f71a2de3a0e335355fcaec71b4754c8a46a33#path:/packages/plugin-api': {}
 
   bidi-js@1.1.0:
     dependencies:
