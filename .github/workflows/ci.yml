@@ -1,0 +1,20 @@
+name: ci
+# build-machine: skip build reason=the release workflow packs the plugin; a plugin has no build of its own
+# build-machine: skip smoke reason=a plugin runs only inside the application; the core window checks start it
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: pnpm/action-setup@v4
+      - name: Test
+        run: make test
