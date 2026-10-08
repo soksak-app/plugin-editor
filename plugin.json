@@ -1,0 +1,525 @@
+{
+  "id": "editor",
+  "name": "편집기",
+  "description": "프로젝트의 텍스트 파일을 CodeMirror로 열어 고치고 저장한다. 다른 플러그인이 언어, 강조, 서식 기능을 더할 수 있다.",
+  "mark": "ed",
+  "icon": "<path d=\"M3 2.5h6.5L13 6v7.5H3z\"/><path d=\"M9.5 2.5V6H13M5.5 9h5M5.5 11.5h3\"/>",
+  "surface": {
+    "module": "ui/editor.js",
+    "composition": {
+      "kind": "dom"
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "opens": {
+      "extensions": [
+        "*"
+      ]
+    },
+    "save": "editor.save"
+  },
+  "preview": {
+    "ink": "--fg"
+  },
+  "dependencies": {
+    "@soksak/sidecar-files": "^0.0.4"
+  },
+  "extends": {
+    "extension": {
+      "version": "1.0.0",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "extensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "modules": {
+        "@codemirror/state": "ui/vendor/codemirror-state.js",
+        "@codemirror/view": "ui/vendor/codemirror-view.js",
+        "@codemirror/language": "ui/vendor/codemirror-language.js",
+        "@codemirror/commands": "ui/vendor/codemirror-commands.js",
+        "@lezer/common": "ui/vendor/lezer-common.js",
+        "@lezer/highlight": "ui/vendor/lezer-highlight.js",
+        "@lezer/lr": "ui/vendor/lezer-lr.js",
+        "@marijn/find-cluster-break": "ui/vendor/marijn-find-cluster-break.js",
+        "crelt": "ui/vendor/crelt.js",
+        "style-mod": "ui/vendor/style-mod.js",
+        "w3c-keyname": "ui/vendor/w3c-keyname.js"
+      }
+    },
+    "formatter": {
+      "version": "1.0.0",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "extensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "exposes": {
+    "status": [
+      {
+        "name": "editor.document",
+        "description": "The open file: its path relative to the project root, the SHA-256 version of the last read or write, whether the text differs from it as modified, the length in characters and the number of lines, the language or null, the line break of the file (lf, crlf, cr, mixed or none) and whether it starts with a byte order mark, whether it is open read-only and why, whether the file on disk is the same or changed, and the selection.",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "modified": {
+              "type": "boolean"
+            },
+            "length": {
+              "type": "integer"
+            },
+            "lines": {
+              "type": "integer"
+            },
+            "language": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "newline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "bom": {
+              "type": "boolean"
+            },
+            "readOnly": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "disk": {
+              "type": "string",
+              "enum": [
+                "same",
+                "changed"
+              ]
+            },
+            "selection": {
+              "type": "object",
+              "properties": {
+                "anchor": {
+                  "type": "integer"
+                },
+                "head": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "editor.find",
+        "description": "The find bar: whether it is open and shows the replacement field, the query, the replacement, whether the match is case-sensitive and a regular expression, the number of matches, and the index of the selected match or null.",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "open": {
+              "type": "boolean"
+            },
+            "replace": {
+              "type": "boolean"
+            },
+            "query": {
+              "type": "string"
+            },
+            "replacement": {
+              "type": "string"
+            },
+            "caseSensitive": {
+              "type": "boolean"
+            },
+            "regexp": {
+              "type": "boolean"
+            },
+            "matches": {
+              "type": "integer"
+            },
+            "current": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "commands": [
+      {
+        "name": "editor.save",
+        "description": "Writes the text to the file in place when the file on disk still has the version that the editor read; with overwrite, writes over the version that changed on disk. A failure is shown as the tab's error.",
+        "params": {
+          "type": "object",
+          "properties": {
+            "overwrite": {
+              "type": "boolean"
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
+        "name": "editor.reload",
+        "description": "Reads the file again and replaces the text, discarding unsaved changes.",
+        "params": {
+          "type": "object",
+          "properties": {}
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
+        "name": "editor.focus",
+        "description": "Focuses the text.",
+        "params": {
+          "type": "object",
+          "properties": {}
+        },
+        "result": {
+          "type": "null"
+        }
+      },
+      {
+        "name": "editor.edit",
+        "description": "Applies changes to the text as one edit; positions are character offsets of the text before the edit.",
+        "params": {
+          "type": "object",
+          "properties": {
+            "changes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "integer"
+                  },
+                  "to": {
+                    "type": "integer"
+                  },
+                  "insert": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "length": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      {
+        "name": "editor.read",
+        "description": "Returns the text from from to to, both optional, with the line break of the file.",
+        "params": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "integer"
+            },
+            "to": {
+              "type": "integer"
+            }
+          }
+        },
+        "result": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "editor.select",
+        "description": "Selects the text from anchor to head.",
+        "params": {
+          "type": "object",
+          "properties": {
+            "anchor": {
+              "type": "integer"
+            },
+            "head": {
+              "type": "integer"
+            }
+          }
+        },
+        "result": {
+          "type": "null"
+        }
+      },
+      {
+        "name": "editor.format",
+        "description": "Replaces the text with the result of the connected formatter for the file's name extension.",
+        "params": {
+          "type": "object",
+          "properties": {}
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "changed": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      {
+        "name": "editor.find",
+        "description": "Sets the query, replacement and options of the find bar and returns the number of matches.",
+        "params": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            },
+            "replacement": {
+              "type": "string"
+            },
+            "caseSensitive": {
+              "type": "boolean"
+            },
+            "regexp": {
+              "type": "boolean"
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "matches": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      {
+        "name": "editor.find.open",
+        "description": "Opens the find bar, with the replacement field when replace is true, and focuses the query.",
+        "params": {
+          "type": "object",
+          "properties": {
+            "replace": {
+              "type": "boolean"
+            }
+          }
+        },
+        "result": {
+          "type": "null"
+        }
+      },
+      {
+        "name": "editor.find.close",
+        "description": "Closes the find bar and focuses the text.",
+        "params": {
+          "type": "object",
+          "properties": {}
+        },
+        "result": {
+          "type": "null"
+        }
+      },
+      {
+        "name": "editor.find.next",
+        "description": "Selects the next match after the selection, wrapping to the first.",
+        "params": {
+          "type": "object",
+          "properties": {}
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "current": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "editor.find.previous",
+        "description": "Selects the previous match before the selection, wrapping to the last.",
+        "params": {
+          "type": "object",
+          "properties": {}
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "current": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "editor.replace",
+        "description": "Replaces the selected match and selects the next one; without a selected match, selects the next one.",
+        "params": {
+          "type": "object",
+          "properties": {}
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "matches": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      {
+        "name": "editor.replace.all",
+        "description": "Replaces every match as one edit.",
+        "params": {
+          "type": "object",
+          "properties": {}
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "replaced": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    ],
+    "dom": [
+      {
+        "name": "editor.frame",
+        "description": "The editor surface."
+      },
+      {
+        "name": "editor.banner",
+        "description": "The line that states a fact about the file, such as a change on disk."
+      },
+      {
+        "name": "editor.reload",
+        "description": "The button that reads the file again."
+      },
+      {
+        "name": "editor.overwrite",
+        "description": "The button that writes over the file that changed on disk."
+      },
+      {
+        "name": "editor.find.bar",
+        "description": "The find bar."
+      },
+      {
+        "name": "editor.find.form",
+        "description": "The form of the query."
+      },
+      {
+        "name": "editor.find.query",
+        "description": "The query field."
+      },
+      {
+        "name": "editor.find.case",
+        "description": "The button that toggles case-sensitive matching."
+      },
+      {
+        "name": "editor.find.regexp",
+        "description": "The button that toggles regular expressions."
+      },
+      {
+        "name": "editor.find.previous",
+        "description": "The button that selects the previous match."
+      },
+      {
+        "name": "editor.find.next",
+        "description": "The button that selects the next match."
+      },
+      {
+        "name": "editor.find.close",
+        "description": "The button that closes the find bar."
+      },
+      {
+        "name": "editor.replace.form",
+        "description": "The form of the replacement."
+      },
+      {
+        "name": "editor.find.replacement",
+        "description": "The replacement field."
+      },
+      {
+        "name": "editor.replace",
+        "description": "The button that replaces the selected match."
+      },
+      {
+        "name": "editor.replace.all",
+        "description": "The button that replaces every match."
+      },
+      {
+        "name": "editor.view",
+        "description": "The CodeMirror editor."
+      },
+      {
+        "name": "editor.content",
+        "description": "The editable text."
+      }
+    ]
+  }
+}
