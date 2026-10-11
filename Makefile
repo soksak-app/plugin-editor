@@ -11,11 +11,13 @@ node_modules: package.json
 	touch node_modules
 
 # soksak-exposure checks the exposure names of the page against plugin.json and the core declarations, and
-# soksak-engines checks that engines.soksak admits the core release of that @soksak/plugin-api.
+# soksak-engines checks that engines.soksak admits the core release of that @soksak/plugin-api, and soksak-events checks
+# that every source of occurrences records an event or states a reason, and that the emit sites match events.json.
 test: node_modules
 	pnpm test
 	pnpm exec soksak-exposure
 	pnpm exec soksak-engines
+	pnpm exec soksak-events --census census.json --catalog events.json
 
 pack:
 	@test -n "$(OUT)" || { echo "make pack OUT=<folder>" >&2; exit 2; }
