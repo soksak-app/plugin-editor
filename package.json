@@ -15,6 +15,7 @@
   },
   "files": [
     "plugin.json",
+    "events.json",
     "ui"
   ],
   "scripts": {

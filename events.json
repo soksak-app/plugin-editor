@@ -1,0 +1,66 @@
+{
+  "schema": 2,
+  "layers": ["plugin"],
+  "events": {
+    "plugin.editor.open": {
+      "layer": "plugin", "class": "call", "level": ["info", "warn"],
+      "fields": { "path": "string", "bytes": "number", "lines": "number", "newline": "string|null", "read_only": "boolean", "micros": "number", "ok": "boolean", "error?": "string" },
+      "description": "The editor opened its file: the first read, its load into the document and the start of the watch. bytes and lines are those of the document; error names a failed open."
+    },
+    "plugin.editor.read": {
+      "layer": "plugin", "class": "call", "level": ["debug", "warn"],
+      "fields": { "path": "string", "reason": "string", "bytes": "number", "micros": "number", "ok": "boolean", "error?": "string" },
+      "description": "A later read of the file: reason is reload (the command) or watch (a change on disk)."
+    },
+    "plugin.editor.save": {
+      "layer": "plugin", "class": "call", "level": ["info", "warn"],
+      "fields": { "path": "string", "bytes": "number", "overwrite": "boolean", "micros": "number", "ok": "boolean", "error?": "string" },
+      "description": "A write of the document in place; overwrite is true when the person chose to overwrite a file that changed on disk."
+    },
+    "plugin.editor.watch.start": {
+      "layer": "plugin", "class": "lifecycle", "level": ["info", "warn"],
+      "fields": { "path": "string", "micros": "number", "ok": "boolean", "error?": "string" },
+      "description": "The request to the files sidecar to watch the file."
+    },
+    "plugin.editor.watch.change": {
+      "layer": "plugin", "class": "io", "level": "debug",
+      "fields": { "path": "string" },
+      "description": "The files sidecar reported a change of a watched file."
+    },
+    "plugin.editor.watch.error": {
+      "layer": "plugin", "class": "lifecycle", "level": "error",
+      "fields": { "path": "string", "error": "string" },
+      "description": "The files sidecar stopped the watch and reported why."
+    },
+    "plugin.editor.disk.decision": {
+      "layer": "plugin", "class": "lifecycle", "level": "info",
+      "fields": { "path": "string", "decision": "string", "modified": "boolean" },
+      "description": "What the editor decided after a read that followed a change on disk: same (the version did not change), loaded (the document had no changes and took the file) or conflict (the document has changes, so the banner asks the person)."
+    },
+    "plugin.editor.format": {
+      "layer": "plugin", "class": "call", "level": ["info", "warn"],
+      "fields": { "path": "string", "formatter": "string|null", "changed": "boolean", "micros": "number", "ok": "boolean", "error?": "string" },
+      "description": "One run of the formatter of editor.formatter for the file; formatter is the plugin that contributed it."
+    },
+    "plugin.editor.contribution.failed": {
+      "layer": "plugin", "class": "lifecycle", "level": "warn",
+      "fields": { "point": "string", "plugin": "string", "error": "string" },
+      "description": "A contribution to editor.extension or editor.formatter failed to load or build and was left out."
+    },
+    "plugin.editor.command": {
+      "layer": "plugin", "class": "call", "level": ["debug", "warn"],
+      "fields": { "name": "string", "micros": "number", "ok": "boolean", "error?": "string" },
+      "description": "The result of a declared command of the editor."
+    },
+    "plugin.editor.request": {
+      "layer": "plugin", "class": "io", "level": ["debug", "warn"],
+      "fields": { "operation": "string", "id": "string", "micros": "number", "ok": "boolean", "error?": "string" },
+      "description": "A request to the files sidecar and its reply; error is the failure of the send or the error of the reply."
+    },
+    "plugin.editor.close": {
+      "layer": "plugin", "class": "lifecycle", "level": "info",
+      "fields": { "path": "string", "pending": "number" },
+      "description": "The editor surface ended; pending is the number of requests to the files sidecar that had no reply."
+    }
+  }
+}
