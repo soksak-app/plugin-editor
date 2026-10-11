@@ -12,7 +12,7 @@ const TYPES = ["string", "number", "boolean", "array", "object", "null"];
 /** A runtime whose log functions record the calls. */
 function fakeRuntime() {
   const calls = [];
-  return { calls, log: Object.fromEntries(LEVELS.map((level) => [level, (event, fields) => calls.push({ level, event, fields })])) };
+  return { calls, log: Object.fromEntries(LEVELS.map((level) => [level, (event, fields) => calls.push({ level, event, fields: typeof fields === "function" ? fields() : fields })])) };
 }
 
 test("the emitter strips the plugin prefix and calls the log function of the level", () => {

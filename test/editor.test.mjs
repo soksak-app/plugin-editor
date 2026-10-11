@@ -62,7 +62,7 @@ async function setup(t, { path = "src/main.js", files = new Map([["src/main.js",
     tab: { params: { path }, title: (text) => reports.title.push(text), footer() {}, directory() {}, notify() {},
       modified: (value) => reports.modified.push(value), error: (text) => reports.error.push(text) },
     runtime: { sidecar: () => sidecar,
-      log: Object.fromEntries(["error", "warn", "info", "debug", "trace"].map((level) => [level, (event, fields) => logs.push({ level, event, fields })])),
+      log: Object.fromEntries(["error", "warn", "info", "debug", "trace"].map((level) => [level, (event, fields) => logs.push({ level, event, fields: typeof fields === "function" ? fields() : fields })])),
       theme: (fn) => ({ ready: Promise.resolve(fn({ scheme, tokens: {} })), dispose: Promise.resolve(() => {}) }) },
     // default: a test without contributions connects none to either point.
     contributions: (point) => contributions[point] ?? [],

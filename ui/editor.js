@@ -153,7 +153,7 @@ export async function mount(root, context) {
     const start = performance.now();
     try {
       const body = await read();
-      emitEvent("debug", "plugin.editor.read", { path, reason, bytes: bytesOf(body.text), micros: microsSince(start), ok: true });
+      emitEvent("debug", "plugin.editor.read", () => ({ path, reason, bytes: bytesOf(body.text), micros: microsSince(start), ok: true }));
       return body;
     } catch (error) {
       emitEvent("warn", "plugin.editor.read", { path, reason, bytes: 0, micros: microsSince(start), ok: false, error: failure(error, "-32603") });
