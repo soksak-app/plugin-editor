@@ -9,6 +9,7 @@ import {
 import { bracketMatching, indentOnInput, syntaxHighlighting } from "@soksak/shared/editor.extension/@codemirror/language.js";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@soksak/shared/editor.extension/@codemirror/commands.js";
 import { classHighlighter } from "@soksak/shared/editor.extension/@lezer/highlight.js";
+import { createEmitter, failure, microsSince } from "./events.js";
 import { createQuery, findMatches, replacementOf } from "./find.js";
 import { extensionOf, languageOf, languageSupport } from "./languages.js";
 import { connect } from "./requests.js";
@@ -97,6 +98,7 @@ export async function mount(root, context) {
   const path = context.tab.params?.path;
   if (typeof path !== "string" || path === "") throw new Error("the editor tab requires params.path");
   if (context.project === null) throw new Error("this window shows no project");
+  const emitEvent = createEmitter(context.runtime, "editor");
   root.innerHTML = HTML;
   const frame = root.querySelector("#frame");
   const banner = root.querySelector("#banner");
@@ -136,15 +138,30 @@ export async function mount(root, context) {
 
   const files = await connect(context.runtime.sidecar(), context.surfaceId, (body) => {
     if (body.changed !== undefined) {
+      emitEvent("debug", "plugin.editor.watch.change", { path: body.changed });
       diskChanged().catch((error) => context.tab.error(`다시 읽지 못했습니다 · ${error.message}`));
       return;
     }
+    emitEvent("error", "plugin.editor.watch.error", { path, error: String(body.error) });
     context.tab.error(`파일 감시가 멈췄습니다 · ${body.error}`);
-  });
+  }, emitEvent);
   const read = () => files.request({ operation: "read", path });
   const watch = () => files.request({ operation: "watch", paths: [path] });
+  const bytesOf = (text) => new TextEncoder().encode(text).length;
+  // A read after the open: the result of the read is an event, and the caller still receives the failure.
+  const readAgain = async (reason) => {
+    const start = performance.now();
+    try {
+      const body = await read();
+      emitEvent("debug", "plugin.editor.read", { path, reason, bytes: bytesOf(body.text), micros: microsSince(start), ok: true });
+      return body;
+    } catch (error) {
+      emitEvent("warn", "plugin.editor.read", { path, reason, bytes: 0, micros: microsSince(start), ok: false, error: failure(error, "-32603") });
+      throw error;
+    }
+  };
 
-  const contributions = await loadContributions(context, file);
+  const contributions = await loadContributions(context, file, emitEvent);
   const languageSlot = new Compartment();
   const contributed = new Compartment();
   const editable = new Compartment();
@@ -183,12 +200,17 @@ export async function mount(root, context) {
   };
 
   async function diskChanged() {
-    const body = await read();
-    if (body.version === fileState.version) return;
+    const body = await readAgain("watch");
+    if (body.version === fileState.version) {
+      emitEvent("info", "plugin.editor.disk.decision", { path, decision: "same", modified: modified() });
+      return;
+    }
     if (!modified()) {
+      emitEvent("info", "plugin.editor.disk.decision", { path, decision: "loaded", modified: false });
       load(body);
       return;
     }
+    emitEvent("info", "plugin.editor.disk.decision", { path, decision: "conflict", modified: true });
     diskVersion = body.version;
     fileState = { ...fileState, disk: "changed" };
     showBanner("디스크의 파일이 바뀌었습니다", { reload: true, overwrite: true });
@@ -198,9 +220,12 @@ export async function mount(root, context) {
   const save = async ({ overwrite = false } = {}) => {
     if (typeof overwrite !== "boolean") throw new TypeError("editor.save requires overwrite as true or false");
     if (fileState.readOnly) throw new Error(`${path} is open read-only: ${fileState.reason}`);
+    const start = performance.now();
+    const text = view.state.sliceDoc();
     try {
-      const reply = await files.request({ operation: "write", path, text: view.state.sliceDoc(),
+      const reply = await files.request({ operation: "write", path, text,
         expect: overwrite ? diskVersion : fileState.version, bom: fileState.bom });
+      emitEvent("info", "plugin.editor.save", { path, bytes: bytesOf(text), overwrite, micros: microsSince(start), ok: true });
       saved = view.state.doc;
       diskVersion = reply.version;
       fileState = { ...fileState, version: reply.version, disk: "same" };
@@ -211,6 +236,8 @@ export async function mount(root, context) {
       publishFile();
       return { version: reply.version };
     } catch (error) {
+      emitEvent("warn", "plugin.editor.save", { path, bytes: bytesOf(text), overwrite, micros: microsSince(start), ok: false,
+        error: failure(error, "-32603") });
       context.tab.error(`저장하지 못했습니다 · ${error.message}`);
       throw error;
     }
@@ -219,7 +246,7 @@ export async function mount(root, context) {
   const reload = async () => {
     let body;
     try {
-      body = await read();
+      body = await readAgain("reload");
     } catch (error) {
       context.tab.error(`다시 읽지 못했습니다 · ${error.message}`);
       throw error;
@@ -320,19 +347,22 @@ export async function mount(root, context) {
     const formatter = contributions.formatters.find((item) => item.applies);
     if (!formatter) throw new Error(`no formatter is connected for ${extension === "" ? "files without an extension" : `.${extension}`}`);
     const text = view.state.sliceDoc();
+    const start = performance.now();
+    const failed = (error) => {
+      emitEvent("warn", "plugin.editor.format", { path, formatter: formatter.plugin, changed: false, micros: microsSince(start), ok: false,
+        error: failure(error, "-32603") });
+      context.tab.error(`서식을 맞추지 못했습니다 · ${error.message}`);
+      return error;
+    };
     let result;
     try {
       result = await formatter.format(text, file);
     } catch (error) {
-      context.tab.error(`서식을 맞추지 못했습니다 · ${formatter.plugin}: ${error.message}`);
-      throw error;
+      throw failed(error);
     }
-    if (typeof result !== "string") {
-      const error = new Error(`${formatter.plugin} formatter returned ${typeof result}, not text`);
-      context.tab.error(`서식을 맞추지 못했습니다 · ${error.message}`);
-      throw error;
-    }
+    if (typeof result !== "string") throw failed(new Error(`${formatter.plugin} formatter returned ${typeof result}, not text`));
     context.tab.error(null);
+    emitEvent("info", "plugin.editor.format", { path, formatter: formatter.plugin, changed: result !== text, micros: microsSince(start), ok: true });
     if (result === text) return { changed: false };
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: result }, userEvent: "input.format" });
     return { changed: true };
@@ -400,22 +430,40 @@ export async function mount(root, context) {
   if (subscription) await subscription.ready;
 
   const expose = context.exposure;
+  // Every declared command stores its result with its time, and a failure still reaches the caller.
+  const recorded = (name, run) => (params) => {
+    const start = performance.now();
+    const done = (error) => emitEvent(error === undefined ? "debug" : "warn", "plugin.editor.command", { name, micros: microsSince(start),
+      ok: error === undefined, ...(error === undefined ? {} : { error: failure(error, "-32000") }) });
+    let result;
+    try {
+      result = run(params);
+    } catch (error) {
+      done(error);
+      throw error;
+    }
+    if (!(result instanceof Promise)) {
+      done();
+      return result;
+    }
+    return result.then((value) => { done(); return value; }, (error) => { done(error); throw error; });
+  };
   expose.status("editor.document", () => fileState, (fn) => { fileListeners.add(fn); fn(fileState); return () => fileListeners.delete(fn); });
   expose.status("editor.find", () => find, (fn) => { findListeners.add(fn); fn(find); return () => findListeners.delete(fn); });
-  expose.command("editor.save", save);
-  expose.command("editor.reload", reload);
-  expose.command("editor.focus", () => { view.focus(); return null; });
-  expose.command("editor.edit", edit);
-  expose.command("editor.read", readText);
-  expose.command("editor.select", selectRange);
-  expose.command("editor.format", format);
-  expose.command("editor.find", (fields = {}) => setQuery(fields));
-  expose.command("editor.find.open", openFind);
-  expose.command("editor.find.close", closeFind);
-  expose.command("editor.find.next", () => step(1));
-  expose.command("editor.find.previous", () => step(-1));
-  expose.command("editor.replace", replaceCurrent);
-  expose.command("editor.replace.all", replaceAll);
+  expose.command("editor.save", recorded("editor.save", save));
+  expose.command("editor.reload", recorded("editor.reload", reload));
+  expose.command("editor.focus", recorded("editor.focus", () => { view.focus(); return null; }));
+  expose.command("editor.edit", recorded("editor.edit", edit));
+  expose.command("editor.read", recorded("editor.read", readText));
+  expose.command("editor.select", recorded("editor.select", selectRange));
+  expose.command("editor.format", recorded("editor.format", format));
+  expose.command("editor.find", recorded("editor.find", (fields = {}) => setQuery(fields)));
+  expose.command("editor.find.open", recorded("editor.find.open", openFind));
+  expose.command("editor.find.close", recorded("editor.find.close", closeFind));
+  expose.command("editor.find.next", recorded("editor.find.next", () => step(1)));
+  expose.command("editor.find.previous", recorded("editor.find.previous", () => step(-1)));
+  expose.command("editor.replace", recorded("editor.replace", replaceCurrent));
+  expose.command("editor.replace.all", recorded("editor.replace.all", replaceAll));
   for (const element of root.querySelectorAll("[data-expose]")) {
     if (element !== content) expose.dom(element.dataset.expose, element);
   }
@@ -441,8 +489,26 @@ export async function mount(root, context) {
     return { query: find.query, replacement: find.replacement, caseSensitive: find.caseSensitive, regexp: find.regexp };
   }
 
-  load(await read());
-  await watch();
+  const openStart = performance.now();
+  let opened;
+  try {
+    opened = await read();
+  } catch (error) {
+    emitEvent("warn", "plugin.editor.open", { path, bytes: 0, lines: 0, newline: null, read_only: false, micros: microsSince(openStart),
+      ok: false, error: failure(error, "-32603") });
+    throw error;
+  }
+  load(opened);
+  emitEvent("info", "plugin.editor.open", { path, bytes: bytesOf(opened.text), lines: view.state.doc.lines, newline: opened.newline,
+    read_only: fileState.readOnly, micros: microsSince(openStart), ok: true });
+  const watchStart = performance.now();
+  try {
+    await watch();
+  } catch (error) {
+    emitEvent("warn", "plugin.editor.watch.start", { path, micros: microsSince(watchStart), ok: false, error: failure(error, "-32603") });
+    throw error;
+  }
+  emitEvent("info", "plugin.editor.watch.start", { path, micros: microsSince(watchStart), ok: true });
   context.status.report("ready");
   return {
     focus: () => view.focus(),
@@ -450,6 +516,7 @@ export async function mount(root, context) {
       if (subscription) (await subscription.dispose)();
       fileListeners.clear();
       findListeners.clear();
+      emitEvent("info", "plugin.editor.close", { path, pending: files.pending() });
       files.dispose();
       view.destroy();
       await expose.dispose();
@@ -462,7 +529,7 @@ export async function mount(root, context) {
  * The connected contributions of this editor's extension points for file. An item whose module fails to load, lacks
  * its export or fails to build is reported invalid through fail(reason) and left out.
  */
-async function loadContributions(context, file) {
+async function loadContributions(context, file, emitEvent) {
   const applies = (item) => item.extensions === undefined || item.extensions.includes(file.extension);
   const extensions = [];
   for (const { plugin, item, module, fail } of context.contributions("extension")) {
@@ -472,6 +539,7 @@ async function loadContributions(context, file) {
       if (typeof exported.extension !== "function") throw new Error("the module does not export extension(file)");
       extensions.push(exported.extension(file));
     } catch (error) {
+      emitEvent("warn", "plugin.editor.contribution.failed", { point: "extension", plugin, error: error.message });
       fail(`${plugin}: ${error.message}`);
     }
   }
@@ -482,6 +550,7 @@ async function loadContributions(context, file) {
       if (typeof exported.format !== "function") throw new Error("the module does not export format(text, file)");
       formatters.push({ plugin, applies: applies(item), format: exported.format });
     } catch (error) {
+      emitEvent("warn", "plugin.editor.contribution.failed", { point: "formatter", plugin, error: error.message });
       fail(`${plugin}: ${error.message}`);
     }
   }

@@ -35,6 +35,7 @@ function fakeFiles(files) {
       }
       throw new Error(`unexpected operation ${body.operation}`);
     },
+    report: (body) => reply(body),
     change(path, text) {
       files.set(path, text);
       reply({ changed: path });
@@ -43,13 +44,14 @@ function fakeFiles(files) {
   return port;
 }
 
-async function setup(t, { path = "src/main.js", files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark" } = {}) {
+async function setup(t, { path = "src/main.js", files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark", log = [] } = {}) {
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const root = host.attachShadow({ mode: "open" });
   const commands = new Map();
   const statuses = new Map();
   const reports = { modified: [], error: [], title: [] };
+  const logs = log;
   const binder = createBinder((name, params) => commands.get(name)(params), {
     check(name) { assert.ok(declared("commands", name), `undeclared command ${name}`); },
   });
@@ -59,7 +61,9 @@ async function setup(t, { path = "src/main.js", files = new Map([["src/main.js",
     project: { root: "/project" },
     tab: { params: { path }, title: (text) => reports.title.push(text), footer() {}, directory() {}, notify() {},
       modified: (value) => reports.modified.push(value), error: (text) => reports.error.push(text) },
-    runtime: { sidecar: () => sidecar, theme: (fn) => ({ ready: Promise.resolve(fn({ scheme, tokens: {} })), dispose: Promise.resolve(() => {}) }) },
+    runtime: { sidecar: () => sidecar,
+      log: Object.fromEntries(["error", "warn", "info", "debug", "trace"].map((level) => [level, (event, fields) => logs.push({ level, event, fields })])),
+      theme: (fn) => ({ ready: Promise.resolve(fn({ scheme, tokens: {} })), dispose: Promise.resolve(() => {}) }) },
     // default: a test without contributions connects none to either point.
     contributions: (point) => contributions[point] ?? [],
     exposure: {
@@ -73,7 +77,7 @@ async function setup(t, { path = "src/main.js", files = new Map([["src/main.js",
   t.after(async () => { await controller.dispose(); host.remove(); });
   const run = (name, params = {}) => commands.get(name)(params);
   const status = (name) => statuses.get(name)();
-  return { root, run, status, reports, sidecar, files, binder, controller };
+  return { root, run, status, reports, sidecar, files, binder, controller, logs };
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -227,4 +231,122 @@ test("every shared package is imported from a URL that ends in .js", () => {
   const specifiers = sources.flatMap((source) => [...source.matchAll(/from "(@soksak\/shared\/[^"]+)"/g)].map((match) => match[1]));
   assert.ok(specifiers.length > 0);
   assert.deepEqual(specifiers.filter((specifier) => !specifier.endsWith(".js")), []);
+});
+
+/** The events of the log with the name `event`. */
+const eventsOf = (logs, event) => logs.filter((entry) => entry.event === event);
+const isMicros = (value) => Number.isInteger(value) && value >= 0;
+
+test("the open records the file, its size and the watch with their results", async (t) => {
+  const { logs } = await setup(t);
+  const [open] = eventsOf(logs, "open");
+  assert.equal(open.level, "info");
+  assert.deepEqual({ ...open.fields, micros: isMicros(open.fields.micros) }, { path: "src/main.js", bytes: 22, lines: 3, newline: "lf",
+    read_only: false, micros: true, ok: true });
+  const [watch] = eventsOf(logs, "watch.start");
+  assert.deepEqual({ ...watch.fields, micros: isMicros(watch.fields.micros) }, { path: "src/main.js", micros: true, ok: true });
+  assert.deepEqual(eventsOf(logs, "request").map((entry) => [entry.level, entry.fields.operation, entry.fields.ok]),
+    [["debug", "read", true], ["debug", "watch", true]]);
+});
+
+test("an open of a missing file records the failure and still fails", async (t) => {
+  const logs = [];
+  await assert.rejects(setup(t, { path: "gone.js", files: new Map(), log: logs }), /no such file: gone.js/);
+  const [open] = eventsOf(logs, "open");
+  assert.equal(open.level, "warn");
+  assert.equal(open.fields.ok, false);
+  assert.equal(open.fields.error, "-32603: no such file: gone.js");
+});
+
+test("a save records its bytes, overwrite and result, and a refused save records the error", async (t) => {
+  const { run, logs, sidecar } = await setup(t);
+  run("editor.edit", { changes: [{ from: 8, to: 9, insert: "2" }] });
+  await run("editor.save");
+  const [saved] = eventsOf(logs, "save");
+  assert.equal(saved.level, "info");
+  assert.deepEqual({ ...saved.fields, micros: isMicros(saved.fields.micros) }, { path: "src/main.js", bytes: 22, overwrite: false, micros: true, ok: true });
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "x" }] });
+  sidecar.change("src/main.js", "elsewhere\n");
+  await settle();
+  await settle();
+  await assert.rejects(run("editor.save"), /changed on disk/);
+  const refused = eventsOf(logs, "save").at(-1);
+  assert.equal(refused.level, "warn");
+  assert.equal(refused.fields.ok, false);
+  assert.equal(refused.fields.error, "-32603: changed on disk: src/main.js");
+});
+
+test("a change on disk records the change, the read and the decision", async (t) => {
+  const { run, logs, sidecar } = await setup(t);
+  sidecar.change("src/main.js", "new text\n");
+  await settle();
+  await settle();
+  assert.deepEqual(eventsOf(logs, "watch.change").map((entry) => entry.fields), [{ path: "src/main.js" }]);
+  const [read] = eventsOf(logs, "read");
+  assert.equal(read.fields.reason, "watch");
+  assert.equal(read.fields.bytes, 9);
+  assert.equal(read.fields.ok, true);
+  assert.deepEqual(eventsOf(logs, "disk.decision").map((entry) => entry.fields), [{ path: "src/main.js", decision: "loaded", modified: false }]);
+  sidecar.change("src/main.js", "new text\n");
+  await settle();
+  await settle();
+  assert.equal(eventsOf(logs, "disk.decision").at(-1).fields.decision, "same");
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "mine " }] });
+  sidecar.change("src/main.js", "other\n");
+  await settle();
+  await settle();
+  assert.deepEqual(eventsOf(logs, "disk.decision").at(-1).fields, { path: "src/main.js", decision: "conflict", modified: true });
+});
+
+test("a read of the reload command and a failed read are recorded", async (t) => {
+  const { run, logs, files } = await setup(t);
+  await run("editor.reload");
+  assert.equal(eventsOf(logs, "read").at(-1).fields.reason, "reload");
+  files.delete("src/main.js");
+  await assert.rejects(run("editor.reload"), /no such file/);
+  const failed = eventsOf(logs, "read").at(-1);
+  assert.equal(failed.level, "warn");
+  assert.equal(failed.fields.error, "-32603: no such file: src/main.js");
+});
+
+test("the stop of the watch is recorded as an error event", async (t) => {
+  const { logs, sidecar } = await setup(t);
+  sidecar.report({ error: "the watch ended" });
+  await settle();
+  assert.deepEqual(eventsOf(logs, "watch.error"), [{ level: "error", event: "watch.error", fields: { path: "src/main.js", error: "the watch ended" } }]);
+});
+
+test("every command result is recorded with its time, and a refused command records its error", async (t) => {
+  const { run, logs } = await setup(t);
+  run("editor.select", { anchor: 0 });
+  assert.throws(() => run("editor.read", { from: 5, to: 1 }), RangeError);
+  const [ok, failed] = eventsOf(logs, "command");
+  assert.equal(ok.level, "debug");
+  assert.deepEqual({ ...ok.fields, micros: isMicros(ok.fields.micros) }, { name: "editor.select", micros: true, ok: true });
+  assert.equal(failed.level, "warn");
+  assert.equal(failed.fields.name, "editor.read");
+  assert.equal(failed.fields.ok, false);
+  assert.match(failed.fields.error, /^-32000: editor.read requires/);
+  await run("editor.reload");
+  assert.equal(eventsOf(logs, "command").at(-1).fields.name, "editor.reload");
+});
+
+test("a failed contribution and a format are recorded", async (t) => {
+  const formatter = new URL("./fixtures/trim-formatter.mjs", import.meta.url).href;
+  const { run, logs } = await setup(t, { contributions: {
+    extension: [{ plugin: "broken", item: { range: "^1.0.0", module: "ui/y.js" }, module: formatter, fail() {} }],
+    formatter: [{ plugin: "probe", item: { range: "^1.0.0", module: "ui/z.js", extensions: ["js"] }, module: formatter, fail() {} }],
+  } });
+  assert.deepEqual(eventsOf(logs, "contribution.failed").map((entry) => [entry.level, entry.fields.point, entry.fields.plugin, entry.fields.error]),
+    [["warn", "extension", "broken", "the module does not export extension(file)"]]);
+  await run("editor.format");
+  const [format] = eventsOf(logs, "format");
+  assert.equal(format.level, "info");
+  assert.deepEqual({ ...format.fields, micros: isMicros(format.fields.micros) }, { path: "src/main.js", formatter: "probe", changed: true, micros: true, ok: true });
+});
+
+test("the end of the surface records the close", async (t) => {
+  const { controller, logs } = await setup(t);
+  await controller.dispose();
+  assert.deepEqual(eventsOf(logs, "close").map((entry) => entry.fields), [{ path: "src/main.js", pending: 0 }]);
 });

@@ -5,7 +5,7 @@
     "plugin.editor.open": {
       "layer": "plugin", "class": "call", "level": ["info", "warn"],
       "fields": { "path": "string", "bytes": "number", "lines": "number", "newline": "string|null", "read_only": "boolean", "micros": "number", "ok": "boolean", "error?": "string" },
-      "description": "The editor opened its file: the first read, its load into the document and the start of the watch. bytes and lines are those of the document; error names a failed open."
+      "description": "The first read of the file and its load into the document. bytes and lines are those of the document; error names a failed read."
     },
     "plugin.editor.read": {
       "layer": "plugin", "class": "call", "level": ["debug", "warn"],
