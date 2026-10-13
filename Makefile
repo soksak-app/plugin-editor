@@ -1,5 +1,5 @@
 # Tests and packs the editor plugin (docs/features.md). pack uses the sok of core.
-.PHONY: test pack
+.PHONY: test pack hooks
 
 SOK ?= sok
 # DIAGNOSTICS=1 packs a diagnostics package that holds diagnostics.json.
@@ -23,3 +23,7 @@ test: node_modules
 pack:
 	@test -n "$(OUT)" || { echo "make pack OUT=<folder>" >&2; exit 2; }
 	$(SOK) plugin pack . $(OUT) $(PACK_FLAGS)
+
+# Sets this repository to use .githooks, which checks commit messages and records at commit time.
+hooks:
+	@git config core.hooksPath .githooks
