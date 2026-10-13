@@ -2,8 +2,9 @@
 
 [English](CHANGELOG.md)
 
-## 미배포
+## 0.0.3 (2026-10-14)
 
+- E18: 이벤트 계약(E15)과 빈 문서(E16)를 담은 version 0.0.3을 release한다. tag `v0.0.3`가 `editor-0.0.3.tgz`를 게시한다.
 - E20: `@soksak/plugin-api`를 core release 0.0.12에서 받고, `engines.soksak`은 `>=0.0.12`이며, release workflow가 `CORE_RELEASE: v0.0.12`에서 `sok`를 build한다.
 - E19: `make hooks`가 `.githooks`를 hook 폴더로 정해, commit message의 형식이나 용어 규칙, record 규칙을 어긴 commit이 만들어질 때 거부된다.
 - E16.1: `params.path` 없는 tab은 빈 문서를 열고, 그 첫 저장은 `core.file.place`로 파일을 물은 뒤 그 파일을 쓰고 감시한다.
