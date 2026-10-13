@@ -18,6 +18,7 @@ test: node_modules
 	pnpm exec soksak-exposure
 	pnpm exec soksak-engines
 	pnpm exec soksak-events --census census.json --catalog events.json
+	pnpm exec soksak-records
 
 pack:
 	@test -n "$(OUT)" || { echo "make pack OUT=<folder>" >&2; exit 2; }
