@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- E20: `@soksak/plugin-api`를 core release 0.0.12에서 받고, `engines.soksak`은 `>=0.0.12`이며, release workflow가 `CORE_RELEASE: v0.0.12`에서 `sok`를 build한다.
 - E19: `make hooks`가 `.githooks`를 hook 폴더로 정해, commit message의 형식이나 용어 규칙, record 규칙을 어긴 commit이 만들어질 때 거부된다.
 - E17: `make test`가 record 검사 `soksak-records`를 실행하고, CI가 push된 각 commit message의 형식을 `soksak-commits`로 검사한다.
 - E15.4: `@soksak/plugin-api`를 core release 0.0.11에서 받고, `engines.soksak`은 `>=0.0.11`이며, `plugin.json`이 event 카탈로그 `events.json`을 가리킨다.

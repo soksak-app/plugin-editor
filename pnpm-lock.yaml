@@ -63,8 +63,8 @@ importers:
         specifier: 1.0.4
         version: 1.0.4
       '@soksak/plugin-api':
-        specifier: git+https://github.com/soksak-app/core.git#v0.0.11&path:/packages/plugin-api
-        version: https://codeload.github.com/soksak-app/core/tar.gz/26e7ddb8171315f8ffff643c0e82e5cc278f9570#path:/packages/plugin-api
+        specifier: git+https://github.com/soksak-app/core.git#v0.0.12&path:/packages/plugin-api
+        version: https://codeload.github.com/soksak-app/core/tar.gz/cfbd4dcd85d5e3e2e631ce1737efaaecb3ab99dc#path:/packages/plugin-api
       crelt:
         specifier: 1.0.7
         version: 1.0.7
@@ -392,9 +392,9 @@ packages:
   '@marijn/find-cluster-break@1.0.4':
     resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
 
-  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/26e7ddb8171315f8ffff643c0e82e5cc278f9570#path:/packages/plugin-api':
-    resolution: {gitHosted: true, path: /packages/plugin-api, tarball: https://codeload.github.com/soksak-app/core/tar.gz/26e7ddb8171315f8ffff643c0e82e5cc278f9570}
-    version: 0.0.11
+  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/cfbd4dcd85d5e3e2e631ce1737efaaecb3ab99dc#path:/packages/plugin-api':
+    resolution: {gitHosted: true, integrity: sha512-I05j109yMI3QBb2x43kxvfkX6g/drhTVFPYQFvOuVaELAqWJlOTQM+NcuyJW37LlFqQBE4iS5Asxg2/4L2pfIw==, path: /packages/plugin-api, tarball: https://codeload.github.com/soksak-app/core/tar.gz/cfbd4dcd85d5e3e2e631ce1737efaaecb3ab99dc}
+    version: 0.0.12
     hasBin: true
 
   bidi-js@1.1.0:
@@ -836,7 +836,7 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.4': {}
 
-  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/26e7ddb8171315f8ffff643c0e82e5cc278f9570#path:/packages/plugin-api': {}
+  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/cfbd4dcd85d5e3e2e631ce1737efaaecb3ab99dc#path:/packages/plugin-api': {}
 
   bidi-js@1.1.0:
     dependencies:
