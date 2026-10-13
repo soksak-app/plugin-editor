@@ -7,6 +7,16 @@
       "fields": { "path": "string", "bytes": "number", "lines": "number", "newline": "string|null", "read_only": "boolean", "micros": "number", "ok": "boolean", "error?": "string" },
       "description": "The first read of the file and its load into the document. bytes and lines are those of the document; error names a failed read."
     },
+    "plugin.editor.new": {
+      "layer": "plugin", "class": "lifecycle", "level": "info",
+      "fields": { "name": "string" },
+      "description": "A tab without params.path opened a blank document; name is the file name that its first save proposes."
+    },
+    "plugin.editor.place": {
+      "layer": "plugin", "class": "call", "level": ["info", "warn"],
+      "fields": { "name": "string", "path": "string|null", "micros": "number", "ok": "boolean", "error?": "string" },
+      "description": "The answer of core.file.place at the first save of a blank document: path is the chosen file relative to the project root, or null when the person cancelled; error names a refused place."
+    },
     "plugin.editor.read": {
       "layer": "plugin", "class": "call", "level": ["debug", "warn"],
       "fields": { "path": "string", "reason": "string", "bytes": "number", "micros": "number", "ok": "boolean", "error?": "string" },
@@ -39,7 +49,7 @@
     },
     "plugin.editor.format": {
       "layer": "plugin", "class": "call", "level": ["info", "warn"],
-      "fields": { "path": "string", "formatter": "string|null", "changed": "boolean", "micros": "number", "ok": "boolean", "error?": "string" },
+      "fields": { "path": "string|null", "formatter": "string|null", "changed": "boolean", "micros": "number", "ok": "boolean", "error?": "string" },
       "description": "One run of the formatter of editor.formatter for the file; formatter is the plugin that contributed it."
     },
     "plugin.editor.contribution.failed": {
@@ -59,8 +69,8 @@
     },
     "plugin.editor.close": {
       "layer": "plugin", "class": "lifecycle", "level": "info",
-      "fields": { "path": "string", "pending": "number" },
-      "description": "The editor surface ended; pending is the number of requests to the files sidecar that had no reply."
+      "fields": { "path": "string|null", "pending": "number" },
+      "description": "The editor surface ended; pending is the number of requests to the files sidecar that had no reply. path is null for a blank document that was never saved."
     }
   }
 }

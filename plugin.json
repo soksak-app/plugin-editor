@@ -77,12 +77,15 @@
     "status": [
       {
         "name": "editor.document",
-        "description": "The open file: its path relative to the project root, the SHA-256 version of the last read or write, whether the text differs from it as modified, the length in characters and the number of lines, the language or null, the line break of the file (lf, crlf, cr, mixed or none) and whether it starts with a byte order mark, whether it is open read-only and why, whether the file on disk is the same or changed, and the selection.",
+        "description": "The open file: its path relative to the project root, or null for a blank document that was never saved, the SHA-256 version of the last read or write, whether the text differs from it as modified, the length in characters and the number of lines, the language or null, the line break of the file (lf, crlf, cr, mixed or none) and whether it starts with a byte order mark, whether it is open read-only and why, whether the file on disk is the same or changed, and the selection.",
         "schema": {
           "type": "object",
           "properties": {
             "path": {
-              "type": "string"
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "version": {
               "type": [
@@ -190,7 +193,7 @@
     "commands": [
       {
         "name": "editor.save",
-        "description": "Writes the text to the file in place when the file on disk still has the version that the editor read; with overwrite, writes over the version that changed on disk. A failure is shown as the tab's error.",
+        "description": "Writes the text to the file in place when the file on disk still has the version that the editor read; with overwrite, writes over the version that changed on disk. A blank document asks for its file through core.file.place first and answers version null when the person cancels. A failure is shown as the tab's error.",
         "params": {
           "type": "object",
           "properties": {
@@ -203,7 +206,10 @@
           "type": "object",
           "properties": {
             "version": {
-              "type": "string"
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         }

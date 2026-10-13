@@ -28,6 +28,15 @@ function fakeFiles(files) {
         const newline = /\r\n/.test(text) ? "crlf" : /\n/.test(text) ? "lf" : "none";
         return reply({ id: body.id, text, version: sha(text), newline, bom: false });
       }
+      if (body.operation === "readBytes") {
+        if (!files.has(body.path)) return reply({ id: body.id, error: `no such file: ${body.path}` });
+        return reply({ id: body.id, data: Buffer.from(files.get(body.path)).toString("base64"), version: sha(files.get(body.path)) });
+      }
+      if (body.operation === "write" && body.expect === null) {
+        if (files.has(body.path)) return reply({ id: body.id, error: `exists: ${body.path}` });
+        files.set(body.path, body.text);
+        return reply({ id: body.id, version: sha(body.text) });
+      }
       if (body.operation === "write") {
         if (sha(files.get(body.path)) !== body.expect) return reply({ id: body.id, error: `changed on disk: ${body.path}` });
         files.set(body.path, body.text);
@@ -44,13 +53,14 @@ function fakeFiles(files) {
   return port;
 }
 
-async function setup(t, { path = "src/main.js", files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark", log = [] } = {}) {
+async function setup(t, { path = "src/main.js", params = { path }, files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark", log = [],
+  place = () => { throw new Error("the test runs no core command"); } } = {}) {
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const root = host.attachShadow({ mode: "open" });
   const commands = new Map();
   const statuses = new Map();
-  const reports = { modified: [], error: [], title: [] };
+  const reports = { modified: [], error: [], title: [], commands: [] };
   const logs = log;
   const binder = createBinder((name, params) => commands.get(name)(params), {
     check(name) { assert.ok(declared("commands", name), `undeclared command ${name}`); },
@@ -59,9 +69,10 @@ async function setup(t, { path = "src/main.js", files = new Map([["src/main.js",
   const controller = await mount(root, {
     surfaceId: "editor-1",
     project: { root: "/project" },
-    tab: { params: { path }, title: (text) => reports.title.push(text), footer() {}, directory() {}, notify() {},
+    tab: { params, title: (text) => reports.title.push(text), footer() {}, directory() {}, notify() {},
       modified: (value) => reports.modified.push(value), error: (text) => reports.error.push(text) },
     runtime: { sidecar: () => sidecar,
+      command: async (name, commandParams) => { reports.commands.push([name, commandParams]); return place(name, commandParams); },
       log: Object.fromEntries(["error", "warn", "info", "debug", "trace"].map((level) => [level, (event, fields) => logs.push({ level, event, fields: typeof fields === "function" ? fields() : fields })])),
       theme: (fn) => ({ ready: Promise.resolve(fn({ scheme, tokens: {} })), dispose: Promise.resolve(() => {}) }) },
     // default: a test without contributions connects none to either point.
@@ -349,4 +360,63 @@ test("the end of the surface records the close", async (t) => {
   const { controller, logs } = await setup(t);
   await controller.dispose();
   assert.deepEqual(eventsOf(logs, "close").map((entry) => entry.fields), [{ path: "src/main.js", pending: 0 }]);
+});
+
+test("a tab without a path opens a blank document named as a new document", async (t) => {
+  const { run, status, reports, sidecar } = await setup(t, { params: {}, files: new Map() });
+  assert.equal(run("editor.read"), "");
+  assert.deepEqual(reports.title, ["새 문서"]);
+  const document = status("editor.document");
+  assert.equal(document.path, null);
+  assert.equal(document.version, null);
+  assert.equal(document.modified, false);
+  assert.deepEqual(sidecar.sent, [], "a blank document reads and watches no file");
+});
+
+test("the first save of a blank document asks for the file through core.file.place, writes it and watches it", async (t) => {
+  const { run, status, reports, sidecar, files } = await setup(t, { params: {}, files: new Map(), place: () => ({ path: "notes/plan.md" }) });
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "# plan\n" }] });
+  assert.equal(status("editor.document").modified, true);
+  const { version } = await run("editor.save");
+  assert.deepEqual(reports.commands, [["core.file.place", { name: "새 문서.txt" }]]);
+  assert.equal(files.get("notes/plan.md"), "# plan\n");
+  assert.equal(version, sha("# plan\n"));
+  assert.deepEqual(sidecar.sent.map((body) => [body.operation, body.operation === "write" ? body.expect : body.paths]), [["write", null], ["watch", ["notes/plan.md"]]]);
+  const document = status("editor.document");
+  assert.equal(document.path, "notes/plan.md");
+  assert.equal(document.language, "markdown");
+  assert.equal(document.modified, false);
+  assert.deepEqual(reports.title, ["새 문서", "plan.md"]);
+  // The next save writes the named file in place.
+  run("editor.edit", { changes: [{ from: 7, to: 7, insert: "- a\n" }] });
+  await run("editor.save");
+  assert.equal(files.get("notes/plan.md"), "# plan\n- a\n");
+  assert.equal(reports.commands.length, 1, "a named document does not ask for its place again");
+});
+
+test("a cancelled place keeps the blank document modified and writes nothing", async (t) => {
+  const { run, status, sidecar } = await setup(t, { params: {}, files: new Map(), place: () => ({ path: null }) });
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "draft" }] });
+  assert.deepEqual(await run("editor.save"), { version: null });
+  assert.equal(status("editor.document").path, null);
+  assert.equal(status("editor.document").modified, true);
+  assert.deepEqual(sidecar.sent, []);
+});
+
+test("a place whose file exists overwrites it, because the save panel asked to replace it", async (t) => {
+  const files = new Map([["old.txt", "before"]]);
+  const { run, status } = await setup(t, { params: {}, files, place: () => ({ path: "old.txt" }) });
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "after" }] });
+  await run("editor.save");
+  assert.equal(files.get("old.txt"), "after");
+  assert.equal(status("editor.document").path, "old.txt");
+});
+
+test("a refused place shows the tab error and keeps the blank document", async (t) => {
+  const { run, status, reports } = await setup(t, { params: {}, files: new Map(),
+    place: () => { throw new Error("file place: /elsewhere/a.txt is outside the project /project"); } });
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "x" }] });
+  await assert.rejects(run("editor.save"), /outside the project/);
+  assert.equal(status("editor.document").path, null);
+  assert.match(reports.error.at(-1), /outside the project/);
 });

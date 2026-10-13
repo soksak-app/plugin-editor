@@ -1,5 +1,6 @@
 // The editor surface: opens the file tab.params.path of the project through the files sidecar in CodeMirror, saves it
-// in place, and follows changes on disk. The contributions to editor.extension add CodeMirror extensions and the
+// in place, and follows changes on disk. A tab without a path opens a blank document, whose first save asks for its file
+// through core.file.place. The contributions to editor.extension add CodeMirror extensions and the
 // contributions to editor.formatter format the text (docs/features.md).
 import { Compartment, EditorState, StateEffect, StateField } from "@soksak/shared/editor.extension/@codemirror/state.js";
 import {
@@ -54,6 +55,9 @@ const HTML = `<style>${css}</style><div id="frame" data-expose="editor.frame">
 <div id="view" data-expose="editor.view"></div></div>`;
 
 const LINE_SEPARATORS = { lf: "\n", crlf: "\r\n", cr: "\r" };
+/** The tab title of a blank document and the file name that its first save proposes. */
+const NEW_TITLE = "새 문서";
+const NEW_NAME = "새 문서.txt";
 
 /** Whether event is the shortcut of key with the command key, and with Option when alt is true. */
 const shortcut = (event, key, { alt = false, shift = false } = {}) => event.metaKey && !event.ctrlKey
@@ -94,9 +98,9 @@ const found = StateField.define({
 });
 
 export async function mount(root, context) {
-  // default: a tab without params cannot name a file; core.file.open always passes {path}.
-  const path = context.tab.params?.path;
-  if (typeof path !== "string" || path === "") throw new Error("the editor tab requires params.path");
+  // default: a tab without params.path holds a blank document; core.file.open always passes {path}.
+  let path = context.tab.params?.path ?? null;
+  if (path !== null && (typeof path !== "string" || path === "")) throw new Error("the editor tab params.path must be a non-empty string");
   if (context.project === null) throw new Error("this window shows no project");
   const emitEvent = createEmitter(context.runtime, "editor");
   root.innerHTML = HTML;
@@ -111,10 +115,11 @@ export async function mount(root, context) {
   const regexpButton = root.querySelector("#regexp");
   const count = root.querySelector("#count");
   const host = root.querySelector("#view");
-  const language = languageOf(path);
-  const extension = extensionOf(path);
-  const file = Object.freeze({ path, extension, language });
-  context.tab.title(path.slice(path.lastIndexOf("/") + 1));
+  let language = path === null ? null : languageOf(path);
+  let extension = path === null ? "" : extensionOf(path);
+  let file = Object.freeze({ path, extension, language });
+  const name = () => (path === null ? NEW_TITLE : path.slice(path.lastIndexOf("/") + 1));
+  context.tab.title(name());
 
   // The document as the editor read or last wrote it, and the state of the file on disk.
   let saved = null;
@@ -161,12 +166,13 @@ export async function mount(root, context) {
     }
   };
 
-  const contributions = await loadContributions(context, file, emitEvent);
+  let contributions = await loadContributions(context, file, emitEvent);
   const languageSlot = new Compartment();
   const contributed = new Compartment();
   const editable = new Compartment();
   const separator = new Compartment();
   const scheme = new Compartment();
+  const label = new Compartment();
 
   let view = null;
   const modified = () => saved !== null && !view.state.doc.eq(saved);
@@ -217,9 +223,39 @@ export async function mount(root, context) {
     publishFile();
   }
 
+  // Asks for the file of a blank document through core.file.place; null when the person cancelled the save panel.
+  const place = async () => {
+    const start = performance.now();
+    let chosen;
+    try {
+      ({ path: chosen } = await context.runtime.command("core.file.place", { name: NEW_NAME }));
+    } catch (error) {
+      emitEvent("warn", "plugin.editor.place", { name: NEW_NAME, path: null, micros: microsSince(start), ok: false, error: failure(error, "-32603") });
+      context.tab.error(`저장하지 못했습니다 · ${error.message}`);
+      throw error;
+    }
+    emitEvent("info", "plugin.editor.place", { name: NEW_NAME, path: chosen, micros: microsSince(start), ok: true });
+    return chosen;
+  };
+  // Names the blank document after the file that its first save wrote: the language, the contributions of its extension
+  // and the tab title follow the file, and the editor watches it.
+  const named = async (chosen) => {
+    path = chosen;
+    language = languageOf(path);
+    extension = extensionOf(path);
+    file = Object.freeze({ path, extension, language });
+    contributions = await loadContributions(context, file, emitEvent);
+    view.dispatch({ effects: [languageSlot.reconfigure(languageSupport(language)), contributed.reconfigure(contributions.extensions),
+      label.reconfigure(EditorView.contentAttributes.of({ "aria-label": path }))] });
+    fileState = { ...fileState, path, language };
+    context.tab.title(name());
+    await startWatch();
+  };
+
   const save = async ({ overwrite = false } = {}) => {
     if (typeof overwrite !== "boolean") throw new TypeError("editor.save requires overwrite as true or false");
     if (fileState.readOnly) throw new Error(`${path} is open read-only: ${fileState.reason}`);
+    if (path === null) return saveNew();
     const start = performance.now();
     const text = view.state.sliceDoc();
     try {
@@ -243,7 +279,42 @@ export async function mount(root, context) {
     }
   };
 
+  // The first save of a blank document: the file that core.file.place answers is created; a file that exists there is
+  // written over, because the save panel asked the person to replace it.
+  const saveNew = async () => {
+    const chosen = await place();
+    if (chosen === null) return { version: null };
+    const start = performance.now();
+    const text = view.state.sliceDoc();
+    const write = (expect) => files.request({ operation: "write", path: chosen, text, expect, bom: false });
+    let reply;
+    try {
+      try {
+        reply = await write(null);
+      } catch (error) {
+        if (!String(error.message).startsWith("exists")) throw error;
+        reply = await write((await files.request({ operation: "readBytes", path: chosen })).version);
+      }
+    } catch (error) {
+      emitEvent("warn", "plugin.editor.save", { path: chosen, bytes: bytesOf(text), overwrite: false, micros: microsSince(start), ok: false,
+        error: failure(error, "-32603") });
+      context.tab.error(`저장하지 못했습니다 · ${error.message}`);
+      throw error;
+    }
+    emitEvent("info", "plugin.editor.save", { path: chosen, bytes: bytesOf(text), overwrite: false, micros: microsSince(start), ok: true });
+    saved = view.state.doc;
+    diskVersion = reply.version;
+    fileState = { ...fileState, version: reply.version, disk: "same" };
+    describe();
+    context.tab.modified(fileState.modified);
+    context.tab.error(null);
+    await named(chosen);
+    publishFile();
+    return { version: reply.version };
+  };
+
   const reload = async () => {
+    if (path === null) throw new Error("a blank document has no file to read");
     let body;
     try {
       body = await readAgain("reload");
@@ -403,7 +474,7 @@ export async function mount(root, context) {
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         languageSlot.of(languageSupport(language)), contributed.of(contributions.extensions),
         editable.of([]), separator.of([]), frameTheme, scheme.of(EditorView.darkTheme.of(true)),
-        EditorView.contentAttributes.of({ "data-expose": "editor.content", "aria-label": path }),
+        EditorView.contentAttributes.of({ "data-expose": "editor.content" }), label.of(EditorView.contentAttributes.of({ "aria-label": name() })),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged && !update.selectionSet) return;
           const before = fileState.modified;
@@ -489,26 +560,38 @@ export async function mount(root, context) {
     return { query: find.query, replacement: find.replacement, caseSensitive: find.caseSensitive, regexp: find.regexp };
   }
 
-  const openStart = performance.now();
-  let opened;
-  try {
-    opened = await read();
-  } catch (error) {
-    emitEvent("warn", "plugin.editor.open", { path, bytes: 0, lines: 0, newline: null, read_only: false, micros: microsSince(openStart),
-      ok: false, error: failure(error, "-32603") });
-    throw error;
+  async function startWatch() {
+    const watchStart = performance.now();
+    try {
+      await watch();
+    } catch (error) {
+      emitEvent("warn", "plugin.editor.watch.start", { path, micros: microsSince(watchStart), ok: false, error: failure(error, "-32603") });
+      throw error;
+    }
+    emitEvent("info", "plugin.editor.watch.start", { path, micros: microsSince(watchStart), ok: true });
   }
-  load(opened);
-  emitEvent("info", "plugin.editor.open", { path, bytes: bytesOf(opened.text), lines: view.state.doc.lines, newline: opened.newline,
-    read_only: fileState.readOnly, micros: microsSince(openStart), ok: true });
-  const watchStart = performance.now();
-  try {
-    await watch();
-  } catch (error) {
-    emitEvent("warn", "plugin.editor.watch.start", { path, micros: microsSince(watchStart), ok: false, error: failure(error, "-32603") });
-    throw error;
+
+  if (path === null) {
+    saved = view.state.doc;
+    describe();
+    context.tab.modified(fileState.modified);
+    publishFile();
+    emitEvent("info", "plugin.editor.new", { name: NEW_NAME });
+  } else {
+    const openStart = performance.now();
+    let opened;
+    try {
+      opened = await read();
+    } catch (error) {
+      emitEvent("warn", "plugin.editor.open", { path, bytes: 0, lines: 0, newline: null, read_only: false, micros: microsSince(openStart),
+        ok: false, error: failure(error, "-32603") });
+      throw error;
+    }
+    load(opened);
+    emitEvent("info", "plugin.editor.open", { path, bytes: bytesOf(opened.text), lines: view.state.doc.lines, newline: opened.newline,
+      read_only: fileState.readOnly, micros: microsSince(openStart), ok: true });
+    await startWatch();
   }
-  emitEvent("info", "plugin.editor.watch.start", { path, micros: microsSince(watchStart), ok: true });
   context.status.report("ready");
   return {
     focus: () => view.focus(),
