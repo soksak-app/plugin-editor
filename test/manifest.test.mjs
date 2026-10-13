@@ -11,3 +11,7 @@ test("plugin.json is a valid manifest that opens every file with path params and
   assert.equal(manifest.surface.params.properties.path.type, "string");
   assert.ok(manifest.exposes.commands.some((entry) => entry.name === manifest.surface.save));
 });
+
+test("plugin.json names the event catalog of the plugin", () => {
+  assert.equal(manifest.events, "events.json");
+});

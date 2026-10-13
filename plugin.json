@@ -521,5 +521,6 @@
         "description": "The editable text."
       }
     ]
-  }
+  },
+  "events": "events.json"
 }
