@@ -11,7 +11,7 @@ permissions:
 
 # The core release whose sok packs the plugin. It has no relation to the version that this repository releases.
 env:
-  CORE_RELEASE: v0.0.12
+  CORE_RELEASE: v0.0.18
 
 jobs:
   release:

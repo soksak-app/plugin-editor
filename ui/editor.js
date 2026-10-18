@@ -98,8 +98,13 @@ const found = StateField.define({
 });
 
 export async function mount(root, context) {
+  // The tab state {path, selection, scroll} restores the file, the cursor and the scroll position of a restored or restarted
+  // tab (core docs/spec/plugins.md#memory-saver); its path follows the first save of a blank document, which params do not.
+  // default: a new tab has no tab state and reads null.
+  const stored = context.tab.state.read();
+  if (stored !== null) checkTabState(stored, context.surfaceId);
   // default: a tab without params.path holds a blank document; core.file.open always passes {path}.
-  let path = context.tab.params?.path ?? null;
+  let path = stored !== null ? stored.path : context.tab.params?.path ?? null;
   if (path !== null && (typeof path !== "string" || path === "")) throw new Error("the editor tab params.path must be a non-empty string");
   if (context.project === null) throw new Error("this window shows no project");
   const emitEvent = createEmitter(context.runtime, "editor");
@@ -175,6 +180,16 @@ export async function mount(root, context) {
   const label = new Compartment();
 
   let view = null;
+  // The tab state last written; a change that keeps it writes nothing.
+  let written = JSON.stringify(stored);
+  const writeTabState = () => {
+    const { anchor, head } = view.state.selection.main;
+    const value = { path, selection: { anchor, head }, scroll: { top: view.scrollDOM.scrollTop, left: view.scrollDOM.scrollLeft } };
+    const text = JSON.stringify(value);
+    if (text === written) return;
+    written = text;
+    context.tab.state.write(value);
+  };
   const modified = () => saved !== null && !view.state.doc.eq(saved);
   const describe = () => {
     const { anchor, head } = view.state.selection.main;
@@ -249,6 +264,7 @@ export async function mount(root, context) {
       label.reconfigure(EditorView.contentAttributes.of({ "aria-label": path }))] });
     fileState = { ...fileState, path, language };
     context.tab.title(name());
+    writeTabState();
     await startWatch();
   };
 
@@ -426,10 +442,14 @@ export async function mount(root, context) {
       return error;
     };
     let result;
+    // The formatter runs while the document may be clean, so the tab stays loaded until its result is applied.
+    context.tab.keep("busy", true);
     try {
       result = await formatter.format(text, file);
     } catch (error) {
       throw failed(error);
+    } finally {
+      context.tab.keep("busy", false);
     }
     if (typeof result !== "string") throw failed(new Error(`${formatter.plugin} formatter returned ${typeof result}, not text`));
     context.tab.error(null);
@@ -482,11 +502,13 @@ export async function mount(root, context) {
           if (fileState.modified !== before) context.tab.modified(fileState.modified);
           if (update.docChanged && find.open) refreshFind();
           publishFile();
+          writeTabState();
         }),
       ],
     }),
   });
   const content = view.contentDOM;
+  view.scrollDOM.addEventListener("scroll", writeTabState);
 
   // The scheme of the application theme selects the token colors; the frame takes the other colors from the theme tokens.
   frame.dataset.scheme = "dark";
@@ -592,10 +614,18 @@ export async function mount(root, context) {
       read_only: fileState.readOnly, micros: microsSince(openStart), ok: true });
     await startWatch();
   }
+  if (stored !== null) {
+    // The stored cursor applies to the current text of the file, so a position past its end moves to the end.
+    const end = view.state.doc.length;
+    view.dispatch({ selection: { anchor: Math.min(stored.selection.anchor, end), head: Math.min(stored.selection.head, end) } });
+    view.scrollDOM.scrollTop = stored.scroll.top;
+    view.scrollDOM.scrollLeft = stored.scroll.left;
+  }
   context.status.report("ready");
   return {
     focus: () => view.focus(),
     async dispose() {
+      view.scrollDOM.removeEventListener("scroll", writeTabState);
       if (subscription) (await subscription.dispose)();
       fileListeners.clear();
       findListeners.clear();
@@ -606,6 +636,15 @@ export async function mount(root, context) {
       root.replaceChildren();
     },
   };
+}
+
+/** Refuses a tab state that is not {path, selection: {anchor, head}, scroll: {top, left}}, naming the tab and the value. */
+function checkTabState(value, tab) {
+  const position = (n) => Number.isInteger(n) && n >= 0;
+  const offset = (n) => Number.isFinite(n) && n >= 0;
+  const valid = value !== null && typeof value === "object" && (value.path === null || (typeof value.path === "string" && value.path !== ""))
+    && position(value.selection?.anchor) && position(value.selection?.head) && offset(value.scroll?.top) && offset(value.scroll?.left);
+  if (!valid) throw new Error(`the tab state of editor tab ${tab} is not {path, selection, scroll}: ${JSON.stringify(value)}`);
 }
 
 /**

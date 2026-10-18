@@ -53,14 +53,14 @@ function fakeFiles(files) {
   return port;
 }
 
-async function setup(t, { path = "src/main.js", params = { path }, files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark", log = [],
+async function setup(t, { path = "src/main.js", params = { path }, files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark", log = [], stored = null,
   place = () => { throw new Error("the test runs no core command"); } } = {}) {
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const root = host.attachShadow({ mode: "open" });
   const commands = new Map();
   const statuses = new Map();
-  const reports = { modified: [], error: [], title: [], commands: [] };
+  const reports = { modified: [], error: [], title: [], commands: [], state: [], keep: [] };
   const logs = log;
   const binder = createBinder((name, params) => commands.get(name)(params), {
     check(name) { assert.ok(declared("commands", name), `undeclared command ${name}`); },
@@ -70,7 +70,8 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
     surfaceId: "editor-1",
     project: { root: "/project" },
     tab: { params, title: (text) => reports.title.push(text), footer() {}, directory() {}, notify() {},
-      modified: (value) => reports.modified.push(value), error: (text) => reports.error.push(text) },
+      modified: (value) => reports.modified.push(value), error: (text) => reports.error.push(text),
+      state: { read: () => stored, write: (value) => reports.state.push(value) }, keep: (reason, on) => reports.keep.push([reason, on]) },
     runtime: { sidecar: () => sidecar,
       command: async (name, commandParams) => { reports.commands.push([name, commandParams]); return place(name, commandParams); },
       log: Object.fromEntries(["error", "warn", "info", "debug", "trace"].map((level) => [level, (event, fields) => logs.push({ level, event, fields: typeof fields === "function" ? fields() : fields })])),
@@ -419,4 +420,36 @@ test("a refused place shows the tab error and keeps the blank document", async (
   await assert.rejects(run("editor.save"), /outside the project/);
   assert.equal(status("editor.document").path, null);
   assert.match(reports.error.at(-1), /outside the project/);
+});
+
+test("the editor writes its file and cursor as the tab state and restores them", async (t) => {
+  const { run, reports } = await setup(t);
+  run("editor.select", { anchor: 4, head: 5 });
+  assert.deepEqual(reports.state.at(-1), { path: "src/main.js", selection: { anchor: 4, head: 5 }, scroll: { top: 0, left: 0 } });
+  const count = reports.state.length;
+  run("editor.select", { anchor: 4, head: 5 });
+  assert.equal(reports.state.length, count, "a selection that keeps the state writes nothing");
+  // The stored path wins over params, because the first save of a blank document changes the file and not the params.
+  const restored = await setup(t, { params: {}, stored: { path: "src/main.js", selection: { anchor: 6, head: 99 }, scroll: { top: 0, left: 0 } } });
+  assert.equal(restored.status("editor.document").path, "src/main.js");
+  assert.deepEqual(restored.status("editor.document").selection, { anchor: 6, head: 22 });
+});
+
+test("a tab state of another form is refused", async (t) => {
+  await assert.rejects(setup(t, { stored: { path: "", selection: { anchor: 0, head: 0 }, scroll: { top: 0, left: 0 } } }),
+    /the tab state of editor tab editor-1 is not \{path, selection, scroll\}: \{"path":""/);
+});
+
+test("the tab stays loaded while a formatter runs", async (t) => {
+  let finish;
+  const formatter = { plugin: "fmt", item: {}, module: `data:text/javascript,${encodeURIComponent("export const format = (text) => globalThis.__editorFormat(text);")}`, fail() {} };
+  globalThis.__editorFormat = (text) => new Promise((resolve) => { finish = () => resolve(text.toUpperCase()); });
+  t.after(() => { delete globalThis.__editorFormat; });
+  const { run, reports } = await setup(t, { contributions: { formatter: [formatter] } });
+  const formatted = run("editor.format");
+  await settle();
+  assert.deepEqual(reports.keep, [["busy", true]]);
+  finish();
+  await formatted;
+  assert.deepEqual(reports.keep, [["busy", true], ["busy", false]]);
 });
