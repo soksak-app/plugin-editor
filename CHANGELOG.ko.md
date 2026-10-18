@@ -2,8 +2,9 @@
 
 [English](CHANGELOG.md)
 
-## 미배포
+## 0.0.4 (2026-10-19)
 
+- E22: 메모리 절약 선언(E21)을 담은 version 0.0.4를 release한다. tag `v0.0.4`가 core v0.0.18의 `sok`로 만든 `editor-0.0.4.tgz`를 게시한다.
 - E21: 표면이 `surface.unload` `{format: 1, maxBytes: 8192}`를 선언하고, `{path, selection, scroll}`을 core 탭 상태로 쓰며, mount에서 파일, cursor, scroll 위치를 restore하고, formatter가 실행되는 동안 `keep("busy")`를 잡는다. `@soksak/plugin-api`와 `CORE_RELEASE`는 core 0.0.18에서 오고 `engines.soksak`이 이를 요구한다. Red: 탭 상태 case(`actual: undefined`), 거부 case, formatter case; Green: `make test` 35 of 35 통과.
 
 ## 0.0.3 (2026-10-14)

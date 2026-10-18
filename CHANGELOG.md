@@ -2,8 +2,9 @@
 
 [한국어](CHANGELOG.ko.md)
 
-## Unreleased
+## 0.0.4 (2026-10-19)
 
+- E22: Release version 0.0.4 with the memory saver declaration (E21); the tag `v0.0.4` publishes `editor-0.0.4.tgz` built with `sok` of core v0.0.18.
 - E21: The surface declares `surface.unload` `{format: 1, maxBytes: 8192}`, writes `{path, selection, scroll}` as the core tab state, restores the file, the cursor and the scroll position at mount, and holds `keep("busy")` while a formatter runs; `@soksak/plugin-api` and `CORE_RELEASE` come from core 0.0.18, which `engines.soksak` requires. Red: the tab state case (`actual: undefined`), the refusal and the formatter case; Green: `make test` passes 35 of 35.
 
 ## 0.0.3 (2026-10-14)
