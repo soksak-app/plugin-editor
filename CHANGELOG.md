@@ -2,6 +2,10 @@
 
 [한국어](CHANGELOG.ko.md)
 
+## Unreleased
+
+- E23: new commits are authored as `min-0-max <max@blue.tools>`; `.mailmap` maps the former name `min-median-max`, and published commits are not rewritten.
+
 ## 0.0.4 (2026-10-19)
 
 - E22: Release version 0.0.4 with the memory saver declaration (E21); the tag `v0.0.4` publishes `editor-0.0.4.tgz` built with `sok` of core v0.0.18.

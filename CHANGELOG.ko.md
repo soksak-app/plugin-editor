@@ -2,6 +2,10 @@
 
 [English](CHANGELOG.md)
 
+## 미배포
+
+- E23: 새 커밋의 작성자는 `min-0-max <max@blue.tools>`다. `.mailmap`이 이전 이름 `min-median-max`를 잇고, 게시된 커밋은 다시 쓰지 않는다.
+
 ## 0.0.4 (2026-10-19)
 
 - E22: 메모리 절약 선언(E21)을 담은 version 0.0.4를 release한다. tag `v0.0.4`가 core v0.0.18의 `sok`로 만든 `editor-0.0.4.tgz`를 게시한다.
