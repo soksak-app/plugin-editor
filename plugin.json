@@ -332,6 +332,22 @@
         }
       },
       {
+        "name": "editor.markdown.toggle",
+        "description": "Toggles rendered Markdown decorations for the open Markdown document without changing its text.",
+        "params": {
+          "type": "object",
+          "properties": {}
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "rendered": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      {
         "name": "editor.find",
         "description": "Sets the query, replacement and options of the find bar and returns the number of matches.",
         "params": {
@@ -529,6 +545,10 @@
       {
         "name": "editor.content",
         "description": "The editable text."
+      },
+      {
+        "name": "editor.markdown.toggle",
+        "description": "The Markdown preview toggle, visible for Markdown files."
       }
     ]
   },

@@ -14,11 +14,14 @@ import { createEmitter, failure, microsSince } from "./events.js";
 import { createQuery, findMatches, replacementOf } from "./find.js";
 import { extensionOf, languageOf, languageSupport } from "./languages.js";
 import { connect } from "./requests.js";
+import { markdownRendered as markdownRenderedEffect, markdownView } from "./markdown.js";
 import { todoMarks } from "./todo.js";
 
 const css = `:host{display:block;height:100%}
 #frame{display:flex;height:100%;flex-direction:column;background:var(--card);color:var(--fg);font:var(--text-control)/1.4 var(--ui-font)}
 #banner{display:flex;align-items:center;gap:8px;padding:4px 8px;border-bottom:1px solid var(--rule);color:var(--fg)}
+#markdown-toolbar{display:flex;justify-content:flex-end;padding:2px 8px;border-bottom:1px solid var(--rule)}
+#markdown-toggle[aria-pressed="true"]{color:var(--fg)}
 #banner span{flex:1;min-width:0}
 #find{display:flex;flex-direction:column;gap:4px;padding:4px 6px;border-bottom:1px solid var(--rule)}
 #find form{display:flex;align-items:center;gap:4px;margin:0}
@@ -29,6 +32,11 @@ button{padding:2px 6px;border:0;border-radius:var(--r-xs);background:transparent
 button:hover{background:var(--inset);color:var(--fg)}
 button[aria-pressed="true"]{background:var(--chip-on);color:var(--fg)}
 #view{flex:1;min-height:0}
+.cm-md-heading{font-weight:700}.cm-md-heading-1{font-size:1.5em}.cm-md-heading-2{font-size:1.3em}.cm-md-heading-3{font-size:1.15em}
+.cm-md-strong{font-weight:700}.cm-md-emphasis{font-style:italic}.cm-md-link{color:var(--focus);text-decoration:underline}
+.cm-md-list-marker{display:inline-block;min-width:1.5em;color:var(--muted)}.cm-md-inline-code,.cm-md-code-text{font-family:var(--code-font,monospace);background:var(--inset);border-radius:3px}
+.cm-md-fenced-code{background:var(--inset)}.cm-md-image{max-width:min(100%,48rem);max-height:60vh;object-fit:contain;vertical-align:middle}
+.cm-md-image-source{color:var(--muted)}
 .cm-todo{background:color-mix(in srgb,var(--focus) 25%,transparent);outline:1px solid color-mix(in srgb,var(--focus) 60%,transparent);border-radius:2px}
 .cm-found{background:color-mix(in srgb,var(--rail) 30%,transparent)}
 .cm-found-current{background:color-mix(in srgb,var(--focus) 45%,transparent)}
@@ -48,6 +56,7 @@ button[aria-pressed="true"]{background:var(--chip-on);color:var(--fg)}
 
 const HTML = `<style>${css}</style><div id="frame" data-expose="editor.frame">
 <div id="banner" data-expose="editor.banner" hidden><span></span><button data-expose="editor.reload">다시 읽기</button><button data-expose="editor.overwrite">덮어쓰기</button></div>
+<div id="markdown-toolbar"><button type="button" id="markdown-toggle" data-command="editor.markdown.toggle" data-expose="editor.markdown.toggle" aria-label="Markdown 미리 보기" aria-pressed="false">미리 보기</button></div>
 <div id="find" data-expose="editor.find.bar" hidden>
 <form id="find-form" data-expose="editor.find.form"><input id="query" data-expose="editor.find.query" aria-label="찾기" placeholder="찾기"><button type="button" id="case" data-expose="editor.find.case" aria-label="대소문자 구분" aria-pressed="false">Aa</button><button type="button" id="regexp" data-expose="editor.find.regexp" aria-label="정규식" aria-pressed="false">.*</button><output id="count"></output><button type="button" data-command="editor.find.previous" data-expose="editor.find.previous" aria-label="이전">↑</button><button type="button" data-command="editor.find.next" data-expose="editor.find.next" aria-label="다음">↓</button><button type="button" data-command="editor.find.close" data-expose="editor.find.close" aria-label="닫기">×</button></form>
 <form id="replace-form" data-expose="editor.replace.form" hidden><input id="replacement" data-expose="editor.find.replacement" aria-label="바꿀 글" placeholder="바꿀 글"><button type="button" data-command="editor.replace" data-expose="editor.replace">바꾸기</button><button type="button" data-command="editor.replace.all" data-expose="editor.replace.all">모두 바꾸기</button></form>
@@ -120,7 +129,11 @@ export async function mount(root, context) {
   const regexpButton = root.querySelector("#regexp");
   const count = root.querySelector("#count");
   const host = root.querySelector("#view");
+  const markdownToolbar = root.querySelector("#markdown-toolbar");
+  const markdownButton = root.querySelector("#markdown-toggle");
   let language = path === null ? null : languageOf(path);
+  let markdownRendered = false;
+  markdownToolbar.hidden = language !== "markdown";
   let extension = path === null ? "" : extensionOf(path);
   let file = Object.freeze({ path, extension, language });
   const name = () => (path === null ? NEW_TITLE : path.slice(path.lastIndexOf("/") + 1));
@@ -260,6 +273,13 @@ export async function mount(root, context) {
     extension = extensionOf(path);
     file = Object.freeze({ path, extension, language });
     contributions = await loadContributions(context, file, emitEvent);
+    if (markdownRendered) {
+      markdownRendered = false;
+      view.dispatch({ effects: markdownRenderedEffect.of(false) });
+    }
+    markdownToolbar.hidden = language !== "markdown";
+    markdownButton.setAttribute("aria-pressed", "false");
+    markdownButton.textContent = "미리 보기";
     view.dispatch({ effects: [languageSlot.reconfigure(languageSupport(language)), contributed.reconfigure(contributions.extensions),
       label.reconfigure(EditorView.contentAttributes.of({ "aria-label": path }))] });
     fileState = { ...fileState, path, language };
@@ -459,6 +479,16 @@ export async function mount(root, context) {
     return { changed: true };
   };
 
+  const toggleMarkdown = () => {
+    if (language !== "markdown") throw new Error("Markdown rendering is available only for Markdown files");
+    markdownRendered = !markdownRendered;
+    view.dispatch({ effects: markdownRenderedEffect.of(markdownRendered) });
+    markdownButton.setAttribute("aria-pressed", String(markdownRendered));
+    markdownButton.textContent = markdownRendered ? "편집" : "미리 보기";
+    markdownButton.setAttribute("aria-label", markdownRendered ? "Markdown 편집 보기" : "Markdown 미리 보기");
+    return { rendered: markdownRendered };
+  };
+
   const edit = ({ changes } = {}) => {
     if (!Array.isArray(changes) || changes.some((change) => !Number.isInteger(change?.from) || !Number.isInteger(change?.to)
       || typeof change.insert !== "string")) {
@@ -490,7 +520,7 @@ export async function mount(root, context) {
       doc: "",
       extensions: [
         lineNumbers(), highlightActiveLineGutter(), highlightSpecialChars(), history(), drawSelection(),
-        indentOnInput(), bracketMatching(), highlightActiveLine(), syntaxHighlighting(classHighlighter), todoMarks, found,
+        indentOnInput(), bracketMatching(), highlightActiveLine(), syntaxHighlighting(classHighlighter), todoMarks, found, markdownView,
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         languageSlot.of(languageSupport(language)), contributed.of(contributions.extensions),
         editable.of([]), separator.of([]), frameTheme, scheme.of(EditorView.darkTheme.of(true)),
@@ -547,6 +577,7 @@ export async function mount(root, context) {
   expose.command("editor.read", recorded("editor.read", readText));
   expose.command("editor.select", recorded("editor.select", selectRange));
   expose.command("editor.format", recorded("editor.format", format));
+  expose.command("editor.markdown.toggle", recorded("editor.markdown.toggle", toggleMarkdown));
   expose.command("editor.find", recorded("editor.find", (fields = {}) => setQuery(fields)));
   expose.command("editor.find.open", recorded("editor.find.open", openFind));
   expose.command("editor.find.close", recorded("editor.find.close", closeFind));

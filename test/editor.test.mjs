@@ -408,3 +408,39 @@ test("the tab stays loaded while a formatter runs", async (t) => {
   await formatted;
   assert.deepEqual(reports.keep, [["busy", true], ["busy", false]]);
 });
+
+test("Markdown renders in place and toggles without changing the document", async (t) => {
+  const text = "# Heading\n\n**bold** and *italic* [link](https://example.test)\n\n- item\n\n`code`\n\n```js\nconst value = 1\n```\n\n![alt text](https://example.test/image.png)\n";
+  const { root, run } = await setup(t, { path: "notes.md", files: new Map([["notes.md", text]]) });
+  assert.equal(declared("commands", "editor.markdown.toggle"), true);
+  assert.deepEqual(run("editor.markdown.toggle"), { rendered: true });
+  assert.ok(root.querySelector(".cm-md-heading-1"));
+  assert.ok(root.querySelector(".cm-md-strong"));
+  assert.ok(root.querySelector(".cm-md-emphasis"));
+  assert.ok(root.querySelector(".cm-md-link"));
+  assert.ok(root.querySelector(".cm-md-list"));
+  assert.ok(root.querySelector(".cm-md-inline-code"));
+  assert.ok(root.querySelector(".cm-md-fenced-code"));
+  assert.equal(root.querySelector("img.cm-md-image")?.getAttribute("src"), "https://example.test/image.png");
+  assert.doesNotMatch(root.querySelector(".cm-content").textContent, /# Heading|\*\*bold\*\*|\*italic\*|\[link\]|`code`|```|!\[/);
+  assert.equal(run("editor.read"), text, "rendering must not replace the Markdown document");
+  run("editor.edit", { changes: [{ from: 2, to: 9, insert: "Changed" }] });
+  const changed = text.replace("Heading", "Changed");
+  assert.equal(root.querySelector(".cm-md-heading-1").textContent, "Changed", "decorations follow edits in rendered mode");
+  assert.equal(run("editor.read"), changed);
+  assert.deepEqual(run("editor.markdown.toggle"), { rendered: false });
+  assert.match(root.querySelector(".cm-content").textContent, /# Changed/);
+  assert.equal(run("editor.read"), changed);
+});
+
+test("the Markdown toggle is hidden and refuses non-Markdown files", async (t) => {
+  const { root, run } = await setup(t);
+  assert.equal(root.querySelector("#markdown-toolbar").hidden, true);
+  assert.throws(() => run("editor.markdown.toggle"), /only for Markdown files/);
+});
+
+test("unsafe Markdown image schemes are not loaded as image widgets", async (t) => {
+  const { root, run } = await setup(t, { path: "unsafe.md", files: new Map([["unsafe.md", "![unsafe](javascript:alert(1))"]]) });
+  run("editor.markdown.toggle");
+  assert.equal(root.querySelector("img.cm-md-image"), null);
+});
