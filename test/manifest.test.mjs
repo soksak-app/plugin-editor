@@ -9,6 +9,7 @@ test("plugin.json is a valid manifest that opens every file with path params and
   assert.equal(validateManifest(manifest), manifest);
   assert.deepEqual(manifest.surface.opens, { extensions: ["*"] });
   assert.equal(manifest.surface.params.properties.path.type, "string");
+  assert.equal(manifest.dependencies["@soksak/sidecar-files"], ">=0.0.5", "readBytes requires files sidecar 0.0.5 or later");
   assert.ok(manifest.exposes.commands.some((entry) => entry.name === manifest.surface.save));
 });
 

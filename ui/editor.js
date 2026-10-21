@@ -7,14 +7,14 @@ import {
   Decoration, EditorView, drawSelection, highlightActiveLine, highlightActiveLineGutter, highlightSpecialChars, keymap,
   lineNumbers,
 } from "@soksak/shared/editor.extension/@codemirror/view.js";
-import { bracketMatching, indentOnInput, syntaxHighlighting } from "@soksak/shared/editor.extension/@codemirror/language.js";
+import { bracketMatching, forceParsing, indentOnInput, syntaxHighlighting } from "@soksak/shared/editor.extension/@codemirror/language.js";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@soksak/shared/editor.extension/@codemirror/commands.js";
 import { classHighlighter } from "@soksak/shared/editor.extension/@lezer/highlight.js";
 import { createEmitter, failure, microsSince } from "./events.js";
 import { createQuery, findMatches, replacementOf } from "./find.js";
 import { extensionOf, languageOf, languageSupport } from "./languages.js";
 import { connect } from "./requests.js";
-import { markdownRendered as markdownRenderedEffect, markdownView } from "./markdown.js";
+import { invalidMarkdownImageSources, markdownImagesChanged, markdownImageSources, markdownRendered as markdownRenderedEffect, markdownSyntaxChanged, markdownView, projectImagePath } from "./markdown.js";
 import { todoMarks } from "./todo.js";
 
 const css = `:host{display:block;height:100%}
@@ -56,7 +56,7 @@ button[aria-pressed="true"]{background:var(--chip-on);color:var(--fg)}
 
 const HTML = `<style>${css}</style><div id="frame" data-expose="editor.frame">
 <div id="banner" data-expose="editor.banner" hidden><span></span><button data-expose="editor.reload">다시 읽기</button><button data-expose="editor.overwrite">덮어쓰기</button></div>
-<div id="markdown-toolbar"><button type="button" id="markdown-toggle" data-command="editor.markdown.toggle" data-expose="editor.markdown.toggle" aria-label="Markdown 미리 보기" aria-pressed="false">미리 보기</button></div>
+<div id="markdown-toolbar"><button type="button" id="markdown-toggle" data-expose="editor.markdown.toggle" aria-label="Markdown 미리 보기" aria-pressed="false">미리 보기</button></div>
 <div id="find" data-expose="editor.find.bar" hidden>
 <form id="find-form" data-expose="editor.find.form"><input id="query" data-expose="editor.find.query" aria-label="찾기" placeholder="찾기"><button type="button" id="case" data-expose="editor.find.case" aria-label="대소문자 구분" aria-pressed="false">Aa</button><button type="button" id="regexp" data-expose="editor.find.regexp" aria-label="정규식" aria-pressed="false">.*</button><output id="count"></output><button type="button" data-command="editor.find.previous" data-expose="editor.find.previous" aria-label="이전">↑</button><button type="button" data-command="editor.find.next" data-expose="editor.find.next" aria-label="다음">↓</button><button type="button" data-command="editor.find.close" data-expose="editor.find.close" aria-label="닫기">×</button></form>
 <form id="replace-form" data-expose="editor.replace.form" hidden><input id="replacement" data-expose="editor.find.replacement" aria-label="바꿀 글" placeholder="바꿀 글"><button type="button" data-command="editor.replace" data-expose="editor.replace">바꾸기</button><button type="button" data-command="editor.replace.all" data-expose="editor.replace.all">모두 바꾸기</button></form>
@@ -67,6 +67,65 @@ const LINE_SEPARATORS = { lf: "\n", crlf: "\r\n", cr: "\r" };
 /** The tab title of a blank document and the file name that its first save proposes. */
 const NEW_TITLE = "새 문서";
 const NEW_NAME = "새 문서.txt";
+
+const MAX_MARKDOWN_IMAGE_BYTES = 33554432;
+const MAX_MARKDOWN_PREVIEW_BYTES = 67108864;
+const MAX_MARKDOWN_IMAGE_BASE64 = Math.ceil(MAX_MARKDOWN_IMAGE_BYTES / 3) * 4;
+const MARKDOWN_IMAGE_TYPES = Object.freeze({
+  avif: "image/avif", bmp: "image/bmp", gif: "image/gif", ico: "image/x-icon",
+  jpeg: "image/jpeg", jpg: "image/jpeg", png: "image/png", svg: "image/svg+xml", webp: "image/webp",
+});
+const markdownImageType = (path) => {
+  const extension = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+  const type = MARKDOWN_IMAGE_TYPES[extension];
+  if (!type) throw new Error("unsupported Markdown image type: " + path);
+  return type;
+};
+function markdownImageBytes(data, path) {
+  if (typeof data !== "string" || data.length === 0 || data.length > MAX_MARKDOWN_IMAGE_BASE64
+    || data.length % 4 !== 0 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data)) {
+    throw new Error("files sidecar readBytes returned invalid base64: " + path);
+  }
+  let binary;
+  try { binary = atob(data); } catch { throw new Error("files sidecar readBytes returned invalid base64: " + path); }
+  if (binary.length === 0 || binary.length > MAX_MARKDOWN_IMAGE_BYTES) {
+    throw new Error("files sidecar image exceeds the 33554432-byte limit: " + path);
+  }
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+/** Reads project-local Markdown images with the files sidecar contract and creates bounded, typed Blob URLs. */
+async function readMarkdownImageUrls(files, markdownPath, sources) {
+  const urls = new Map();
+  const paths = new Map();
+  let total = 0;
+  try {
+    for (const source of sources) {
+      const path = projectImagePath(markdownPath, source);
+      let url = paths.get(path);
+      if (url === undefined) {
+        const reply = await files.request({ operation: "readBytes", path });
+        const bytes = markdownImageBytes(reply.data, path);
+        if (total + bytes.byteLength > MAX_MARKDOWN_PREVIEW_BYTES) {
+          throw new Error("Markdown images exceed the 67108864-byte preview limit");
+        }
+        const blob = new Blob([bytes], { type: markdownImageType(path) });
+        url = URL.createObjectURL(blob);
+        paths.set(path, url);
+        total += bytes.byteLength;
+      }
+      urls.set(source, url);
+    }
+    return urls;
+  } catch (error) {
+    for (const url of new Set([...urls.values(), ...paths.values()])) URL.revokeObjectURL(url);
+    throw error;
+  }
+}
+
+function revokeMarkdownImageUrls(urls) {
+  for (const url of new Set(urls.values())) URL.revokeObjectURL(url);
+}
 
 /** Whether event is the shortcut of key with the command key, and with Option when alt is true. */
 const shortcut = (event, key, { alt = false, shift = false } = {}) => event.metaKey && !event.ctrlKey
@@ -193,6 +252,60 @@ export async function mount(root, context) {
   const label = new Compartment();
 
   let view = null;
+  let markdownImageUrls = new Map();
+  let markdownImageGeneration = 0;
+  let disposed = false;
+  const resetMarkdownPreview = () => {
+    markdownImageGeneration += 1;
+    markdownRendered = false;
+    const previous = markdownImageUrls;
+    markdownImageUrls = new Map();
+    if (view) view.dispatch({ effects: [markdownRenderedEffect.of(false), markdownImagesChanged.of(markdownImageUrls)] });
+    revokeMarkdownImageUrls(previous);
+    markdownButton.setAttribute("aria-pressed", "false");
+    markdownButton.textContent = "미리 보기";
+    markdownButton.setAttribute("aria-label", "Markdown 미리 보기");
+  };
+  const markdownImageFailure = (error) => {
+    if (!disposed) context.tab.error(`이미지를 불러오지 못했습니다 · ${error.message}`);
+  };
+  const completeMarkdownSyntax = async (document, isCurrent) => {
+    while (!disposed && isCurrent() && view.state.doc === document) {
+      if (forceParsing(view, document.length, 50)) {
+        view.dispatch({ effects: markdownSyntaxChanged.of(null) });
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    return false;
+  };
+  const refreshMarkdownImages = async () => {
+    if (!markdownRendered || path === null || !view || disposed) return;
+    const generation = ++markdownImageGeneration;
+    const documentPath = path;
+    const document = view.state.doc;
+    const previous = markdownImageUrls;
+    markdownImageUrls = new Map();
+    view.dispatch({ effects: markdownImagesChanged.of(markdownImageUrls) });
+    revokeMarkdownImageUrls(previous);
+    try {
+      const complete = await completeMarkdownSyntax(document, () => generation === markdownImageGeneration && markdownRendered && path === documentPath);
+      if (!complete) return;
+      const invalidImages = invalidMarkdownImageSources(view.state);
+      if (invalidImages.length) throw new Error("unsafe or malformed Markdown image URL: " + invalidImages[0]);
+      const sources = markdownImageSources(view.state);
+      const next = await readMarkdownImageUrls(files, documentPath, sources);
+      if (disposed || generation !== markdownImageGeneration || !markdownRendered || path !== documentPath || view.state.doc !== document) {
+        revokeMarkdownImageUrls(next);
+        return;
+      }
+      markdownImageUrls = next;
+      view.dispatch({ effects: markdownImagesChanged.of(next) });
+      context.tab.error(null);
+    } catch (error) {
+      if (!disposed && generation === markdownImageGeneration && markdownRendered && path === documentPath) markdownImageFailure(error);
+    }
+  };
   // The tab state last written; a change that keeps it writes nothing.
   let written = JSON.stringify(stored);
   const writeTabState = () => {
@@ -273,10 +386,7 @@ export async function mount(root, context) {
     extension = extensionOf(path);
     file = Object.freeze({ path, extension, language });
     contributions = await loadContributions(context, file, emitEvent);
-    if (markdownRendered) {
-      markdownRendered = false;
-      view.dispatch({ effects: markdownRenderedEffect.of(false) });
-    }
+    if (markdownRendered || markdownImageUrls.size > 0) resetMarkdownPreview();
     markdownToolbar.hidden = language !== "markdown";
     markdownButton.setAttribute("aria-pressed", "false");
     markdownButton.textContent = "미리 보기";
@@ -358,8 +468,10 @@ export async function mount(root, context) {
       context.tab.error(`다시 읽지 못했습니다 · ${error.message}`);
       throw error;
     }
+    const previousDocument = view.state.doc;
     load(body);
     context.tab.error(null);
+    if (markdownRendered && view.state.doc === previousDocument) await refreshMarkdownImages();
     return { version: body.version };
   };
 
@@ -479,14 +591,38 @@ export async function mount(root, context) {
     return { changed: true };
   };
 
-  const toggleMarkdown = () => {
+  const toggleMarkdown = async () => {
     if (language !== "markdown") throw new Error("Markdown rendering is available only for Markdown files");
-    markdownRendered = !markdownRendered;
-    view.dispatch({ effects: markdownRenderedEffect.of(markdownRendered) });
-    markdownButton.setAttribute("aria-pressed", String(markdownRendered));
-    markdownButton.textContent = markdownRendered ? "편집" : "미리 보기";
-    markdownButton.setAttribute("aria-label", markdownRendered ? "Markdown 편집 보기" : "Markdown 미리 보기");
-    return { rendered: markdownRendered };
+    if (markdownRendered) {
+      resetMarkdownPreview();
+      return { rendered: false };
+    }
+    const generation = ++markdownImageGeneration;
+    const documentPath = path;
+    const document = view.state.doc;
+    let urls;
+    try {
+      const complete = await completeMarkdownSyntax(document, () => generation === markdownImageGeneration && !disposed && path === documentPath);
+      if (!complete) return { rendered: markdownRendered };
+      const invalidImages = invalidMarkdownImageSources(view.state);
+      if (invalidImages.length) throw new Error("unsafe or malformed Markdown image URL: " + invalidImages[0]);
+      urls = await readMarkdownImageUrls(files, documentPath, markdownImageSources(view.state));
+    } catch (error) {
+      if (!disposed && generation === markdownImageGeneration) markdownImageFailure(error);
+      throw error;
+    }
+    if (disposed || generation !== markdownImageGeneration || path !== documentPath || view.state.doc !== document) {
+      revokeMarkdownImageUrls(urls);
+      return { rendered: markdownRendered };
+    }
+    markdownImageUrls = urls;
+    markdownRendered = true;
+    view.dispatch({ effects: [markdownImagesChanged.of(urls), markdownRenderedEffect.of(true)] });
+    context.tab.error(null);
+    markdownButton.setAttribute("aria-pressed", "true");
+    markdownButton.textContent = "편집";
+    markdownButton.setAttribute("aria-label", "Markdown 편집 보기");
+    return { rendered: true };
   };
 
   const edit = ({ changes } = {}) => {
@@ -520,9 +656,9 @@ export async function mount(root, context) {
       doc: "",
       extensions: [
         lineNumbers(), highlightActiveLineGutter(), highlightSpecialChars(), history(), drawSelection(),
-        indentOnInput(), bracketMatching(), highlightActiveLine(), syntaxHighlighting(classHighlighter), todoMarks, found, markdownView,
+        indentOnInput(), bracketMatching(), highlightActiveLine(), syntaxHighlighting(classHighlighter), todoMarks, found,
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
-        languageSlot.of(languageSupport(language)), contributed.of(contributions.extensions),
+        languageSlot.of(languageSupport(language)), contributed.of(contributions.extensions), markdownView,
         editable.of([]), separator.of([]), frameTheme, scheme.of(EditorView.darkTheme.of(true)),
         EditorView.contentAttributes.of({ "data-expose": "editor.content" }), label.of(EditorView.contentAttributes.of({ "aria-label": name() })),
         EditorView.updateListener.of((update) => {
@@ -531,6 +667,7 @@ export async function mount(root, context) {
           describe();
           if (fileState.modified !== before) context.tab.modified(fileState.modified);
           if (update.docChanged && find.open) refreshFind();
+          if (update.docChanged && markdownRendered) queueMicrotask(() => { void refreshMarkdownImages(); });
           publishFile();
           writeTabState();
         }),
@@ -595,6 +732,7 @@ export async function mount(root, context) {
     event: "keydown", when: (event) => onShortcut("f")(event) || onShortcut("f", { alt: true })(event) });
   // save, reload and format show their failures as the tab error, so a control that runs them does not report them again.
   const shown = () => {};
+  await expose.bind(markdownButton, "editor.markdown.toggle", {}, { failed: shown });
   await expose.bind(host, "editor.save", {}, { event: "keydown", when: onShortcut("s"), failed: shown });
   await expose.bind(view.scrollDOM, "editor.format", {}, { event: "keydown", when: onShortcut("f", { alt: true, shift: true }), failed: shown });
   await expose.bind(banner.querySelector('[data-expose="editor.reload"]'), "editor.reload", {}, { failed: shown });
@@ -652,6 +790,10 @@ export async function mount(root, context) {
   return {
     focus: () => view.focus(),
     async dispose() {
+      disposed = true;
+      markdownImageGeneration += 1;
+      revokeMarkdownImageUrls(markdownImageUrls);
+      markdownImageUrls = new Map();
       view.scrollDOM.removeEventListener("scroll", writeTabState);
       (await subscription.dispose)();
       fileListeners.clear();

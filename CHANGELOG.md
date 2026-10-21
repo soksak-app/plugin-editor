@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- E12.1: Require files sidecar 0.0.5+ for project-relative Markdown images, use `readBytes` to create bounded MIME-typed Blob URLs, and revoke them with the view lifecycle.
 - E12: Markdown files render headings, emphasis, links, lists, code and safe-scheme images in place through CodeMirror decorations; `editor.markdown.toggle` switches views without replacing the document.
 - E24.7: The errors of the view page and the losses of its calls are stored as the error event `plugin.editor.page.error` through `runtime.log`, instead of a host call that no surface serves.
 - E24.4: The view page answers the exposure requests that core forwards to its surface (`status.get`, `status.watch`, `command.run` and the others) from its own values through `exposureReply`.

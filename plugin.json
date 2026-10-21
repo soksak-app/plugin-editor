@@ -32,7 +32,7 @@
     "ink": "--fg"
   },
   "dependencies": {
-    "@soksak/sidecar-files": ">=0.0.4"
+    "@soksak/sidecar-files": ">=0.0.5"
   },
   "extends": {
     "extension": {

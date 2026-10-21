@@ -6,6 +6,8 @@ import { fakeFiles, sha } from "./fakes.mjs";
 import { createBinder } from "@soksak/plugin-api";
 
 const { mount } = await import("../ui/editor.js");
+const { markdownView, projectImagePath, safeImageSource } = await import("../ui/markdown.js");
+const { EditorView } = await import("@soksak/shared/editor.extension/@codemirror/view.js");
 const manifest = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.url), "utf8"));
 const declared = (kind, name) => manifest.exposes[kind].some((entry) => entry.name === name);
 
@@ -41,10 +43,17 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
       bind: binder.bind, delegate: binder.delegate, dispose: binder.dispose,
     },
   });
-  t.after(async () => { await controller.dispose(); host.remove(); });
+  let disposed = false;
+  const dispose = async () => {
+    if (disposed) return;
+    disposed = true;
+    await controller.dispose();
+    host.remove();
+  };
+  t.after(dispose);
   const run = (name, params = {}) => commands.get(name)(params);
   const status = (name) => statuses.get(name)();
-  return { root, run, status, reports, sidecar, files, binder, controller, logs };
+  return { root, run, status, reports, sidecar, files, binder, controller, logs, dispose };
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -413,7 +422,7 @@ test("Markdown renders in place and toggles without changing the document", asyn
   const text = "# Heading\n\n**bold** and *italic* [link](https://example.test)\n\n- item\n\n`code`\n\n```js\nconst value = 1\n```\n\n![alt text](https://example.test/image.png)\n";
   const { root, run } = await setup(t, { path: "notes.md", files: new Map([["notes.md", text]]) });
   assert.equal(declared("commands", "editor.markdown.toggle"), true);
-  assert.deepEqual(run("editor.markdown.toggle"), { rendered: true });
+  assert.deepEqual(await run("editor.markdown.toggle"), { rendered: true });
   assert.ok(root.querySelector(".cm-md-heading-1"));
   assert.ok(root.querySelector(".cm-md-strong"));
   assert.ok(root.querySelector(".cm-md-emphasis"));
@@ -428,7 +437,7 @@ test("Markdown renders in place and toggles without changing the document", asyn
   const changed = text.replace("Heading", "Changed");
   assert.equal(root.querySelector(".cm-md-heading-1").textContent, "Changed", "decorations follow edits in rendered mode");
   assert.equal(run("editor.read"), changed);
-  assert.deepEqual(run("editor.markdown.toggle"), { rendered: false });
+  assert.deepEqual(await run("editor.markdown.toggle"), { rendered: false });
   assert.match(root.querySelector(".cm-content").textContent, /# Changed/);
   assert.equal(run("editor.read"), changed);
 });
@@ -436,11 +445,171 @@ test("Markdown renders in place and toggles without changing the document", asyn
 test("the Markdown toggle is hidden and refuses non-Markdown files", async (t) => {
   const { root, run } = await setup(t);
   assert.equal(root.querySelector("#markdown-toolbar").hidden, true);
-  assert.throws(() => run("editor.markdown.toggle"), /only for Markdown files/);
+  await assert.rejects(run("editor.markdown.toggle"), /only for Markdown files/);
 });
 
-test("unsafe Markdown image schemes are not loaded as image widgets", async (t) => {
-  const { root, run } = await setup(t, { path: "unsafe.md", files: new Map([["unsafe.md", "![unsafe](javascript:alert(1))"]]) });
-  run("editor.markdown.toggle");
+test("Markdown image URLs reject obfuscated schemes and resolve project-relative paths", () => {
+  assert.equal(safeImageSource("javascript:alert(1)"), null);
+  assert.equal(safeImageSource("java script:alert(1)"), null);
+  assert.equal(safeImageSource("java\u0000script:alert(1)"), null);
+  assert.deepEqual(safeImageSource("https://example.test/image.png"), { kind: "remote", source: "https://example.test/image.png" });
+  assert.equal(projectImagePath("docs/nested/readme.md", "../images/diagram%20one.png?size=small#top"), "docs/images/diagram one.png");
+  assert.throws(() => projectImagePath("docs/nested/readme.md", "../../../outside.png"), /leaves the project root/);
+});
+
+test("unsafe Markdown image schemes are refused visibly", async (t) => {
+  const { root, run, reports } = await setup(t, { path: "unsafe.md", files: new Map([["unsafe.md", "![unsafe](javascript:alert(1))"]]) });
+  await assert.rejects(run("editor.markdown.toggle"), /unsafe or malformed Markdown image URL/);
+  assert.match(reports.error.at(-1), /이미지를 불러오지 못했습니다.*unsafe or malformed/);
   assert.equal(root.querySelector("img.cm-md-image"), null);
+});
+
+
+
+
+test("Markdown decorations cover headings near the end of a large document", async (t) => {
+  const text = "paragraph\n".repeat(20000) + "# Final heading\n";
+  const { root, run } = await setup(t, { path: "large.md", files: new Map([["large.md", text]]) });
+  await run("editor.markdown.toggle");
+  const view = EditorView.findFromDOM(root.querySelector(".cm-editor"));
+  const headings = [];
+  view.state.field(markdownView).decorations.between(0, view.state.doc.length, (from, to, value) => {
+    if (value.spec.class?.includes("cm-md-heading-1")) headings.push({ from, to });
+  });
+  assert.equal(headings.length, 1);
+  const headingStart = text.lastIndexOf("# Final heading");
+  assert.equal(headings[0].from, headingStart);
+  run("editor.edit", { changes: [{ from: headingStart + 2, to: headingStart + "# Final heading".length, insert: "Updated heading" }] });
+  await settle();
+  const updated = [];
+  view.state.field(markdownView).decorations.between(0, view.state.doc.length, (from, to, value) => {
+    if (value.spec.class?.includes("cm-md-heading-1")) updated.push({ from, to });
+  });
+  assert.equal(updated.length, 1, "the completed parse refreshes decorations after an edit");
+  assert.equal(view.state.sliceDoc(updated[0].from, updated[0].to), "# Updated heading");
+});
+
+test("relative Markdown images read project files and release Blob URLs", async (t) => {
+  const text = "![diagram](images/diagram.png)\n";
+  const bytes = Uint8Array.of(137, 80, 78, 71, 1, 2, 3);
+  const files = new Map([["docs/nested/readme.md", text], ["docs/nested/images/diagram.png", bytes]]);
+  const { root, run, sidecar, dispose } = await setup(t, { path: "docs/nested/readme.md", files });
+  await run("editor.markdown.toggle");
+  assert.deepEqual(sidecar.sent.filter((body) => body.operation === "readBytes").map((body) => body.path), ["docs/nested/images/diagram.png"]);
+  const image = root.querySelector("img.cm-md-image");
+  assert.ok(image);
+  const objectUrl = image.getAttribute("src");
+  assert.match(objectUrl, /^blob:/);
+  const response = await fetch(objectUrl);
+  assert.equal(response.headers.get("content-type"), "image/png");
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()), bytes);
+  assert.equal(run("editor.read"), text);
+  await run("editor.markdown.toggle");
+  assert.equal(root.querySelector("img.cm-md-image"), null);
+  await assert.rejects(fetch(objectUrl));
+  await run("editor.markdown.toggle");
+  const secondUrl = root.querySelector("img.cm-md-image").getAttribute("src");
+  await dispose();
+  await assert.rejects(fetch(secondUrl));
+});
+
+
+
+test("Markdown image URLs refresh after edits and reloads", async (t) => {
+  const text = "![diagram](images/first.png)\n";
+  const first = Uint8Array.of(1, 2, 3, 4);
+  const second = Uint8Array.of(5, 6, 7, 8);
+  const reloaded = Uint8Array.of(9, 10, 11, 12);
+  const files = new Map([["docs/nested/readme.md", text], ["docs/nested/images/first.png", first], ["docs/nested/images/second.png", second]]);
+  const { root, run, sidecar, dispose } = await setup(t, { path: "docs/nested/readme.md", files });
+  await run("editor.markdown.toggle");
+  const firstUrl = root.querySelector("img.cm-md-image").getAttribute("src");
+  const from = text.indexOf("images/first.png");
+  run("editor.edit", { changes: [{ from, to: from + "images/first.png".length, insert: "images/second.png" }] });
+  await settle();
+  const secondUrl = root.querySelector("img.cm-md-image").getAttribute("src");
+  assert.notEqual(secondUrl, firstUrl);
+  assert.deepEqual(new Uint8Array(await (await fetch(secondUrl)).arrayBuffer()), second);
+  await assert.rejects(fetch(firstUrl));
+  assert.equal(run("editor.read"), text.replace("images/first.png", "images/second.png"));
+  await run("editor.save");
+  files.set("docs/nested/images/second.png", reloaded);
+  await run("editor.reload");
+  await settle();
+  const reloadedUrl = root.querySelector("img.cm-md-image").getAttribute("src");
+  assert.notEqual(reloadedUrl, secondUrl);
+  assert.deepEqual(new Uint8Array(await (await fetch(reloadedUrl)).arrayBuffer()), reloaded);
+  await assert.rejects(fetch(secondUrl));
+  await dispose();
+  await assert.rejects(fetch(reloadedUrl));
+  assert.deepEqual(sidecar.sent.filter((body) => body.operation === "readBytes").map((body) => body.path), [
+    "docs/nested/images/first.png", "docs/nested/images/second.png", "docs/nested/images/second.png",
+  ]);
+});
+
+test("missing relative Markdown images fail the toggle visibly without changing source", async (t) => {
+  const text = "![missing](assets/missing.png)\n";
+  const { run, reports, sidecar, files } = await setup(t, { path: "docs/readme.md", files: new Map([["docs/readme.md", text]]) });
+  await assert.rejects(run("editor.markdown.toggle"), /no such file: docs\/assets\/missing\.png/);
+  assert.deepEqual(sidecar.sent.filter((body) => body.operation === "readBytes").map((body) => body.path), ["docs/assets/missing.png"]);
+  assert.match(reports.error.at(-1), /이미지를 불러오지 못했습니다.*missing\.png/);
+  assert.equal(run("editor.read"), text);
+  assert.equal(files.get("docs/readme.md"), text);
+});
+
+
+
+test("a partial Markdown image read failure revokes earlier Blob URLs", async (t) => {
+  const created = [];
+  const revoked = [];
+  const create = URL.createObjectURL;
+  const revoke = URL.revokeObjectURL;
+  URL.createObjectURL = (blob) => { const url = create.call(URL, blob); created.push(url); return url; };
+  URL.revokeObjectURL = (url) => { revoked.push(url); revoke.call(URL, url); };
+  t.after(() => { URL.createObjectURL = create; URL.revokeObjectURL = revoke; });
+  const text = "![available](images/first.png) ![missing](images/missing.png)";
+  const files = new Map([["docs/readme.md", text], ["docs/images/first.png", Uint8Array.of(1, 2, 3)]]);
+  const { root, run } = await setup(t, { path: "docs/readme.md", files });
+  await assert.rejects(run("editor.markdown.toggle"), /no such file: docs\/images\/missing\.png/);
+  assert.equal(created.length, 1);
+  assert.deepEqual(revoked, created);
+  assert.equal(root.querySelector("img.cm-md-image"), null);
+  await assert.rejects(fetch(created[0]));
+});
+
+
+
+
+
+test("malformed readBytes base64 is surfaced instead of silently omitting an image", async (t) => {
+  const text = "![diagram](assets/diagram.png)\n";
+  const { run, reports, sidecar } = await setup(t, { path: "docs/readme.md", files: new Map([["docs/readme.md", text]]) });
+  const send = sidecar.send.bind(sidecar);
+  sidecar.send = async (surface, body) => {
+    if (body.operation === "readBytes") return sidecar.report({ id: body.id, data: "%%%", version: "bad" });
+    return send(surface, body);
+  };
+  await assert.rejects(run("editor.markdown.toggle"), /invalid base64/);
+  assert.match(reports.error.at(-1), /이미지를 불러오지 못했습니다.*invalid base64/);
+  assert.equal(run("editor.read"), text);
+});
+
+test("a denied relative Markdown image read is surfaced", async (t) => {
+  const text = "![private](assets/private.png)\n";
+  const { run, reports, sidecar } = await setup(t, { path: "docs/readme.md", files: new Map([["docs/readme.md", text]]) });
+  const send = sidecar.send.bind(sidecar);
+  sidecar.send = async (surface, body) => {
+    if (body.operation === "readBytes") return sidecar.report({ id: body.id, error: "permission denied: docs/assets/private.png" });
+    return send(surface, body);
+  };
+  await assert.rejects(run("editor.markdown.toggle"), /permission denied/);
+  assert.match(reports.error.at(-1), /이미지를 불러오지 못했습니다.*permission denied/);
+  assert.equal(run("editor.read"), text);
+});
+
+test("relative Markdown image paths cannot escape the project root", async (t) => {
+  const text = "![escape](../../../outside.png)";
+  const { run, sidecar } = await setup(t, { path: "docs/nested/readme.md", files: new Map([["docs/nested/readme.md", text]]) });
+  await assert.rejects(run("editor.markdown.toggle"), /leaves the project root/);
+  assert.equal(sidecar.sent.some((body) => body.operation === "readBytes"), false);
 });
