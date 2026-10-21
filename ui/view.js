@@ -1,10 +1,9 @@
 // The editor view page (core docs/spec/plugins.md#view-surfaces): the host serves it at sok://editor/ui/index.html in the
 // web view of the surface, and injects the view channel script and the theme script before this page runs. The page builds
 // the surface context of its view over the view channel (@soksak/plugin-api/view) and mounts the editor module into a
-// shadow root of the page. The context entries whose call route the core branch does not serve yet are the waiting items
-// of E24 in docs/features.md: the page sends the tab reports as the calls tab.title, tab.modified, tab.error and tab.keep,
-// the event records as the call runtime.log, and reads the start values of the surface (the tab, its params, its project)
-// from window.sokSurface, which the host sets before the page runs.
+// shadow root of the page. The tab reports and the event records are the served calls tab.title, tab.modified, tab.error,
+// tab.keep and runtime.log (core docs/spec/native-surfaces.md#view-surfaces, view calls). The page reads the start values
+// of the surface (the tab, its params, its project) from window.sokSurface, which the host sets before the page runs.
 import { INSTALLED_PLUGINS, MANIFEST, createExpose, resolveContributions } from "@soksak/plugin-api";
 import { createViewBridge } from "@soksak/plugin-api/view";
 import { mount } from "./editor.js";
@@ -118,8 +117,8 @@ export function createViewContext({ bridge, start, files, report }) {
         }),
         command: (name, params) => calls.request(name, params),
         // The transport of the records: the emit sites of the plugin are the callers of ui/events.js. The fields are
-        // built before the send, because a call carries values and not builders, and the level gate of the route does
-        // not exist yet (E24.2), so the fields are built while the level is off too.
+        // built before the send, because a call carries values and not builders; the level gate of the main page applies
+        // at delivery (core docs/spec/native-surfaces.md#view-surfaces, view calls), so a builder runs while the level is off.
         log: Object.fromEntries(LOG_LEVELS.map((level) => [level,
           (event, fields) => send("runtime.log", { level, event, fields: typeof fields === "function" ? fields() : fields })])),
         theme: runtime.theme,

@@ -1,6 +1,6 @@
 // The host side of the view channel for the tests of the view page: it runs the injected view-start script (the file the
 // host stages from @soksak/plugin-api into each view configuration) in a fresh window, serves the call route of a view
-// (core packages/workbench/view-calls.js, with the call forms that the waiting items of E24 record), and sends the
+// (the view calls of core docs/spec/native-surfaces.md#view-surfaces), and sends the
 // requests of core to the commands of the view. The page imports with a distinct query per case, so each case mounts a
 // fresh page into its own window.
 import { readFileSync } from "node:fs";
