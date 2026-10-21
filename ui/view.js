@@ -117,8 +117,9 @@ export function createViewContext({ bridge, start, files, report }) {
           onFailure: (surface, fn) => runtime.sidecar().onFailure(surface, fn),
         }),
         command: (name, params) => calls.request(name, params),
-        // events: forwarded; the fields are built before the send, because a call carries values and not builders. The
-        // level gate of the route does not exist yet (E24.2), so the fields are built while the level is off too.
+        // The transport of the records: the emit sites of the plugin are the callers of ui/events.js. The fields are
+        // built before the send, because a call carries values and not builders, and the level gate of the route does
+        // not exist yet (E24.2), so the fields are built while the level is off too.
         log: Object.fromEntries(LOG_LEVELS.map((level) => [level,
           (event, fields) => send("runtime.log", { level, event, fields: typeof fields === "function" ? fields() : fields })])),
         theme: runtime.theme,
