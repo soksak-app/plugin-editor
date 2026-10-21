@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- E24.4: The view page answers the exposure requests that core forwards to its surface (`status.get`, `status.watch`, `command.run` and the others) from its own values through `exposureReply`.
 - E24.3: The view page takes the declarations of its exposure from the start values `window.sokSurface` that the host injects, and refuses start values without them.
 - E24.6, E24.2: `@soksak/plugin-api` comes from core main, which holds the view mechanism; core serves the tab reports and the event log of a view in the forms that the page sends, and the level gate applies at delivery in the main page.
 - E24.5: The record check of the dependency applies the census exclude (core F224); the lockfile pins `@soksak/plugin-api` to the branch commit that carries it, and `make test` passes whole with the vendor files committed.

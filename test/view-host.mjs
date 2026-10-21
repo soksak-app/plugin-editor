@@ -25,9 +25,10 @@ const settle = (rounds = 6) => {
  * Creates one window with the view page of one case mounted: the start values, the injected view-start script, the host
  * side of the sok-view channel, and the fetch of the core root files. The globals of the test process serve the window.
  *
- * Returns { window, sidecar, reports, logs, run, post, settle }. reports holds the tab reports, the state writes, the
- * registrations and the native calls that the page sent; logs holds the runtime.log records; run(name, params) sends one
- * command request of core to the page; post(message) posts one host message to the page.
+ * Returns { window, sidecar, reports, logs, run, post, expose, settle }. reports holds the tab reports, the state writes, the
+ * registrations, the native calls and the event subscriptions that the page sent; logs holds the runtime.log records;
+ * run(name, params) sends one command request of core to the page; expose(method, params) forwards one exposure request
+ * and returns its id; post(message) posts one host message to the page.
  */
 export function createViewPage(t, caseId, { params = { path: "src/main.js" }, stored = null,
   files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), scheme = "dark",
@@ -35,7 +36,7 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
   const { window } = createWindow(`sok://editor/ui/index.html?case=${caseId}`);
   useWindow(window);
   const sidecar = fakeFiles(files);
-  const reports = { title: [], modified: [], error: [], keep: [], state: [], registered: [], native: [], placed: [] };
+  const reports = { title: [], modified: [], error: [], keep: [], state: [], registered: [], native: [], placed: [], subscribed: [] };
   const logs = [];
   const received = [];
   const pending = new Map();
@@ -75,6 +76,7 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
         case "tab.error": reports.error.push(params); return null;
         case "tab.keep": reports.keep.push(params); return null;
         case "runtime.log": logs.push(params); return null;
+        case "runtime.native.on": subscribed(params.name); return null;
         case "runtime.sidecar.send":
           return sidecar.send(params.id, params.body, params.cids ?? []);
         case "runtime.sidecar.on":
@@ -110,6 +112,23 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
     }).then((result) => reply(id, { result: result ?? null }), (error) => reply(id, { error: { code: -32000, message: String(error?.message ?? error) } }));
   };
 
+  // The host events of the surface that the page subscribed to through runtime.native.on, as the main page keeps them.
+  const subscriptions = new Set();
+  const subscribed = (name) => {
+    reports.subscribed.push(name);
+    subscriptions.add(name);
+  };
+  // Forwards one exposure request of core to the view as the host event exposure-request of its surface; a view that did
+  // not subscribe to the event gets none, as the main page relays it only through the subscription.
+  let nextRequest = 0;
+  const expose = (method, paramsOfRequest) => {
+    const id = `request-${++nextRequest}`;
+    if (subscriptions.has("exposure-request")) {
+      post({ sok: 1, event: "exposure-request", data: { id, surface: "editor-1", method, params: paramsOfRequest } });
+    }
+    return id;
+  };
+
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (input) => {
     const url = String(input);
@@ -134,5 +153,5 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
     pending.set(id, { resolve, reject });
     post({ sok: 1, id, command: name, params: paramsOfRun });
   });
-  return { window, sidecar, files, reports, logs, received, run, post, settle };
+  return { window, sidecar, files, reports, logs, received, run, post, expose, settle };
 }

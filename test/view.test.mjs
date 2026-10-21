@@ -61,6 +61,17 @@ test("the view page opens the file of its tab through the view channel", async (
   await settle();
 });
 
+test("the view page answers a forwarded exposure request from its own values", async (t) => {
+  const { reports, expose, settle } = createViewPage(t, "exposure");
+  await import("../ui/view.js?case=exposure");
+  await settle();
+  const id = expose("status.get", { name: "editor.document" });
+  await settle();
+  const replies = reports.native.filter(([name, payload]) => name === "exposureReply" && payload.id === id);
+  assert.equal(replies.length, 1, `the page answered the exposure request ${id} once`);
+  assert.equal(replies[0][1].result.path, "src/main.js");
+});
+
 test("an edit of the view saves through the sidecar and reports the tab state", async (t) => {
   const { reports, run, settle, sidecar } = createViewPage(t, "save");
   await import("../ui/view.js?case=save");

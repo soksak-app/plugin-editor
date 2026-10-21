@@ -41,52 +41,50 @@ export async function loadFiles() {
 }
 
 /**
- * The surface context of the view of one page, over the view bridge. The entries whose call route the core branch serves
- * run through it (tab state, sidecar, commands, core commands, theme); the entries of the waiting items of E24 travel in
- * the forms recorded there.
+ * The surface context of the view of one page, over the view bridge: the tab reports, the tab state, the sidecar, the
+ * commands, the core commands, the event records, the theme and the exposure run through the view calls, events and
+ * commands of core docs/spec/native-surfaces.md#view-surfaces.
  *
  *     bridge    createViewBridge() of @soksak/plugin-api/view over the sok-view handler of the view
  *     start     the frozen start values {surface, params, origin, project, declarations}
  *     files     the resolved items of the installed record, from loadFiles()
  *     report    report(text): writes one record to the application log
  *
- * Returns {context, statuses}. statuses holds the read function of every status that the page registered, because the
- * route that carries the values of the statuses of a view to core serves no pull yet (E24.4).
+ * Returns {context}.
  */
 export function createViewContext({ bridge, start, files, report }) {
   if (typeof report !== "function") throw new TypeError("createViewContext requires the report function");
-  const { calls, commands, runtime } = bridge;
+  const { calls, commands, runtime, exposure: relay } = bridge;
   // The fire-and-forget calls of the context: a refusal of the route is a record, not a lost report.
   const send = (command, params) => calls.request(command, params)
     .then(undefined, (error) => report(`view call ${command}: ${error?.message ?? error}`));
-  const statuses = new Map();
   // The connected items of the point `editor.<point>`: the module of each item is served from the core root (grant rule 4).
   const contributions = (point) => files
     .filter((entry) => entry.state === "connected" && entry.point === `editor.${point}`)
     .map(({ plugin, item, module }) => ({
       plugin, item, module: `${CORE_ROOT}${module}`,
-      // Core marks an invalid item for the provider; the view of it has no route yet (E24.4), so the page records the reason.
+      // A DOM surface marks an invalid item for its provider through core; the view calls declare no such mark (core
+      // docs/spec/plugins.md#view-surfaces gives a view only the connected items), so the page records the reason.
       fail: (reason) => report(`contribution of ${plugin} to editor.${point} is invalid: ${reason}`),
     }));
   // The exposure of the page: the local entries answer the binds and the exposure requests, and each registration goes
   // through the channel. A command is declared by commands.register of the bridge, which registers the same handler for
-  // the requests of core, so the local registration sends no declaration of its own.
-  let answerRequest = null;
+  // the requests of core, so the local registration sends no declaration of its own. Each forwarded exposure request of the
+  // surface arrives as the host event exposure-request and is answered through exposureReply (core
+  // docs/spec/native-surfaces.md#view-surfaces, view exposure).
   const exposure = createExpose({
-    register: (kind, name) => kind === "command"
-      ? Promise.resolve()
-      : calls.request("runtime.native.call", { name: "registered", payload: { kind, name } }).then(() => undefined),
-    onRequest: (answer) => {
-      // The exposure requests of the surface (status.get, status.watch, command.run) reach the view when core forwards
-      // them (E24.4); the page keeps the answerer so that it can reply through exposureReply then.
-      answerRequest = answer;
-      return () => { answerRequest = null; };
-    },
-    reply: (id, payload) => send("runtime.native.call", { name: "exposureReply", payload: { id, ...payload } }),
+    register: (kind, name) => kind === "command" ? Promise.resolve() : relay.register(kind, name).then(() => undefined),
+    onRequest: (answer) => runtime.native.on("exposure-request", ({ id, surface, method, params }) => {
+      if (surface !== start.surface) {
+        report(`view editor: exposure request ${id} names surface ${surface}, not ${start.surface}`);
+        return;
+      }
+      answer({ id, method, params });
+    }),
+    reply: relay.reply,
     report,
   }, () => start.declarations);
   return {
-    statuses,
     context: {
       surfaceId: start.surface,
       project: start.project,
@@ -121,10 +119,7 @@ export function createViewContext({ bridge, start, files, report }) {
         theme: runtime.theme,
       },
       exposure: {
-        status: (name, read, subscribe) => {
-          statuses.set(name, read);
-          return exposure.status(name, read, subscribe);
-        },
+        status: (name, read, subscribe) => exposure.status(name, read, subscribe),
         command: (name, run) => Promise.all([exposure.command(name, run), commands.register(name, run)]).then(() => undefined),
         dom: (name, element) => exposure.dom(name, element),
         bind: exposure.bind,
