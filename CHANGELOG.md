@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- E24.3: The view page takes the declarations of its exposure from the start values `window.sokSurface` that the host injects, and refuses start values without them.
 - E24.6, E24.2: `@soksak/plugin-api` comes from core main, which holds the view mechanism; core serves the tab reports and the event log of a view in the forms that the page sends, and the level gate applies at delivery in the main page.
 - E24.5: The record check of the dependency applies the census exclude (core F224); the lockfile pins `@soksak/plugin-api` to the branch commit that carries it, and `make test` passes whole with the vendor files committed.
 - E24: The surface moves to a view: `plugin.json` declares the composition `{kind: "view", page: "ui/index.html"}`, the view page builds its surface context over the view bridge of `@soksak/plugin-api/view`, and `ui/editor.js` keeps its behavior. `@soksak/plugin-api` comes from the core branch `feat/view-kind-F212.7`; the release follows the core release. The tab reports, the event log, the start values and the status route of a view wait for the core routes (E24.2 to E24.4).

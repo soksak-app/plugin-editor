@@ -114,14 +114,14 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
   globalThis.fetch = async (input) => {
     const url = String(input);
     if (url.endsWith("installed-plugins.json")) return { ok: true, status: 200, json: async () => ({ plugins: [] }) };
-    if (url === "/plugin.json" || url.endsWith("sok://editor/plugin.json")) {
-      return { ok: true, status: 200, json: async () => MANIFEST };
-    }
-    throw new Error(`the page fetched ${url}, which the test host serves no document for`);
+    // The origin of the view serves no other document to the test, so the page gets the status of a missing file.
+    return { ok: false, status: 404, json: async () => { throw new Error(`${url} is not served`); } };
   };
   t.after(() => { globalThis.fetch = realFetch; });
 
-  window.sokSurface = Object.freeze({ surface: "editor-1", params, origin: { directory: null }, project: { root: "/project" } });
+  // The start values as the host injects them: declarations are the exposes of the plugin (core docs/spec/native-surfaces.md#view-surfaces).
+  window.sokSurface = Object.freeze({ surface: "editor-1", params, origin: Object.freeze({ directory: null }),
+    project: Object.freeze({ root: "/project" }), declarations: MANIFEST.exposes });
   window.eval(VIEW_START);
   // The theme script of the view ran before the page, and the host sends the current theme after the ready message; the
   // test posts it before the page attaches, so it arrives through the queue of the injected script (the first messages).

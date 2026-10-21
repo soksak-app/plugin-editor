@@ -27,6 +27,22 @@ test("the view page refuses to mount without the start values of the surface", a
     /the view of editor has no start values: the host provides window\.sokSurface/);
 });
 
+test("the view page refuses to mount without the declarations of the start values", async (t) => {
+  const host = createViewPage(t, "no-declarations");
+  host.window.sokSurface = Object.freeze({ surface: "editor-1", params: null, origin: null, project: null });
+  await assert.rejects(import("../ui/view.js?case=no-declarations"),
+    /window\.sokSurface \{surface, params, origin, project, declarations\}/);
+});
+
+test("the view page registers its exposure from the declarations of the start values", async (t) => {
+  const { reports, settle } = createViewPage(t, "declarations");
+  await import("../ui/view.js?case=declarations");
+  await settle();
+  const statuses = reports.native.filter(([name, payload]) => name === "registered" && payload.kind === "status")
+    .map(([, payload]) => payload.name);
+  assert.deepEqual(statuses.toSorted(), manifest.exposes.status.map((entry) => entry.name).toSorted());
+});
+
 test("the view page opens the file of its tab through the view channel", async (t) => {
   const { reports, logs, run, settle, sidecar } = createViewPage(t, "open");
   await import("../ui/view.js?case=open");

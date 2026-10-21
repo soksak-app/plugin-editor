@@ -4,18 +4,22 @@
 // shadow root of the page. The tab reports and the event records are the served calls tab.title, tab.modified, tab.error,
 // tab.keep and runtime.log (core docs/spec/native-surfaces.md#view-surfaces, view calls). The page reads the start values
 // of the surface (the tab, its params, its project) from window.sokSurface, which the host sets before the page runs.
-import { INSTALLED_PLUGINS, MANIFEST, createExpose, resolveContributions } from "@soksak/plugin-api";
+import { INSTALLED_PLUGINS, createExpose, resolveContributions } from "@soksak/plugin-api";
 import { createViewBridge } from "@soksak/plugin-api/view";
 import { mount } from "./editor.js";
 
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"];
 const CORE_ROOT = "sok://core";
 
-/** The frozen start values of the surface: the host of the view sets them before the page runs (E24.3). */
+/**
+ * The frozen start values of the surface, which the host of the view sets before the page runs (core
+ * docs/spec/native-surfaces.md#view-surfaces, start values): declarations are the exposes of the plugin.
+ */
 export function startValues(windowRef = window) {
   const start = windowRef.sokSurface;
-  if (start === null || typeof start !== "object" || typeof start.surface !== "string" || start.surface === "") {
-    throw new Error(`the view of ${windowRef.location.host} has no start values: the host provides window.sokSurface {surface, params, origin, project} before the page runs`);
+  if (start === null || typeof start !== "object" || typeof start.surface !== "string" || start.surface === ""
+    || start.declarations === null || typeof start.declarations !== "object") {
+    throw new Error(`the view of ${windowRef.location.host} has no start values: the host provides window.sokSurface {surface, params, origin, project, declarations} before the page runs`);
   }
   return start;
 }
@@ -42,7 +46,7 @@ export async function loadFiles() {
  * the forms recorded there.
  *
  *     bridge    createViewBridge() of @soksak/plugin-api/view over the sok-view handler of the view
- *     start     the frozen start values {surface, params, origin, project}
+ *     start     the frozen start values {surface, params, origin, project, declarations}
  *     files     the resolved items of the installed record, from loadFiles()
  *     report    report(text): writes one record to the application log
  *
@@ -80,14 +84,7 @@ export function createViewContext({ bridge, start, files, report }) {
     },
     reply: (id, payload) => send("runtime.native.call", { name: "exposureReply", payload: { id, ...payload } }),
     report,
-  }, async () => {
-    // The page of a view reads its own plugin.json from its origin (core docs/spec/plugins.md#view-surfaces, Page).
-    const response = await fetch(`/${MANIFEST}`);
-    if (!response.ok) throw new Error(`failed to load /${MANIFEST}: ${response.status}`);
-    const manifest = await response.json();
-    // default: exposes is an optional field of plugin.json; a plugin without it registers nothing.
-    return manifest.exposes ?? {};
-  });
+  }, () => start.declarations);
   return {
     statuses,
     context: {

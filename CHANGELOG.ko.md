@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- E24.3: view page는 host가 주입하는 시작 값 `window.sokSurface`에서 exposure의 선언을 얻고, 그것이 없는 시작 값을 거부한다.
 - E24.6, E24.2: `@soksak/plugin-api`는 view 장치를 가진 core main에서 온다. core는 view의 탭 보고와 이벤트 로그를 page가 보내는 형태로 서빙하고, level gate는 main page에서 전달 시점에 적용된다.
 - E24.5: 의존성의 record 검사가 census 제외를 적용한다(core F224). lockfile이 `@soksak/plugin-api`를 그것을 실은 branch commit에 고정하고, `make test`가 vendor 파일이 커밋된 채 온전히 통과한다.
 - E24: 표면이 view로 옮겨진다. `plugin.json`은 composition `{kind: "view", page: "ui/index.html"}`을 선언하고, view page는 `@soksak/plugin-api/view`의 view bridge 위에서 자신의 surface 문맥을 만들며, `ui/editor.js`는 동작을 유지한다. `@soksak/plugin-api`는 core branch `feat/view-kind-F212.7`에서 오고, release는 core release를 따른다. view의 탭 보고, 이벤트 로그, 시작 값과 status 경로는 core의 경로를 기다린다(E24.2~E24.4).
