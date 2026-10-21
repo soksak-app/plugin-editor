@@ -7,6 +7,7 @@
 import { INSTALLED_PLUGINS, createExpose, resolveContributions } from "@soksak/plugin-api";
 import { createViewBridge } from "@soksak/plugin-api/view";
 import { mount } from "./editor.js";
+import { createEmitter } from "./events.js";
 
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"];
 const CORE_ROOT = "sok://core";
@@ -24,11 +25,24 @@ export function startValues(windowRef = window) {
   return start;
 }
 
-/** The reporter of this page: each record is written to the application log through the host report of the surface. */
-function createReporter(calls) {
-  return (text) => calls.request("runtime.native.call", { name: "report", payload: text })
-    .then(undefined, (error) => Promise.reject(new Error(`report of a page record failed: ${error?.message ?? error}`)))
-    .catch((error) => console.error(error.message));
+/**
+ * The levels of runtime.log over the served call runtime.log {level, event, fields}. The fields are built before the send,
+ * because a call carries values and not builders; the level gate of the main page applies at delivery (core
+ * docs/spec/native-surfaces.md#view-surfaces, view calls), so a builder runs while the level is off.
+ */
+export function createLog(calls) {
+  return Object.fromEntries(LOG_LEVELS.map((level) => [level, (event, fields) => calls.request("runtime.log",
+    { level, event, fields: typeof fields === "function" ? fields() : fields })
+    // A refusal of the log route leaves the page no route to the application log, so the console of the view is the
+    // place left for it.
+    .then(() => undefined, (error) => console.error(`runtime.log ${event}: ${error?.message ?? error}`))]));
+}
+
+/** The reporter of this page: report(where, error) stores the error as the event plugin.editor.page.error. */
+function createReporter(log) {
+  const emitEvent = createEmitter({ log }, "editor");
+  return (where, error) => emitEvent("error", "plugin.editor.page.error",
+    { where, error: String(error?.message ?? error).slice(0, 1024) });
 }
 
 /** The connected items of the extension points of this plugin, from the installed record of the core root. */
@@ -48,11 +62,12 @@ export async function loadFiles() {
  *     bridge    createViewBridge() of @soksak/plugin-api/view over the sok-view handler of the view
  *     start     the frozen start values {surface, params, origin, project, declarations}
  *     files     the resolved items of the installed record, from loadFiles()
- *     report    report(text): writes one record to the application log
+ *     log       the levels of runtime.log, from createLog()
+ *     report    report(text): stores one error of the context
  *
  * Returns {context}.
  */
-export function createViewContext({ bridge, start, files, report }) {
+export function createViewContext({ bridge, start, files, log, report }) {
   if (typeof report !== "function") throw new TypeError("createViewContext requires the report function");
   const { calls, commands, runtime, exposure: relay } = bridge;
   // The fire-and-forget calls of the context: a refusal of the route is a record, not a lost report.
@@ -111,11 +126,8 @@ export function createViewContext({ bridge, start, files, report }) {
           onFailure: (surface, fn) => runtime.sidecar().onFailure(surface, fn),
         }),
         command: (name, params) => calls.request(name, params),
-        // The transport of the records: the emit sites of the plugin are the callers of ui/events.js. The fields are
-        // built before the send, because a call carries values and not builders; the level gate of the main page applies
-        // at delivery (core docs/spec/native-surfaces.md#view-surfaces, view calls), so a builder runs while the level is off.
-        log: Object.fromEntries(LOG_LEVELS.map((level) => [level,
-          (event, fields) => send("runtime.log", { level, event, fields: typeof fields === "function" ? fields() : fields })])),
+        // The transport of the records: the emit sites of the plugin are the callers of ui/events.js.
+        log,
         theme: runtime.theme,
       },
       exposure: {
@@ -144,34 +156,37 @@ function applyTheme(theme) {
   }
 }
 
-/** The errors and unhandled rejections of this page are written to the application log when they occur. */
+/** The errors and unhandled rejections of this page are stored when they occur, as where page and rejection. */
 function installPageErrors(report) {
-  for (const [type, pick] of [["error", (event) => event.error], ["unhandledrejection", (event) => event.reason]]) {
-    addEventListener(type, (event) => {
-      const error = pick(event);
-      report(`view editor: ${error?.message ?? String(error)}`);
-    });
+  for (const [type, where, pick] of [["error", "page", (event) => event.error], ["unhandledrejection", "rejection", (event) => event.reason]]) {
+    addEventListener(type, (event) => report(where, pick(event)));
   }
 }
 
 // The page: the start values, the bridge over the injected channel, the theme of the document, and the mount into the
 // shadow root of the page body.
 const start = startValues();
+// The reports of the bridge: each loss of a call or a snapshot (timeout, late-reply, peer-lost, skipped, stalled) is stored as
+// an error of the calls. open-calls is the count of the open calls, a state that changes with every call and no loss, so the
+// page stores none of it; storing it through a call would report a new count without end. The reporter needs the calls of
+// the bridge, so a loss before it exists waits in losses.
 const losses = [];
-const bridge = createViewBridge({ handler: window.webkit.messageHandlers["sok-view"], report: (event) => losses.push(event) });
-const report = createReporter(bridge.calls);
-for (const event of losses.splice(0)) {
-  report(`view calls of editor: ${event.kind} ${event.status}${event.reason === undefined ? "" : `: ${event.reason}`}`);
-}
+let reportLoss = (event) => losses.push(event);
+const bridge = createViewBridge({ handler: window.webkit.messageHandlers["sok-view"],
+  report: (event) => { if (event.kind !== "open-calls") reportLoss(event); } });
+const log = createLog(bridge.calls);
+const report = createReporter(log);
+reportLoss = ({ kind, plugin: _plugin, ...fields }) => report("calls", `${kind} ${JSON.stringify(fields)}`);
+for (const event of losses.splice(0)) reportLoss(event);
 installPageErrors(report);
 if (window.sokTheme) applyTheme(window.sokTheme);
 bridge.runtime.theme(applyTheme);
 const files = await loadFiles();
-const { context } = createViewContext({ bridge, start, files, report });
+const { context } = createViewContext({ bridge, start, files, log, report: (text) => report("context", text) });
 const host = document.body.appendChild(document.createElement("div"));
 host.style.cssText = "height:100%";
 try {
   await mount(host.attachShadow({ mode: "open" }), context);
 } catch (error) {
-  report(`view editor: mount failed: ${error?.message ?? error}`);
+  report("mount", error);
 }

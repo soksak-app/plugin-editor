@@ -96,11 +96,13 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
             reports.native.push(["registered", payload]);
             return null;
           }
-          if (name === "exposureReply" || name === "report") {
+          if (name === "exposureReply") {
             reports.native.push([name, payload]);
             return null;
           }
-          throw new Error(`the page called the native ${name}`);
+          // The other names are host calls of the surface; the test host serves none of them, and a name that no host
+          // serves is refused as the host refuses it.
+          throw new Error(`unknown surface call: ${name}`);
         }
         default:
           if (command.startsWith("core.")) {

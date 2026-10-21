@@ -52,6 +52,11 @@
       "fields": { "path": "string|null", "formatter": "string|null", "changed": "boolean", "micros": "number", "ok": "boolean", "error?": "string" },
       "description": "One run of the formatter of editor.formatter for the file; formatter is the plugin that contributed it."
     },
+    "plugin.editor.page.error": {
+      "layer": "plugin", "class": "lifecycle", "level": "error",
+      "fields": { "where": "string", "error": "string" },
+      "description": "An error of the view page: where is page (an uncaught error), rejection (an unhandled rejection), mount (the mount of the editor failed), calls (a call of the view was lost) or context (a call of the surface context was refused)."
+    },
     "plugin.editor.contribution.failed": {
       "layer": "plugin", "class": "lifecycle", "level": "warn",
       "fields": { "point": "string", "plugin": "string", "error": "string" },

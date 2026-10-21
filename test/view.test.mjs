@@ -72,6 +72,16 @@ test("the view page answers a forwarded exposure request from its own values", a
   assert.equal(replies[0][1].result.path, "src/main.js");
 });
 
+test("an uncaught error of the view page is an error event of the plugin", async (t) => {
+  const { window, logs, settle } = createViewPage(t, "page-error");
+  await import("../ui/view.js?case=page-error");
+  await settle();
+  window.dispatchEvent(new window.ErrorEvent("error", { error: new Error("boom"), message: "boom" }));
+  await settle();
+  assert.deepEqual(logs.filter((entry) => entry.event === "page.error"),
+    [{ level: "error", event: "page.error", fields: { where: "page", error: "boom" } }]);
+});
+
 test("an edit of the view saves through the sidecar and reports the tab state", async (t) => {
   const { reports, run, settle, sidecar } = createViewPage(t, "save");
   await import("../ui/view.js?case=save");

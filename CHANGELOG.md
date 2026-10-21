@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- E24.7: The errors of the view page and the losses of its calls are stored as the error event `plugin.editor.page.error` through `runtime.log`, instead of a host call that no surface serves.
 - E24.4: The view page answers the exposure requests that core forwards to its surface (`status.get`, `status.watch`, `command.run` and the others) from its own values through `exposureReply`.
 - E24.3: The view page takes the declarations of its exposure from the start values `window.sokSurface` that the host injects, and refuses start values without them.
 - E24.6, E24.2: `@soksak/plugin-api` comes from core main, which holds the view mechanism; core serves the tab reports and the event log of a view in the forms that the page sends, and the level gate applies at delivery in the main page.
