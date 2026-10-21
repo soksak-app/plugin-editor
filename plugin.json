@@ -5,13 +5,13 @@
   "mark": "ed",
   "icon": "<path d=\"M3 2.5h6.5L13 6v7.5H3z\"/><path d=\"M9.5 2.5V6H13M5.5 9h5M5.5 11.5h3\"/>",
   "surface": {
-    "module": "ui/editor.js",
     "unload": {
       "format": 1,
       "maxBytes": 8192
     },
     "composition": {
-      "kind": "dom"
+      "kind": "view",
+      "page": "ui/index.html"
     },
     "params": {
       "type": "object",

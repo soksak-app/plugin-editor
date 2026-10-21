@@ -1,57 +1,13 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { window } from "./dom.mjs";
+import { fakeFiles, sha } from "./fakes.mjs";
 import { createBinder } from "@soksak/plugin-api";
 
 const { mount } = await import("../ui/editor.js");
 const manifest = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.url), "utf8"));
 const declared = (kind, name) => manifest.exposes[kind].some((entry) => entry.name === name);
-const sha = (text) => createHash("sha256").update(text).digest("hex");
-
-/** A files sidecar of one surface over an in-memory file system: read, write with expect, and watch. */
-function fakeFiles(files) {
-  const listeners = new Set();
-  const sent = [];
-  const reply = (body) => queueMicrotask(() => { for (const fn of listeners) fn(body); });
-  const port = {
-    sent,
-    on: async (surface, fn) => { listeners.add(fn); return () => listeners.delete(fn); },
-    onFailure: async () => () => {},
-    async send(surface, body) {
-      sent.push(body);
-      if (body.operation === "watch") return reply({ id: body.id });
-      if (body.operation === "read") {
-        if (!files.has(body.path)) return reply({ id: body.id, error: `no such file: ${body.path}` });
-        const text = files.get(body.path);
-        const newline = /\r\n/.test(text) ? "crlf" : /\n/.test(text) ? "lf" : "none";
-        return reply({ id: body.id, text, version: sha(text), newline, bom: false });
-      }
-      if (body.operation === "readBytes") {
-        if (!files.has(body.path)) return reply({ id: body.id, error: `no such file: ${body.path}` });
-        return reply({ id: body.id, data: Buffer.from(files.get(body.path)).toString("base64"), version: sha(files.get(body.path)) });
-      }
-      if (body.operation === "write" && body.expect === null) {
-        if (files.has(body.path)) return reply({ id: body.id, error: `exists: ${body.path}` });
-        files.set(body.path, body.text);
-        return reply({ id: body.id, version: sha(body.text) });
-      }
-      if (body.operation === "write") {
-        if (sha(files.get(body.path)) !== body.expect) return reply({ id: body.id, error: `changed on disk: ${body.path}` });
-        files.set(body.path, body.text);
-        return reply({ id: body.id, version: sha(body.text) });
-      }
-      throw new Error(`unexpected operation ${body.operation}`);
-    },
-    report: (body) => reply(body),
-    change(path, text) {
-      files.set(path, text);
-      reply({ changed: path });
-    },
-  };
-  return port;
-}
 
 async function setup(t, { path = "src/main.js", params = { path }, files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark", log = [], stored = null,
   place = () => { throw new Error("the test runs no core command"); } } = {}) {
@@ -71,7 +27,7 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
     project: { root: "/project" },
     tab: { params, title: (text) => reports.title.push(text), footer() {}, directory() {}, notify() {},
       modified: (value) => reports.modified.push(value), error: (text) => reports.error.push(text),
-      state: { read: () => stored, write: (value) => reports.state.push(value) }, keep: (reason, on) => reports.keep.push([reason, on]) },
+      state: { read: async () => stored, write: (value) => reports.state.push(value) }, keep: (reason, on) => reports.keep.push([reason, on]) },
     runtime: { sidecar: () => sidecar,
       command: async (name, commandParams) => { reports.commands.push([name, commandParams]); return place(name, commandParams); },
       log: Object.fromEntries(["error", "warn", "info", "debug", "trace"].map((level) => [level, (event, fields) => logs.push({ level, event, fields: typeof fields === "function" ? fields() : fields })])),
@@ -84,7 +40,6 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
       dom(name) { assert.ok(declared("dom", name), `undeclared dom ${name}`); },
       bind: binder.bind, delegate: binder.delegate, dispose: binder.dispose,
     },
-    status: { report(phase) { assert.equal(phase, "ready"); } },
   });
   t.after(async () => { await controller.dispose(); host.remove(); });
   const run = (name, params = {}) => commands.get(name)(params);

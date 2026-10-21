@@ -101,7 +101,7 @@ export async function mount(root, context) {
   // The tab state {path, selection, scroll} restores the file, the cursor and the scroll position of a restored or restarted
   // tab (core docs/spec/plugins.md#memory-saver); its path follows the first save of a blank document, which params do not.
   // default: a new tab has no tab state and reads null.
-  const stored = context.tab.state.read();
+  const stored = await context.tab.state.read();
   if (stored !== null) checkTabState(stored, context.surfaceId);
   // default: a tab without params.path holds a blank document; core.file.open always passes {path}.
   let path = stored !== null ? stored.path : context.tab.params?.path ?? null;
@@ -512,15 +512,12 @@ export async function mount(root, context) {
 
   // The scheme of the application theme selects the token colors; the frame takes the other colors from the theme tokens.
   frame.dataset.scheme = "dark";
-  // default: a runtime without a native host has no theme listener, and the editor keeps the dark token colors.
-  const subscription = typeof context.runtime.theme === "function"
-    ? context.runtime.theme((value) => {
-      if (value?.scheme !== "dark" && value?.scheme !== "light") throw new Error("the theme must have scheme dark or light");
-      frame.dataset.scheme = value.scheme;
-      view.dispatch({ effects: scheme.reconfigure(EditorView.darkTheme.of(value.scheme === "dark")) });
-    })
-    : null;
-  if (subscription) await subscription.ready;
+  const subscription = context.runtime.theme((value) => {
+    if (value?.scheme !== "dark" && value?.scheme !== "light") throw new Error("the theme must have scheme dark or light");
+    frame.dataset.scheme = value.scheme;
+    view.dispatch({ effects: scheme.reconfigure(EditorView.darkTheme.of(value.scheme === "dark")) });
+  });
+  await subscription.ready;
 
   const expose = context.exposure;
   // Every declared command stores its result with its time, and a failure still reaches the caller.
@@ -621,12 +618,11 @@ export async function mount(root, context) {
     view.scrollDOM.scrollTop = stored.scroll.top;
     view.scrollDOM.scrollLeft = stored.scroll.left;
   }
-  context.status.report("ready");
   return {
     focus: () => view.focus(),
     async dispose() {
       view.scrollDOM.removeEventListener("scroll", writeTabState);
-      if (subscription) (await subscription.dispose)();
+      (await subscription.dispose)();
       fileListeners.clear();
       findListeners.clear();
       emitEvent("info", "plugin.editor.close", { path, pending: files.pending() });

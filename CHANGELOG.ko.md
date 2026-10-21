@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- E24: 표면이 view로 옮겨진다. `plugin.json`은 composition `{kind: "view", page: "ui/index.html"}`을 선언하고, view page는 `@soksak/plugin-api/view`의 view bridge 위에서 자신의 surface 문맥을 만들며, `ui/editor.js`는 동작을 유지한다. `@soksak/plugin-api`는 core branch `feat/view-kind-F212.7`에서 오고, release는 core release를 따른다. view의 탭 보고, 이벤트 로그, 시작 값과 status 경로는 core의 경로를 기다린다(E24.2~E24.4).
 - E23: 새 커밋의 작성자는 `min-0-max <max@blue.tools>`다. `.mailmap`이 이전 이름 `min-median-max`를 잇고, 게시된 커밋은 다시 쓰지 않는다.
 
 ## 0.0.4 (2026-10-19)

@@ -63,8 +63,8 @@ importers:
         specifier: 1.0.4
         version: 1.0.4
       '@soksak/plugin-api':
-        specifier: git+https://github.com/soksak-app/core.git#v0.0.18&path:/packages/plugin-api
-        version: https://codeload.github.com/soksak-app/core/tar.gz/b05f1adee49ee7d6d8061ec5be5d88c2fa7ba821#path:/packages/plugin-api
+        specifier: git+https://github.com/soksak-app/core.git#feat/view-kind-F212.7&path:/packages/plugin-api
+        version: https://codeload.github.com/soksak-app/core/tar.gz/454d7250c8ce6f8e9d98f9924364bb4a4962eb0b#path:/packages/plugin-api
       crelt:
         specifier: 1.0.7
         version: 1.0.7
@@ -392,9 +392,9 @@ packages:
   '@marijn/find-cluster-break@1.0.4':
     resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
 
-  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/b05f1adee49ee7d6d8061ec5be5d88c2fa7ba821#path:/packages/plugin-api':
-    resolution: {gitHosted: true, path: /packages/plugin-api, tarball: https://codeload.github.com/soksak-app/core/tar.gz/b05f1adee49ee7d6d8061ec5be5d88c2fa7ba821}
-    version: 0.0.18
+  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/454d7250c8ce6f8e9d98f9924364bb4a4962eb0b#path:/packages/plugin-api':
+    resolution: {gitHosted: true, integrity: sha512-sNCBk8Mz3VF9UQPWnXSfAerBRs19rRCp5vMYTcFlz5TLz6ouNCR88+D2WQovJ3ZyH9PwDKyMZon3tzHmQjHTDQ==, path: /packages/plugin-api, tarball: https://codeload.github.com/soksak-app/core/tar.gz/454d7250c8ce6f8e9d98f9924364bb4a4962eb0b}
+    version: 0.0.20
     hasBin: true
 
   bidi-js@1.1.0:
@@ -836,7 +836,7 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.4': {}
 
-  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/b05f1adee49ee7d6d8061ec5be5d88c2fa7ba821#path:/packages/plugin-api': {}
+  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/454d7250c8ce6f8e9d98f9924364bb4a4962eb0b#path:/packages/plugin-api': {}
 
   bidi-js@1.1.0:
     dependencies:
