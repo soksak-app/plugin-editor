@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- F238-c-27: 계약 사본 `test/fixtures/contract/contributions.json`은 core main을 따른다. 사본은 probe를 `hybrid` composition과 `module`로 담고 있었고, core main은 일곱 case를 `page: ui/page.html`을 가진 `view` composition으로 게시한다. Red: CORE_PLUGIN_API_DIR로 `make check`가 계약 사본 검사에서 실패하며, 사본이 게시된 `contract/contributions.json`과 다르다고 보고했다. Green: 사본이 core main 파일과 같고, contributions model replay가 model 변경 없이 9개 중 9개를 통과하며, CORE_PLUGIN_API_DIR로 `make check`가 0으로 끝난다.
 - F212.12-1-10-2: view 페이지 map이 core view import map의 screen-hash 항목을 가진다. `checkViewPage`가 이 항목을 요구한다. 시험은 다섯 항목을 단언한다. Red: `the view page carries the import map of the view and the page script` 시험이 `actual: 4, expected: 5`로 실패했고, CORE_PLUGIN_API_DIR 검사가 같은 누락 항목으로 실패했다. Green: `make test`가 141개 중 140개 통과와 1개 생략으로 통과하고, `make check`의 view page 검사가 통과한다. `make check`의 다음 검사는 fixture `test/fixtures/contract/contributions.json`이 core의 게시된 contract와 달라 실패하며, 이는 이 변경 밖이다.
 - F238-c-25: pre-push 훅이 `make push-check`를 실행한다. 이것은 ci workflow와 같이 `make test`, `make check`, push 범위의 commit message 검사를 실행한다. Red: push-check header test와 pre-push 훅 test가 실패했고, `.githooks/pre-push`는 없었다. Green: `test/makefile.test.mjs`가 4개 중 4개를 통과한다. `make check`는 고정 SDK에서 실패하며 이것은 F238-c-26이 기록한다.
 - F252-contract-editor: 복사한 계약 파일을 core origin/main에 맞췄다(`create-binder.json`, `expose.json`, `view-commands.json`이 바뀌었다). replay model은 새 함수 매개변수 bind와 command cids를 포괄하며, 노출 replay에 `inspect` 단계가 추가되었다.
