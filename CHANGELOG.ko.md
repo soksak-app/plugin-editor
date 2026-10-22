@@ -44,3 +44,4 @@
 - F238-c-23.1: `scripts/check-plugin.mjs`는 `CORE_PLUGIN_API_DIR`에서 SDK를 읽는다.
 - F238-c-13.5: view page의 exposure port에는 unregister가 없다. view channel이 registration의 제거를 게시하지 않기 때문이다. dispose는 로컬 listener, binding, 선언만 끝내며, model은 복사한 dispose case를 재생한다.
 - F238-c-13.6: page의 call은 core calls.json의 10000ms 제한과 late-reply 보고를 지킨다. model은 case 4개를 fake clock에서 재생한다.
+- E14: view page는 view에 input chain이 없으므로 sidecar send마다 명시적인 빈 correlation identifier 목록을 보낸다. `open`, `save`, `watch.start`, `watch.change` trace 이벤트는 이미 선언되고 테스트되어 있었다.

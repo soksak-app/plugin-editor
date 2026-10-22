@@ -44,3 +44,4 @@
 - F238-c-23.1: `scripts/check-plugin.mjs` loads the SDK from `CORE_PLUGIN_API_DIR`.
 - F238-c-13.5: The page's exposure port has no unregister, because the view channel publishes no removal of a registration; dispose ends the local listeners, bindings and declarations, and the model replays the copied dispose cases.
 - F238-c-13.6: The page's calls keep the 10000 millisecond limit and late-reply reporting of core calls.json; the model replays the four cases on a fake clock.
+- E14: The view page sends an explicit empty list of correlation identifiers with each sidecar send, because a view has no input chain; the trace events `open`, `save`, `watch.start` and `watch.change` were already declared and tested.
