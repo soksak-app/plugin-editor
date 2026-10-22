@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- F238-c-25: pre-push 훅이 `make push-check`를 실행한다. 이것은 ci workflow와 같이 `make test`, `make check`, push 범위의 commit message 검사를 실행한다. Red: push-check header test와 pre-push 훅 test가 실패했고, `.githooks/pre-push`는 없었다. Green: `test/makefile.test.mjs`가 4개 중 4개를 통과한다. `make check`는 고정 SDK에서 실패하며 이것은 F238-c-26이 기록한다.
 - F252-contract-editor: 복사한 계약 파일을 core origin/main에 맞췄다(`create-binder.json`, `expose.json`, `view-commands.json`이 바뀌었다). replay model은 새 함수 매개변수 bind와 command cids를 포괄하며, 노출 replay에 `inspect` 단계가 추가되었다.
 - F252-editor: 읽기 전용 파일의 저장 거부와 연결된 서식 도구가 없는 서식 실행 거부는 텍스트를 tab 오류로 표시하고 호출자에게 던진다. 잘못된 정규식은 찾기 막대에 메시지를 표시하고 `plugin.editor.find.invalid`로 기록한다. tab이 끝나거나 대체된 뒤의 Markdown 이미지 실패는 `plugin.editor.markdown.image`로 기록한다. 메시지가 없는 던져진 값은 텍스트로 표시한다. 거부된 `runtime.log` 기록은 `runtime.error {where: "log"}`로 표시하고 콘솔에도 남긴다.
 - F238-b-10-2: `test/test-script.test.mjs`는 test 명령이 `test/` 아래의 모든 test 파일을 선택함을 고정하므로, 이후의 test 하위 디렉터리가 빠질 수 없다. `make test`는 130개를 실행한다(이전 129개).

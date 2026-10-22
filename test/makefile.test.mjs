@@ -35,3 +35,15 @@ test("make check runs the pinned SDK tools (F238-c-23)", () => {
   assert.match(body, /soksak-records/);
   assert.match(body, /scripts\/check-plugin\.mjs/);
 });
+
+test("make push-check runs make test, make check and the commit message check of the pushed range (F238-c-25)", () => {
+  const header = makefile.split("\n").find((line) => line.startsWith("push-check:")) ?? "";
+  assert.match(header, /\btest\b/, header);
+  assert.match(header, /\bcheck\b/, header);
+  assert.match(recipe("push-check"), /pnpm exec soksak-commits "\$\(or \$\(RANGE\),origin\/main\.\.HEAD\)"/);
+});
+
+test("the pre-push hook runs make push-check on the pushed range (F238-c-25)", () => {
+  const hook = readFileSync(path.join(ROOT, ".githooks", "pre-push"), "utf8");
+  assert.match(hook, /make -C "\$root" push-check RANGE="\$base\.\.\$local_sha"/);
+});

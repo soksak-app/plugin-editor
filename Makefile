@@ -1,5 +1,5 @@
 # Tests, checks and packs the editor plugin (docs/features.md). pack uses the sok of core.
-.PHONY: test check pack hooks
+.PHONY: test check pack push-check hooks
 
 SOK ?= sok
 # DIAGNOSTICS=1 packs a diagnostics package that holds diagnostics.json.
@@ -28,6 +28,11 @@ check: node_modules
 pack:
 	@test -n "$(OUT)" || { echo "make pack OUT=<folder>" >&2; exit 2; }
 	$(SOK) plugin pack . $(OUT) $(PACK_FLAGS)
+
+# The checks of the ci workflow that a push needs: make test, make check, and the commit messages of the pushed range.
+# RANGE holds the commits of the pushed refs; the pre-push hook sets it, and it defaults to origin/main..HEAD.
+push-check: test check
+	pnpm exec soksak-commits "$(or $(RANGE),origin/main..HEAD)"
 
 # Sets this repository to use .githooks, which checks commit messages and records at commit time.
 hooks:
