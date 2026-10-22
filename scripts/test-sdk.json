@@ -3,14 +3,28 @@
     {
       "specifier": "@soksak/plugin-api",
       "exports": {
-        "INSTALLED_PLUGINS": { "value": "installed-plugins.json", "cases": [] },
+        "INSTALLED_PLUGINS": {
+          "value": "installed-plugins.json",
+          "cases": []
+        },
         "resolveContributions": {
           "model": "test/models/contributions.mjs",
-          "cases": [],
-          "gap": "core publishes no resolveContributions case; the model answers the empty installed record only"
+          "cases": [
+            "contributions.json"
+          ]
         },
-        "createBinder": { "model": "test/models/binder.mjs", "cases": ["create-binder.json"] },
-        "createExpose": { "model": "test/models/expose.mjs", "cases": ["expose.json"] }
+        "createBinder": {
+          "model": "test/models/binder.mjs",
+          "cases": [
+            "create-binder.json"
+          ]
+        },
+        "createExpose": {
+          "model": "test/models/expose.mjs",
+          "cases": [
+            "expose.json"
+          ]
+        }
       }
     },
     {
@@ -18,7 +32,11 @@
       "exports": {
         "createViewBridge": {
           "model": "test/models/view-bridge.mjs",
-          "cases": ["view-bridge.json", "view-native.json", "view-commands.json"]
+          "cases": [
+            "view-bridge.json",
+            "view-native.json",
+            "view-commands.json"
+          ]
         }
       }
     }

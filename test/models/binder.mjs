@@ -1,19 +1,28 @@
-// The operable elements that the audit examines (the selector of core's interactive contract).
-const OPERABLE = 'button, input, select, textarea, [role="button"], [contenteditable]:not([contenteditable="false"])';
-const TEXT_LIMIT = 40;
-
 // Behavior model of createBinder for the tests of the view page. It binds a control to a declared command, marks the
 // control with data-command, data-params, data-value and data-live, and delegates the events of a root to the controls
-// marked inside it. The conformance test replays the cases of test/fixtures/contract/create-binder.json that it covers.
-// Untraced: the `when` option and the keydown dispatch. core publishes no case for them (core F248), so they are
-// modeled here only as the view page needs them.
+// marked inside it. The conformance test replays the cases of test/fixtures/contract/create-binder.json.
+//
+// A change notification (notify) is sent for each event that a bound control or a delegated root receives, whether or not a
+// command runs, as the cases of create-binder.json show. The `when` option is a predicate or an object whose fields the
+// event must carry. After dispose, the listeners stay attached and report changes, but no command runs (create-binder.json,
+// binder.delegate.dispatches-declared-controls).
+
+/** The DOM events that a bound control reports as changes. */
+const OBSERVED = ["click", "keydown", "input", "change"];
+
+/** Whether the event passes the when option: a predicate, an object of expected fields, or no option. */
+function matches(when, event) {
+  if (when === null || when === undefined) return true;
+  if (typeof when === "function") return Boolean(when(event));
+  return Object.entries(when).every(([key, value]) => event[key] === value);
+}
 
 /**
  * Creates one binder over run(name, params, element), which runs a declared command and returns its result.
  * check(name) throws for an undeclared command. notify() is called once for each change of a binding.
  */
 export function createBinder(run, { check = () => {}, notify = () => {} } = {}) {
-  const listeners = [];
+  let disposed = false;
 
   const invoke = (command, params, element, failed) => {
     try {
@@ -25,23 +34,22 @@ export function createBinder(run, { check = () => {}, notify = () => {} } = {}) 
     }
   };
 
-  const listen = (target, type, handler) => {
-    target.addEventListener(type, handler);
-    listeners.push(() => target.removeEventListener(type, handler));
-  };
+  const listen = (target, type, handler) => target.addEventListener(type, handler);
 
   return {
     /** Binds element to command: the event (click by default) runs the command with params, or with params(event). */
-    bind(element, command, params = {}, { event = "click", when = null, failed = null } = {}) {
+    bind(element, command, params, { event = "click", when = null, failed = null } = {}) {
       check(command);
       element.setAttribute("data-command", command);
-      if (typeof params !== "function") element.setAttribute("data-params", JSON.stringify(params));
-      listen(element, event, (ev) => {
-        if (when && !when(ev)) return;
-        const values = typeof params === "function" ? params(ev) : params;
-        notify();
-        invoke(command, values, element, failed);
-      });
+      if (params !== undefined && typeof params !== "function") element.setAttribute("data-params", JSON.stringify(params));
+      for (const type of new Set([...OBSERVED, event])) {
+        listen(element, type, (ev) => {
+          notify();
+          if (disposed || type !== event || !matches(when, ev)) return;
+          const values = typeof params === "function" ? params(ev) : params ?? {};
+          invoke(command, values, element, failed);
+        });
+      }
       notify();
       return Promise.resolve();
     },
@@ -51,18 +59,19 @@ export function createBinder(run, { check = () => {}, notify = () => {} } = {}) 
      * field with data-live runs its command with the field value, and a change on any field with data-value runs it too.
      */
     delegate(root) {
-      listen(root, "click", (ev) => {
-        const control = ev.target.closest("[data-command]");
-        if (!control || !root.contains(control)) return;
-        notify();
-        invoke(control.getAttribute("data-command"), JSON.parse(control.getAttribute("data-params") ?? "{}"), control, null);
-      });
-      for (const type of ["input", "change"]) {
+      for (const type of ["click", "input", "change"]) {
         listen(root, type, (ev) => {
+          notify();
+          if (disposed) return;
+          if (type === "click") {
+            const control = ev.target.closest("[data-command]");
+            if (!control || !root.contains(control)) return;
+            invoke(control.getAttribute("data-command"), JSON.parse(control.getAttribute("data-params") ?? "{}"), control, null);
+            return;
+          }
           const field = ev.target.closest("[data-value]");
           if (!field || !root.contains(field)) return;
-          if (type === "input" && !field.hasAttribute("data-live")) { notify(); return; }
-          notify();
+          if (type === "input" && !field.hasAttribute("data-live")) return;
           const params = JSON.parse(field.getAttribute("data-params") ?? "{}");
           invoke(field.getAttribute("data-command"), { ...params, [field.getAttribute("data-value")]: field.value }, field, null);
         });
@@ -92,11 +101,15 @@ export function createBinder(run, { check = () => {}, notify = () => {} } = {}) 
       return Promise.resolve(run(command, params, null));
     },
 
-    /** Removes every listener of this binder. */
+    /** Stops the commands of this binder; the listeners stay attached. */
     dispose() {
-      for (const remove of listeners.splice(0)) remove();
+      disposed = true;
       notify();
       return Promise.resolve();
     },
   };
 }
+
+// The operable elements that the audit examines (the selector of core's interactive contract).
+const OPERABLE = 'button, input, select, textarea, [role="button"], [contenteditable]:not([contenteditable="false"])';
+const TEXT_LIMIT = 40;

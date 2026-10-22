@@ -20,6 +20,7 @@ async function replay(testCase) {
   let current = testCase.initial ?? null;
   const port = {
     register: async (kind, name) => { registered.push({ kind, name }); },
+    unregister: async () => { registered.push({ kind: "unregister" }); },
     onRequest: (fn) => { answer = fn; },
     reply: (id, payload) => { replies.push({ id, payload }); },
     report: () => {},
@@ -36,6 +37,8 @@ async function replay(testCase) {
     try {
       if (step.status) {
         result = await exposure.status(step.status.name, () => current, (notify) => { changed = notify; });
+      } else if (step.dispose) {
+        result = await exposure.dispose();
       } else if (step.set !== undefined) {
         current = step.set;
         changed();
@@ -75,5 +78,5 @@ for (const testCase of contract.cases) {
 }
 
 test("the exposure conformance covers every case of the contract", () => {
-  assert.equal(contract.cases.length, 3);
+  assert.equal(contract.cases.length, 4);
 });

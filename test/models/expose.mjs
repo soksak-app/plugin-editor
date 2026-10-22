@@ -17,14 +17,16 @@ class ReplyError extends Error {
 }
 
 /**
- * Creates the exposure of one page. port is {register(kind, name), onRequest(answer), reply(id, payload), report(text)} and
- * declarations() returns the declared {status, dom, commands} entries of the plugin.
+ * Creates the exposure of one page. port is {register(kind, name), unregister(), onRequest(answer), reply(id, payload), report(text)}
+ * and declarations() returns the declared {status, dom, commands} entries of the plugin. After dispose, the page answers no request
+ * and records the unregister of the port (core expose.json, expose.dispose.ends-registrations-and-requests).
  */
 export function createExpose(port, declarations) {
   const declared = (kind, name) => (declarations()[kind] ?? []).some((entry) => entry.name === name);
   const statuses = new Map();
   const commands = new Map();
   const doms = new Map();
+  let disposed = false;
 
   const binder = createBinder((name, params, element) => {
     const run = commands.get(name);
@@ -76,6 +78,7 @@ export function createExpose(port, declarations) {
   };
 
   const answer = ({ id, method, params }) => {
+    if (disposed) return;
     let payload;
     try {
       if (method.startsWith("status.")) payload = answerStatus(method, params, id);
@@ -124,8 +127,11 @@ export function createExpose(port, declarations) {
     delegate: binder.delegate,
     audit: binder.audit,
     async dispose() {
+      disposed = true;
       for (const status of statuses.values()) status.watching = false;
       await binder.dispose();
+      await port.unregister();
+      return null;
     },
   };
 }

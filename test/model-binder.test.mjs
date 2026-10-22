@@ -13,13 +13,13 @@ const COVERED = new Set([
   "binder.bind.runs-declared-command",
   "binder.bind.refuses-undeclared-command",
   "binder.bind.reports-failed-run",
+  "binder.bind.keydown-when-selects-events",
+  "binder.bind.reports-failed-keydown-run",
+  "binder.delegate.dispatches-declared-controls",
   "binder.run.runs-and-refuses",
   "binder.audit.reports-unbound-controls",
 ]);
-const UNCOVERED = {
-  "binder.delegate.dispatches-declared-controls":
-    "after dispose the model notifies no change, while the case expects one change for the click that runs no command",
-};
+const UNCOVERED = {};
 
 /** The attributes of a control that the case observes. */
 function observe(element) {
@@ -60,13 +60,18 @@ async function replay(testCase) {
         const control = document.createElement(step.bind.tag);
         attempted = control;
         elements.set(step.bind.id, control);
-        const params = step.bind.params ?? {};
-        await binder.bind(control, step.bind.command, params, { failed: (message) => failed.push(message) });
+        await binder.bind(control, step.bind.command, step.bind.params, {
+          event: step.bind.event, when: step.bind.when ?? null, failed: (message) => failed.push(message),
+        });
         element = observe(control);
       } else if (step.event) {
         const control = elements.get(step.event.id);
         if (step.event.value !== undefined) control.value = step.event.value;
-        control.dispatchEvent(new window.Event(step.event.type, { bubbles: true }));
+        const init = { bubbles: true };
+        const event = step.event.key === undefined
+          ? new window.Event(step.event.type, init)
+          : new window.KeyboardEvent(step.event.type, { ...init, key: step.event.key });
+        control.dispatchEvent(event);
         element = observe(control);
       } else if (step.element || step.mark) {
         const spec = step.element ?? step.mark;
@@ -80,6 +85,10 @@ async function replay(testCase) {
         if (spec.live) control.setAttribute("data-live", "");
         if (spec.parent !== undefined) elements.get(spec.parent).append(control);
         element = observe(control);
+      } else if (step.delegate) {
+        await binder.delegate(elements.get(step.delegate.id));
+      } else if (step.dispose) {
+        await binder.dispose();
       } else if (step.audit) {
         result = binder.audit(elements.get(step.audit.id));
       } else if (step.run) {
