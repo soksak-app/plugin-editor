@@ -41,7 +41,7 @@
     "@lezer/highlight": "1.2.5",
     "@lezer/lr": "1.4.11",
     "@marijn/find-cluster-break": "1.0.4",
-    "@soksak/plugin-api": "github:soksak-app/core#main&path:/packages/plugin-api",
+    "@soksak/plugin-api": "git+https://github.com/soksak-app/core.git#v0.0.20&path:/packages/plugin-api",
     "acorn": "8.19.0",
     "crelt": "1.0.7",
     "esbuild": "0.28.2",

@@ -38,3 +38,4 @@
 - F238-c-17: view host는 view wire model을 설치하며 SDK 파일을 읽지 않는다.
 - F238-c-23: `make test`는 plugin test만 실행한다. `make check`는 `scripts/check-plugin.mjs`(manifest, view page, 복사된 contract case, test SDK table)와 SDK tool `soksak-exposure`, `soksak-engines`, `soksak-events`, `soksak-records`를 실행한다. `make check`는 아직 green이 아니다. 설치된 release가 `contract/`를 게시하지 않으며, `resolveContributions` gap(F238-c-13.1)이 남아 있다.
 - F238-c-13.4: view page는 각 sidecar 호출에 선언된 sidecar(`@soksak/sidecar-files`, `plugin.json`의 의존성 하나)를 이름으로 쓰고, view bridge model은 sidecar 이름 없는 `runtime.sidecar()` 호출을 거부한다.
+- F238-c-6: `@soksak/plugin-api`를 core `main` 대신 core release tag `v0.0.20`에 고정한다. `make test`는 통과한다. `make check`는 core release가 `view.js`와 `contract/`를 게시할 때까지 이 tag에 대해 실패한다.
