@@ -40,3 +40,5 @@
 - F238-c-13.4: view page는 각 sidecar 호출에 선언된 sidecar(`@soksak/sidecar-files`, `plugin.json`의 의존성 하나)를 이름으로 쓰고, view bridge model은 sidecar 이름 없는 `runtime.sidecar()` 호출을 거부한다.
 - F238-c-6: `@soksak/plugin-api`를 core `main` 대신 core release tag `v0.0.20`에 고정한다. `make test`는 통과한다. `make check`는 core release가 `view.js`와 `contract/`를 게시할 때까지 이 tag에 대해 실패한다.
 - F238-c-24: `ci.yml`은 `make test` 다음에 `make check`를 실행하고, `release.yml`은 pack 전에 `make test`와 `make check`를 실행한다.
+- F238-c-13.1, F238-c-13.2, F238-c-13.3: model은 공개된 contributions, binder keydown, view event case를 재생한다. bridge는 구독 전에 도착한 event를 버리며, page는 초기 theme을 `window.sokTheme`에서 읽는다. `CORE_PLUGIN_API_DIR`을 core main으로 지정하면 `make check`가 통과한다.
+- F238-c-23.1: `scripts/check-plugin.mjs`는 `CORE_PLUGIN_API_DIR`에서 SDK를 읽는다.

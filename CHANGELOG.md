@@ -40,3 +40,5 @@
 - F238-c-13.4: The view page names its declared sidecar (`@soksak/sidecar-files`, the one dependency of `plugin.json`) in each sidecar call, and the view bridge model refuses a `runtime.sidecar()` call without a sidecar name.
 - F238-c-6: `@soksak/plugin-api` is pinned to the core release tag `v0.0.20` instead of core `main`. `make test` passes; `make check` fails against that tag until a core release publishes `view.js` and `contract/`.
 - F238-c-24: `ci.yml` runs `make check` after `make test`; `release.yml` runs `make test` and `make check` before packing.
+- F238-c-13.1, F238-c-13.2, F238-c-13.3: The models replay the published contributions, binder keydown and view event cases. The bridge drops an event that arrives before its subscription, and the page reads its initial theme from `window.sokTheme`. `make check` passes with `CORE_PLUGIN_API_DIR` set to core main.
+- F238-c-23.1: `scripts/check-plugin.mjs` loads the SDK from `CORE_PLUGIN_API_DIR`.
