@@ -8,6 +8,7 @@ import { INSTALLED_PLUGINS, createExpose, resolveContributions } from "@soksak/p
 import { createViewBridge } from "@soksak/plugin-api/view";
 import { mount } from "./editor.js";
 import { createEmitter } from "./events.js";
+import { SIDECAR } from "./view-sidecar.js";
 
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"];
 const CORE_ROOT = "sok://core";
@@ -121,9 +122,9 @@ export function createViewContext({ bridge, start, files, log, report }) {
       contributions,
       runtime: {
         sidecar: () => ({
-          send: (surface, body, cids) => calls.request("runtime.sidecar.send", { id: surface, body, cids }),
-          on: (surface, fn) => runtime.sidecar().on(surface, fn),
-          onFailure: (surface, fn) => runtime.sidecar().onFailure(surface, fn),
+          send: (surface, body, cids) => runtime.sidecar(SIDECAR).send(surface, body, cids),
+          on: (surface, fn) => runtime.sidecar(SIDECAR).on(surface, fn),
+          onFailure: (surface, fn) => runtime.sidecar(SIDECAR).onFailure(surface, fn),
         }),
         command: (name, params) => calls.request(name, params),
         // The transport of the records: the emit sites of the plugin are the callers of ui/events.js.

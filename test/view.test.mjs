@@ -119,3 +119,15 @@ test("the theme of the view reaches the page through the queue and follows a cha
   await settle();
   assert.equal(window.document.documentElement.style.colorScheme, "dark");
 });
+
+// F238-c-13.4: each sidecar call of the view page names the sidecar that plugin.json declares.
+test("the view page names its declared sidecar in each sidecar call", async (t) => {
+  const { reports, run, settle } = createViewPage(t, "sidecar-name");
+  await import("../build/test/ui/view.js?case=sidecar-name");
+  await run("editor.read");
+  await settle();
+  const declared = Object.keys(manifest.dependencies);
+  assert.equal(declared.length, 1);
+  assert.ok(reports.sidecarNames.length >= 2, "the page sent its sidecar calls");
+  assert.deepEqual(reports.sidecarNames, reports.sidecarNames.map(() => declared[0]));
+});

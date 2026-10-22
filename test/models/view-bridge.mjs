@@ -119,6 +119,7 @@ export function createViewBridge({ handler, report = () => {} }) {
       },
     },
     sidecar(sidecar) {
+      if (typeof sidecar !== "string" || sidecar === "") throw new Error("runtime.sidecar requires a sidecar name declared in plugin.json");
       return {
         send: (id, body, cids) => request("runtime.sidecar.send", { id, sidecar, body, cids }),
         on: async (id, fn) => {

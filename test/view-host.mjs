@@ -31,7 +31,7 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
   const { window } = createWindow(`sok://editor/ui/index.html?case=${caseId}`);
   useWindow(window);
   const sidecar = fakeFiles(files);
-  const reports = { title: [], modified: [], error: [], keep: [], state: [], registered: [], native: [], placed: [], subscribed: [] };
+  const reports = { title: [], modified: [], error: [], keep: [], state: [], registered: [], native: [], placed: [], subscribed: [], sidecarNames: [] };
   const logs = [];
   const received = [];
   const pending = new Map();
@@ -73,6 +73,7 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
         case "runtime.log": logs.push(params); return null;
         case "runtime.native.on": subscribed(params.name); return null;
         case "runtime.sidecar.send":
+          reports.sidecarNames.push(params.sidecar);
           return sidecar.send(params.id, params.body, params.cids ?? []);
         case "runtime.sidecar.on":
           await sidecar.on(params.id, (body) => post({ sok: 1, event: "sidecar.message", data: { id: params.id, body } }));

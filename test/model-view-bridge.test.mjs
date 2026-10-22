@@ -210,3 +210,13 @@ test("the bridge conformance covers every case of its contracts but the listed o
   assert.equal(cases.length, 13);
   assert.equal(Object.keys(UNCOVERED).length, 1);
 });
+
+// F238-c-13.4: a sidecar call names its sidecar, and the bridge refuses a call that names none (core
+// docs/spec/native-surfaces.md#view-surfaces, view calls: runtime.sidecar.send carries {id, sidecar, body, cids}).
+test("runtime.sidecar() refuses a call without a sidecar name", () => {
+  const created = page();
+  installViewWire(created.window, { host: "probe" });
+  const bridge = createViewBridge({ handler: created.window.webkit.messageHandlers["sok-view"] });
+  assert.throws(() => bridge.runtime.sidecar(), /sidecar name/);
+  assert.deepEqual(created.posted.filter((message) => String(message.command).startsWith("runtime.sidecar")), []);
+});
