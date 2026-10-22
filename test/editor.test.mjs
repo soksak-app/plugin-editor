@@ -480,11 +480,20 @@ test("Markdown decorations cover headings near the end of a large document", asy
   const headingStart = text.lastIndexOf("# Final heading");
   assert.equal(headings[0].from, headingStart);
   run("editor.edit", { changes: [{ from: headingStart + 2, to: headingStart + "# Final heading".length, insert: "Updated heading" }] });
-  await settle();
-  const updated = [];
-  view.state.field(markdownView).decorations.between(0, view.state.doc.length, (from, to, value) => {
-    if (value.spec.class?.includes("cm-md-heading-1")) updated.push({ from, to });
-  });
+  // The decorations of the edited heading appear when the parse of the large document completes in its 50 ms slices.
+  // No event reports that completion to the test, so the test waits for the refreshed decorations within a bound.
+  const headingLines = () => {
+    const ranges = [];
+    view.state.field(markdownView).decorations.between(0, view.state.doc.length, (from, to, value) => {
+      if (value.spec.class?.includes("cm-md-heading-1")) ranges.push({ from, to });
+    });
+    return ranges;
+  };
+  let updated = headingLines();
+  for (let turn = 0; turn < 5000 && !(updated.length === 1 && view.state.sliceDoc(updated[0].from, updated[0].to) === "# Updated heading"); turn += 1) {
+    await settle();
+    updated = headingLines();
+  }
   assert.equal(updated.length, 1, "the completed parse refreshes decorations after an edit");
   assert.equal(view.state.sliceDoc(updated[0].from, updated[0].to), "# Updated heading");
 });

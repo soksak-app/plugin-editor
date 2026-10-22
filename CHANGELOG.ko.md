@@ -5,6 +5,7 @@
 ## 미배포
 
 - E12.1: project-relative Markdown image를 위해 files sidecar 0.0.5 이상을 요구하고, `readBytes`로 크기 제한된 MIME Blob URL을 만들며 view lifecycle에 맞춰 revoke한다.
+- E12.2: 큰 문서의 Markdown test가 macrotask 한 번 대신 제한된 turn 수 안에서 갱신된 제목 decoration을 기다린다. 이 대기는 간헐적으로 실패했다.
 - E12: Markdown 파일의 제목, 강조, 링크, 목록, code, 안전한 scheme의 그림을 CodeMirror decoration으로 그 자리에서 렌더링한다. `editor.markdown.toggle`은 문서를 바꾸지 않고 보기를 전환한다.
 - E24.7: view page의 오류와 그 call의 손실은 어떤 surface도 서빙하지 않는 host call 대신 `runtime.log`를 통해 error 이벤트 `plugin.editor.page.error`로 저장된다.
 - E24.4: view page는 core가 자기 surface로 전달하는 exposure 요청(`status.get`, `status.watch`, `command.run` 등)에 자신의 값으로 `exposureReply`를 통해 답한다.
