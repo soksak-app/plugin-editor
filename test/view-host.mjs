@@ -142,9 +142,9 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
   // The view script of the host runs before the page: it posts the ready message and queues the host messages until the
   // page attaches its listener.
   installViewWire(window, { host: "editor", document: "6f1d2a3e-1111-4a2b-8c3d-0000000000e1" });
-  // The theme script of the view ran before the page, and the host sends the current theme after the ready message; the
-  // test posts it before the page attaches, so it arrives through the queue of the view script (the first messages).
-  post({ sok: 1, event: "theme", data: { scheme, tokens: {} } });
+  // The theme script of the view sets the current theme before the page runs; the page subscribes to later theme events
+  // through the bridge, and an event that arrives before that subscription is dropped (core view-native.json).
+  window.sokTheme = Object.freeze({ scheme, tokens: Object.freeze({}) });
 
   // Sends one command request of core to the page, as the workbench sends each request of a command of the view.
   let nextId = 1000;

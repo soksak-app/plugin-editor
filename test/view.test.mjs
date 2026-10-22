@@ -110,7 +110,7 @@ test("the first save of a blank document asks for its file through core.file.pla
   await settle();
 });
 
-test("the theme of the view reaches the page through the queue and follows a change", async (t) => {
+test("the theme of the view starts from the theme script and follows a change", async (t) => {
   const { window, post, settle } = createViewPage(t, "theme", { scheme: "light" });
   await import("../build/test/ui/view.js?case=theme");
   await settle();

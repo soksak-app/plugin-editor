@@ -3,9 +3,7 @@
 // the theme subscription, and the exposure calls. It runs over window.sokView of the view wire (view-wire.mjs) and posts
 // through handler.postMessage. The conformance test replays test/fixtures/contract/view-bridge.json, view-native.json and
 // view-commands.json. Untraced: the level gate of runtime.log, which the view page does not use (core
-// view-bridge.json case view.bridge.runtime-log-level-gate is not covered). Untraced: a host event that arrives before
-// its first listener is held and delivered to that listener on subscription, so that the theme sent with the ready
-// message reaches the page that subscribes after the queue of the view script is flushed.
+// view-bridge.json case view.bridge.runtime-log-level-gate is not covered).
 
 const NOT_REGISTERED = 1002;
 const FAILED = -32000;
@@ -27,8 +25,6 @@ export function createViewBridge({ handler, report = () => {} }) {
   const pending = new Map();
   const commands = new Map();
   const events = new Map();
-  // The host events that arrive before the first listener of their name; the first listener receives them in order.
-  const early = new Map();
   const natives = new Map();
 
   const post = (message) => handler.postMessage(message);
@@ -51,14 +47,10 @@ export function createViewBridge({ handler, report = () => {} }) {
       (error) => answer(message.id, { error: { code: FAILED, message: error?.message ?? String(error) } }));
   };
 
+  // A host event reaches only the listeners subscribed when it arrives; an event with no listener is dropped (core
+  // view-native.json, view.native.event-before-subscription-is-dropped).
   const deliver = (name, data) => {
-    const listeners = events.get(name) ?? [];
-    if (listeners.length === 0) {
-      if (!early.has(name)) early.set(name, []);
-      early.get(name).push(data);
-      return;
-    }
-    for (const listener of [...listeners]) listener(data);
+    for (const listener of [...(events.get(name) ?? [])]) listener(data);
   };
 
   sokView.attach((message) => {
@@ -83,7 +75,6 @@ export function createViewBridge({ handler, report = () => {} }) {
   const on = (name, listener) => {
     if (!events.has(name)) events.set(name, []);
     events.get(name).push(listener);
-    for (const data of early.get(name)?.splice(0) ?? []) listener(data);
     return () => {
       const list = events.get(name);
       list.splice(list.indexOf(listener), 1);

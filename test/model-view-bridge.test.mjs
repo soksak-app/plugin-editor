@@ -207,7 +207,7 @@ for (const testCase of cases) {
 }
 
 test("the bridge conformance covers every case of its contracts but the listed one", () => {
-  assert.equal(cases.length, 13);
+  assert.equal(cases.length, 14);
   assert.equal(Object.keys(UNCOVERED).length, 1);
 });
 
