@@ -15,20 +15,18 @@ const fixtures = path.join(root, "test", "fixtures", "contract");
 
 // The SDK is loaded from the API directory, so CORE_PLUGIN_API_DIR selects the source that the checks compare with.
 const sdk = await import(pathToFileURL(path.join(apiDir, "index.js")).href);
-for (const name of ["validateManifest", "checkViewPage", "VIEW_IMPORTS", "INSTALLED_PLUGINS"]) {
+for (const name of ["validateManifest", "checkViewPage", "INSTALLED_PLUGINS"]) {
   if (!(name in sdk)) {
     throw new Error(`the API package at ${apiDir} does not export ${name}; set CORE_PLUGIN_API_DIR to the packages/plugin-api source of core`);
   }
 }
-const { validateManifest, checkViewPage, VIEW_IMPORTS, INSTALLED_PLUGINS } = sdk;
+const { validateManifest, checkViewPage, INSTALLED_PLUGINS } = sdk;
 
 assert.equal(validateManifest(manifest), manifest, "plugin.json is not a valid manifest");
 console.log("Manifest check passed: plugin.json");
 
 const html = readFileSync(path.join(root, "ui", "index.html"), "utf8");
 assert.equal(checkViewPage(html), undefined, "ui/index.html is not a view page");
-const map = JSON.parse(html.match(/<script type="importmap">([^<]+)<\/script>/)[1]);
-assert.deepEqual(map, { imports: VIEW_IMPORTS }, "the import map of ui/index.html differs from the view imports of the SDK");
 console.log("View page check passed: ui/index.html");
 
 let copies = 0;

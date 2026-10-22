@@ -11,12 +11,11 @@ const manifest = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.u
 
 const PAGE = new URL("../ui/index.html", import.meta.url);
 
-test("the view page carries the import map of the view and the page script", () => {
+test("the view page begins with its doctype, holds no import map, and carries the page script", () => {
+  // The host inserts the view import map after the doctype (core docs/spec/plugin-processes.md, rule 4), so the page holds none.
   const html = readFileSync(PAGE, "utf8");
-  // The entries of the map equal the view imports of the SDK; the check of make check compares them (scripts/check-plugin.mjs).
-  const map = JSON.parse(html.match(/<script type="importmap">([^<]+)<\/script>/)[1]);
-  assert.equal(Object.keys(map.imports).length, 5);
-  assert.ok(Object.values(map.imports).every((target) => target.startsWith("sok://core/")));
+  assert.match(html, /^<!doctype html>/i);
+  assert.doesNotMatch(html, /<script type="importmap">/);
   assert.match(html, /<script type="module" src="\.\/view\.js"><\/script>/);
 });
 
