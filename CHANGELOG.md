@@ -36,3 +36,4 @@
 - F238-c-15: The resolver hook `test/shared-modules.mjs` and its `--import` are removed; the build tree resolves the shared modules.
 - F238-c-16: The tests import the shared CodeMirror modules from `build/test/shared/`, not through the package specifier.
 - F238-c-17: The view host installs the view wire model and reads no SDK file.
+- F238-c-23: `make test` runs the plugin tests only; `make check` runs `scripts/check-plugin.mjs` (the manifest, the view page, the copied contract cases and the test SDK table) and the SDK tools `soksak-exposure`, `soksak-engines`, `soksak-events` and `soksak-records`. `make check` is not yet green: the installed release publishes no `contract/`, and the `resolveContributions` gap (F238-c-13.1) remains.

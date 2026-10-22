@@ -36,3 +36,4 @@
 - F238-c-15: resolver hook `test/shared-modules.mjs`와 그 `--import`를 지운다. build tree가 shared module을 해석한다.
 - F238-c-16: test는 shared CodeMirror module을 package specifier가 아니라 `build/test/shared/`에서 import한다.
 - F238-c-17: view host는 view wire model을 설치하며 SDK 파일을 읽지 않는다.
+- F238-c-23: `make test`는 plugin test만 실행한다. `make check`는 `scripts/check-plugin.mjs`(manifest, view page, 복사된 contract case, test SDK table)와 SDK tool `soksak-exposure`, `soksak-engines`, `soksak-events`, `soksak-records`를 실행한다. `make check`는 아직 green이 아니다. 설치된 release가 `contract/`를 게시하지 않으며, `resolveContributions` gap(F238-c-13.1)이 남아 있다.
