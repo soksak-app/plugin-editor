@@ -5,7 +5,7 @@ import { createCalls } from "./calls.mjs";
 // the theme subscription, and the exposure calls. It runs over window.sokView of the view wire (view-wire.mjs) and posts
 // through handler.postMessage. The conformance test replays test/fixtures/contract/view-bridge.json, view-native.json and
 // view-commands.json. Untraced: the level gate of runtime.log, which the view page does not use (core
-// view-bridge.json case view.bridge.runtime-log-level-gate is not covered). The page's calls keep the time limit of calls.json
+// view-bridge.json case view.bridge.runtime-log-without-level-query is not covered). The page's calls keep the time limit of calls.json
 // (test/models/calls.mjs).
 
 const NOT_REGISTERED = 1002;

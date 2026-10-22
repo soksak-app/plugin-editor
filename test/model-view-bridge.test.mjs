@@ -9,7 +9,7 @@ import { createViewBridge } from "./models/view-bridge.mjs";
 
 const load = (name) => JSON.parse(readFileSync(new URL(`./fixtures/contract/${name}`, import.meta.url), "utf8"));
 const UNCOVERED = {
-  "view.bridge.runtime-log-level-gate": "the view page does not use the level gate of runtime.log; the model has no gate",
+  "view.bridge.runtime-log-without-level-query": "the view page writes runtime.log as a plain call, and the model has no runtime.log",
 };
 const settle = async () => {
   for (let i = 0; i < 4; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));

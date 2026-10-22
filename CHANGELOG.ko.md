@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- F238-b-10-1: core view bridge 계약 사본을 현재 core 사례 집합으로 새로 고쳤다. `view.bridge.runtime-log-without-level-query`가 `view.bridge.runtime-log-level-gate`를 대신하며, view는 level 질의를 부르지 않는다. 이 저장소에서는 model test(`test/model-view-bridge.test.mjs`)가 새 id로 사례를 미포괄 목록에 적고, `test/models/view-bridge.mjs`의 주석이 이를 가리킨다.
 - E12.1: project-relative Markdown image를 위해 files sidecar 0.0.5 이상을 요구하고, `readBytes`로 크기 제한된 MIME Blob URL을 만들며 view lifecycle에 맞춰 revoke한다.
 - E12.2: 큰 문서의 Markdown test가 macrotask 한 번 대신 제한된 turn 수 안에서 갱신된 제목 decoration을 기다린다. 이 대기는 간헐적으로 실패했다.
 - E12: Markdown 파일의 제목, 강조, 링크, 목록, code, 안전한 scheme의 그림을 CodeMirror decoration으로 그 자리에서 렌더링한다. `editor.markdown.toggle`은 문서를 바꾸지 않고 보기를 전환한다.
