@@ -7,7 +7,7 @@
 import { INSTALLED_PLUGINS, createExpose, resolveContributions } from "@soksak/plugin-api";
 import { createViewBridge } from "@soksak/plugin-api/view";
 import { mount } from "./editor.js";
-import { createEmitter } from "./events.js";
+import { createEmitter, errorText } from "./events.js";
 import { SIDECAR } from "./view-sidecar.js";
 
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"];
@@ -34,9 +34,18 @@ export function startValues(windowRef = window) {
 export function createLog(calls) {
   return Object.fromEntries(LOG_LEVELS.map((level) => [level, (event, fields) => calls.request("runtime.log",
     { level, event, fields: typeof fields === "function" ? fields() : fields })
-    // A refusal of the log route leaves the page no route to the application log, so the console of the view is the
-    // place left for it.
-    .then(() => undefined, (error) => console.error(`runtime.log ${event}: ${error?.message ?? error}`))]));
+    .then(() => undefined, (error) => refusedLog(calls, event, error))]));
+}
+
+/**
+ * A refused record is an error of the view: it is shown as the error line of the view (runtime.error), and the console of the
+ * page keeps the line too. A refusal of the error line itself has no other route left, so the console takes it.
+ */
+function refusedLog(calls, event, error) {
+  const text = `${event}: ${errorText(error)}`;
+  console.error(`runtime.log ${text}`);
+  calls.request("runtime.error", { where: "log", text })
+    .then(() => undefined, (refusal) => console.error(`runtime.error log: ${errorText(refusal)}`));
 }
 
 /** The reporter of this page: report(where, error) stores the error as the event plugin.editor.page.error. */

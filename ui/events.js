@@ -17,8 +17,10 @@ export function createEmitter(runtime, pluginId) {
 /** The whole microseconds since `start`, a value of performance.now(). */
 export const microsSince = (start) => Math.max(0, Math.round((performance.now() - start) * 1000));
 
+/** The text of a thrown value: the message of an Error, and the value itself otherwise (a thrown string has no message). */
+export const errorText = (error) => (error instanceof Error ? error.message : String(error));
+
 /** The failure in the result form `<code>: <text>` (core docs/spec/logging.md#result-form); `code` is the code of an error that has none. */
 export function failure(error, code) {
-  const text = error instanceof Error ? error.message : String(error);
-  return `${error?.code ?? code}: ${text}`.slice(0, 1024);
+  return `${error?.code ?? code}: ${errorText(error)}`.slice(0, 1024);
 }

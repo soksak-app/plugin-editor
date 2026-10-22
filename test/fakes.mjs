@@ -19,7 +19,8 @@ function fakeFiles(files) {
       if (body.operation === "read") {
         if (!files.has(body.path)) return reply({ id: body.id, error: `no such file: ${body.path}` });
         const text = files.get(body.path);
-        const newline = /\r\n/.test(text) ? "crlf" : /\n/.test(text) ? "lf" : "none";
+        // A line feed without a carriage return before it makes the line breaks of the text mixed, as the files sidecar reports.
+        const newline = /\r\n/.test(text) ? (/(^|[^\r])\n/.test(text) ? "mixed" : "crlf") : /\n/.test(text) ? "lf" : "none";
         return reply({ id: body.id, text, version: sha(text), newline, bom: false });
       }
       if (body.operation === "readBytes") {

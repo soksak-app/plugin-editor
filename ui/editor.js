@@ -10,7 +10,7 @@ import {
 import { bracketMatching, forceParsing, indentOnInput, syntaxHighlighting } from "@soksak/shared/editor.extension/@codemirror/language.js";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@soksak/shared/editor.extension/@codemirror/commands.js";
 import { classHighlighter } from "@soksak/shared/editor.extension/@lezer/highlight.js";
-import { createEmitter, failure, microsSince } from "./events.js";
+import { createEmitter, errorText, failure, microsSince } from "./events.js";
 import { createQuery, findMatches, replacementOf } from "./find.js";
 import { extensionOf, languageOf, languageSupport } from "./languages.js";
 import { connect } from "./requests.js";
@@ -221,7 +221,7 @@ export async function mount(root, context) {
   const files = await connect(context.runtime.sidecar(), context.surfaceId, (body) => {
     if (body.changed !== undefined) {
       emitEvent("debug", "plugin.editor.watch.change", { path: body.changed });
-      diskChanged().catch((error) => context.tab.error(`다시 읽지 못했습니다 · ${error.message}`));
+      diskChanged().catch((error) => context.tab.error(`다시 읽지 못했습니다 · ${errorText(error)}`));
       return;
     }
     emitEvent("error", "plugin.editor.watch.error", { path, error: String(body.error) });
@@ -230,6 +230,11 @@ export async function mount(root, context) {
   const read = () => files.request({ operation: "read", path });
   const watch = () => files.request({ operation: "watch", paths: [path] });
   const bytesOf = (text) => new TextEncoder().encode(text).length;
+  // A refusal before the work starts shows its text as the tab error and is thrown to the caller, so each control reports it.
+  const refused = (text) => {
+    context.tab.error(text);
+    return new Error(text);
+  };
   // A read after the open: the result of the read is an event, and the caller still receives the failure.
   const readAgain = async (reason) => {
     const start = performance.now();
@@ -267,7 +272,7 @@ export async function mount(root, context) {
     markdownButton.setAttribute("aria-label", "Markdown 미리 보기");
   };
   const markdownImageFailure = (error) => {
-    if (!disposed) context.tab.error(`이미지를 불러오지 못했습니다 · ${error.message}`);
+    if (!disposed) context.tab.error(`이미지를 불러오지 못했습니다 · ${errorText(error)}`);
   };
   const completeMarkdownSyntax = async (document, isCurrent) => {
     while (!disposed && isCurrent() && view.state.doc === document) {
@@ -372,7 +377,7 @@ export async function mount(root, context) {
       ({ path: chosen } = await context.runtime.command("core.file.place", { name: NEW_NAME }));
     } catch (error) {
       emitEvent("warn", "plugin.editor.place", { name: NEW_NAME, path: null, micros: microsSince(start), ok: false, error: failure(error, "-32603") });
-      context.tab.error(`저장하지 못했습니다 · ${error.message}`);
+      context.tab.error(`저장하지 못했습니다 · ${errorText(error)}`);
       throw error;
     }
     emitEvent("info", "plugin.editor.place", { name: NEW_NAME, path: chosen, micros: microsSince(start), ok: true });
@@ -400,7 +405,7 @@ export async function mount(root, context) {
 
   const save = async ({ overwrite = false } = {}) => {
     if (typeof overwrite !== "boolean") throw new TypeError("editor.save requires overwrite as true or false");
-    if (fileState.readOnly) throw new Error(`${path} is open read-only: ${fileState.reason}`);
+    if (fileState.readOnly) throw refused(`저장하지 못했습니다 · ${path} is open read-only: ${fileState.reason}`);
     if (path === null) return saveNew();
     const start = performance.now();
     const text = view.state.sliceDoc();
@@ -420,7 +425,7 @@ export async function mount(root, context) {
     } catch (error) {
       emitEvent("warn", "plugin.editor.save", { path, bytes: bytesOf(text), overwrite, micros: microsSince(start), ok: false,
         error: failure(error, "-32603") });
-      context.tab.error(`저장하지 못했습니다 · ${error.message}`);
+      context.tab.error(`저장하지 못했습니다 · ${errorText(error)}`);
       throw error;
     }
   };
@@ -438,13 +443,13 @@ export async function mount(root, context) {
       try {
         reply = await write(null);
       } catch (error) {
-        if (!String(error.message).startsWith("exists")) throw error;
+        if (!errorText(error).startsWith("exists")) throw error;
         reply = await write((await files.request({ operation: "readBytes", path: chosen })).version);
       }
     } catch (error) {
       emitEvent("warn", "plugin.editor.save", { path: chosen, bytes: bytesOf(text), overwrite: false, micros: microsSince(start), ok: false,
         error: failure(error, "-32603") });
-      context.tab.error(`저장하지 못했습니다 · ${error.message}`);
+      context.tab.error(`저장하지 못했습니다 · ${errorText(error)}`);
       throw error;
     }
     emitEvent("info", "plugin.editor.save", { path: chosen, bytes: bytesOf(text), overwrite: false, micros: microsSince(start), ok: true });
@@ -465,7 +470,7 @@ export async function mount(root, context) {
     try {
       body = await readAgain("reload");
     } catch (error) {
-      context.tab.error(`다시 읽지 못했습니다 · ${error.message}`);
+      context.tab.error(`다시 읽지 못했습니다 · ${errorText(error)}`);
       throw error;
     }
     const previousDocument = view.state.doc;
@@ -485,7 +490,7 @@ export async function mount(root, context) {
     find = { ...find, matches: matches.length, current: current < 0 ? null : current };
     view.dispatch({ effects: setFound.of(Decoration.set(matches.map((match, index) =>
       (index === current ? currentMark : foundMark).range(match.from, match.to)))) });
-    count.textContent = find.error !== null ? "잘못된 정규식" : find.query === "" ? ""
+    count.textContent = find.error !== null ? `잘못된 정규식 · ${find.error}` : find.query === "" ? ""
       : find.current === null ? `${find.matches}개` : `${find.current + 1}/${find.matches}`;
     publishFind();
   }
@@ -499,7 +504,8 @@ export async function mount(root, context) {
     } catch (error) {
       if (error instanceof TypeError) throw error;
       query = createQuery({ ...next, query: "" });
-      find = { ...next, error: error.message };
+      find = { ...next, error: errorText(error) };
+      emitEvent("warn", "plugin.editor.find.invalid", { error: find.error });
     }
     queryInput.value = find.query;
     replacementInput.value = find.replacement;
@@ -564,13 +570,13 @@ export async function mount(root, context) {
 
   const format = async () => {
     const formatter = contributions.formatters.find((item) => item.applies);
-    if (!formatter) throw new Error(`no formatter is connected for ${extension === "" ? "files without an extension" : `.${extension}`}`);
+    if (!formatter) throw refused(`서식을 맞추지 못했습니다 · no formatter is connected for ${extension === "" ? "files without an extension" : `.${extension}`}`);
     const text = view.state.sliceDoc();
     const start = performance.now();
     const failed = (error) => {
       emitEvent("warn", "plugin.editor.format", { path, formatter: formatter.plugin, changed: false, micros: microsSince(start), ok: false,
         error: failure(error, "-32603") });
-      context.tab.error(`서식을 맞추지 못했습니다 · ${error.message}`);
+      context.tab.error(`서식을 맞추지 못했습니다 · ${errorText(error)}`);
       return error;
     };
     let result;
@@ -609,6 +615,8 @@ export async function mount(root, context) {
       urls = await readMarkdownImageUrls(files, documentPath, markdownImageSources(view.state));
     } catch (error) {
       if (!disposed && generation === markdownImageGeneration) markdownImageFailure(error);
+      else emitEvent("warn", "plugin.editor.markdown.image", { path: documentPath, reason: disposed ? "disposed" : "superseded",
+        error: failure(error, "-32603") });
       throw error;
     }
     if (disposed || generation !== markdownImageGeneration || path !== documentPath || view.state.doc !== document) {
@@ -830,8 +838,8 @@ async function loadContributions(context, file, emitEvent) {
       if (typeof exported.extension !== "function") throw new Error("the module does not export extension(file)");
       extensions.push(exported.extension(file));
     } catch (error) {
-      emitEvent("warn", "plugin.editor.contribution.failed", { point: "extension", plugin, error: error.message });
-      fail(`${plugin}: ${error.message}`);
+      emitEvent("warn", "plugin.editor.contribution.failed", { point: "extension", plugin, error: errorText(error) });
+      fail(`${plugin}: ${errorText(error)}`);
     }
   }
   const formatters = [];
@@ -841,8 +849,8 @@ async function loadContributions(context, file, emitEvent) {
       if (typeof exported.format !== "function") throw new Error("the module does not export format(text, file)");
       formatters.push({ plugin, applies: applies(item), format: exported.format });
     } catch (error) {
-      emitEvent("warn", "plugin.editor.contribution.failed", { point: "formatter", plugin, error: error.message });
-      fail(`${plugin}: ${error.message}`);
+      emitEvent("warn", "plugin.editor.contribution.failed", { point: "formatter", plugin, error: errorText(error) });
+      fail(`${plugin}: ${errorText(error)}`);
     }
   }
   return { extensions, formatters };

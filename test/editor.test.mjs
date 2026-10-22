@@ -622,3 +622,50 @@ test("relative Markdown image paths cannot escape the project root", async (t) =
   await assert.rejects(run("editor.markdown.toggle"), /leaves the project root/);
   assert.equal(sidecar.sent.some((body) => body.operation === "readBytes"), false);
 });
+
+test("a refused save of a read-only file shows the refusal as the tab error", async (t) => {
+  const { run, reports } = await setup(t, { files: new Map([["src/main.js", "a\r\nb\nc"]]) });
+  await assert.rejects(run("editor.save"), /read-only/);
+  assert.match(reports.error.at(-1), /^저장하지 못했습니다 · .*read-only/);
+});
+
+test("a format without a connected formatter shows the refusal as the tab error", async (t) => {
+  const { run, reports } = await setup(t);
+  await assert.rejects(run("editor.format"), /no formatter is connected/);
+  assert.match(reports.error.at(-1), /^서식을 맞추지 못했습니다 · no formatter is connected/);
+});
+
+test("a formatter that throws a value without a message shows the value as the tab error", async (t) => {
+  const formatter = { plugin: "fmt", item: {}, module: `data:text/javascript,${encodeURIComponent("export const format = () => { throw 'formatter broke'; };")}`, fail() {} };
+  const { run, reports } = await setup(t, { contributions: { formatter: [formatter] } });
+  await assert.rejects(run("editor.format"), (error) => error === "formatter broke");
+  assert.equal(reports.error.at(-1), "서식을 맞추지 못했습니다 · formatter broke");
+});
+
+test("an invalid regular expression shows its message in the find bar and records it", async (t) => {
+  const { run, root, logs } = await setup(t);
+  run("editor.find", { query: "(", regexp: true });
+  assert.match(root.querySelector("#count").textContent, /Invalid regular expression/);
+  const invalid = eventsOf(logs, "find.invalid");
+  assert.equal(invalid.length, 1);
+  assert.match(invalid[0].fields.error, /Invalid regular expression/);
+});
+
+test("a Markdown image failure after the tab is disposed is recorded as an event", async (t) => {
+  const text = "![gone](assets/gone.png)\n";
+  const { run, logs, sidecar, dispose } = await setup(t, { path: "docs/readme.md", files: new Map([["docs/readme.md", text]]) });
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  const send = sidecar.send.bind(sidecar);
+  sidecar.send = async (surface, body) => {
+    if (body.operation !== "readBytes") return send(surface, body);
+    await held;
+    return sidecar.report({ id: body.id, error: "missing: docs/assets/gone.png" });
+  };
+  const toggled = run("editor.markdown.toggle").catch((error) => error);
+  await dispose();
+  release();
+  await toggled;
+  assert.deepEqual(eventsOf(logs, "markdown.image").map((entry) => [entry.level, entry.fields]),
+    [["warn", { path: "docs/readme.md", reason: "disposed", error: "-32603: the editor closed before the files sidecar replied" }]]);
+});

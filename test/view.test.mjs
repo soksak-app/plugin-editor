@@ -157,3 +157,14 @@ test("each sidecar send of the view page carries its correlation identifiers", a
   assert.ok(reports.sendCids.length >= 2, "the page sent its sidecar calls");
   for (const cids of reports.sendCids) assert.ok(Array.isArray(cids), `cids ${JSON.stringify(cids)} is a list`);
 });
+
+test("a refused runtime.log is shown as an error line of the view and written to the console", async (t) => {
+  const consoleError = t.mock.method(console, "error", () => {});
+  const { reports, settle } = createViewPage(t, "log-refused", { refuseLog: "log route refused" });
+  await import("../build/test/ui/view.js?case=log-refused");
+  await settle();
+  assert.ok(consoleError.mock.callCount() > 0, "the refused record reached no console line");
+  assert.ok(reports.errorLines.length > 0, "the refused record reached no error line of the view");
+  for (const line of reports.errorLines) assert.equal(line.where, "log");
+  assert.match(reports.errorLines[0].text, /^[a-z.]+: log route refused$/);
+});

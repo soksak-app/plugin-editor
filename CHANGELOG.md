@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- F252-editor: A refused save of a read-only file and a format without a connected formatter show their text as the tab error and are thrown to the caller. An invalid regular expression shows its message in the find bar and is recorded as `plugin.editor.find.invalid`. A Markdown image failure after the tab ended or was replaced is recorded as `plugin.editor.markdown.image`. A thrown value without a message is shown as its text. A refused `runtime.log` record is shown as `runtime.error {where: "log"}` and kept on the console.
 - F238-b-10-2: `test/test-script.test.mjs` pins that the test command selects every test file under `test/`, so a later subdirectory of tests cannot be left out. `make test` runs 130 tests (129 before).
 - F238-b-10-1: the core view bridge contract copy is refreshed to the current core case set; `view.bridge.runtime-log-without-level-query` replaces `view.bridge.runtime-log-level-gate`, and the view calls no level query. In this repository the model test (`test/model-view-bridge.test.mjs`) lists the case as uncovered under its new id, and `test/models/view-bridge.mjs` names it in its comment.
 - E12.1: Require files sidecar 0.0.5+ for project-relative Markdown images, use `readBytes` to create bounded MIME-typed Blob URLs, and revoke them with the view lifecycle.

@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- F252-editor: 읽기 전용 파일의 저장 거부와 연결된 서식 도구가 없는 서식 실행 거부는 텍스트를 tab 오류로 표시하고 호출자에게 던진다. 잘못된 정규식은 찾기 막대에 메시지를 표시하고 `plugin.editor.find.invalid`로 기록한다. tab이 끝나거나 대체된 뒤의 Markdown 이미지 실패는 `plugin.editor.markdown.image`로 기록한다. 메시지가 없는 던져진 값은 텍스트로 표시한다. 거부된 `runtime.log` 기록은 `runtime.error {where: "log"}`로 표시하고 콘솔에도 남긴다.
 - F238-b-10-2: `test/test-script.test.mjs`는 test 명령이 `test/` 아래의 모든 test 파일을 선택함을 고정하므로, 이후의 test 하위 디렉터리가 빠질 수 없다. `make test`는 130개를 실행한다(이전 129개).
 - F238-b-10-1: core view bridge 계약 사본을 현재 core 사례 집합으로 새로 고쳤다. `view.bridge.runtime-log-without-level-query`가 `view.bridge.runtime-log-level-gate`를 대신하며, view는 level 질의를 부르지 않는다. 이 저장소에서는 model test(`test/model-view-bridge.test.mjs`)가 새 id로 사례를 미포괄 목록에 적고, `test/models/view-bridge.mjs`의 주석이 이를 가리킨다.
 - E12.1: project-relative Markdown image를 위해 files sidecar 0.0.5 이상을 요구하고, `readBytes`로 크기 제한된 MIME Blob URL을 만들며 view lifecycle에 맞춰 revoke한다.

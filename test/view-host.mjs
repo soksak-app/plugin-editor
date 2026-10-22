@@ -26,12 +26,12 @@ const settle = (rounds = 6) => {
  * and returns its id; post(message) posts one host message to the page.
  */
 export function createViewPage(t, caseId, { params = { path: "src/main.js" }, stored = null,
-  files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), scheme = "dark",
+  files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), scheme = "dark", refuseLog = null,
   place = () => { throw new Error("the test runs no core command"); } } = {}) {
   const { window } = createWindow(`sok://editor/ui/index.html?case=${caseId}`);
   useWindow(window);
   const sidecar = fakeFiles(files);
-  const reports = { title: [], modified: [], error: [], keep: [], state: [], registered: [], native: [], placed: [], subscribed: [], sidecarNames: [], sendCids: [] };
+  const reports = { title: [], modified: [], error: [], errorLines: [], keep: [], state: [], registered: [], native: [], placed: [], subscribed: [], sidecarNames: [], sendCids: [] };
   const logs = [];
   const received = [];
   const pending = new Map();
@@ -70,7 +70,12 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
         case "tab.modified": reports.modified.push(params); return null;
         case "tab.error": reports.error.push(params); return null;
         case "tab.keep": reports.keep.push(params); return null;
-        case "runtime.log": logs.push(params); return null;
+        case "runtime.log":
+          // refuseLog makes the host refuse every record, as the application log route of a host can.
+          if (refuseLog !== null) throw new Error(refuseLog);
+          logs.push(params);
+          return null;
+        case "runtime.error": reports.errorLines.push(params); return null;
         case "runtime.native.on": subscribed(params.name); return null;
         case "runtime.sidecar.send":
           reports.sidecarNames.push(params.sidecar);

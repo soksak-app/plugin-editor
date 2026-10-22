@@ -52,6 +52,16 @@
       "fields": { "path": "string|null", "formatter": "string|null", "changed": "boolean", "micros": "number", "ok": "boolean", "error?": "string" },
       "description": "One run of the formatter of editor.formatter for the file; formatter is the plugin that contributed it."
     },
+    "plugin.editor.find.invalid": {
+      "layer": "plugin", "class": "lifecycle", "level": "warn",
+      "fields": { "error": "string" },
+      "description": "The query of the find bar is not a valid regular expression; error is the message of the expression error, which the bar shows."
+    },
+    "plugin.editor.markdown.image": {
+      "layer": "plugin", "class": "io", "level": "warn",
+      "fields": { "path": "string", "reason": "string", "error": "string" },
+      "description": "A Markdown preview failed to read its images after the tab showed no result: reason is disposed (the tab ended first) or superseded (a later preview replaced it); error is the failure of the read."
+    },
     "plugin.editor.page.error": {
       "layer": "plugin", "class": "lifecycle", "level": "error",
       "fields": { "where": "string", "error": "string" },
