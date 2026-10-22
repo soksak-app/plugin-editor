@@ -15,6 +15,7 @@ const COVERED = new Set([
   "binder.bind.reports-failed-run",
   "binder.bind.keydown-when-selects-events",
   "binder.bind.reports-failed-keydown-run",
+  "binder.bind.function-params-are-read-at-each-run",
   "binder.delegate.dispatches-declared-controls",
   "binder.run.runs-and-refuses",
   "binder.audit.reports-unbound-controls",
@@ -60,7 +61,9 @@ async function replay(testCase) {
         const control = document.createElement(step.bind.tag);
         attempted = control;
         elements.set(step.bind.id, control);
-        await binder.bind(control, step.bind.command, step.bind.params, {
+        // paramsFromValue binds a function that reads the value of the control at each run.
+        const params = step.bind.paramsFromValue ? (event) => ({ value: event.currentTarget.value }) : step.bind.params;
+        await binder.bind(control, step.bind.command, params, {
           event: step.bind.event, when: step.bind.when ?? null, failed: (message) => failed.push(message),
         });
         element = observe(control);

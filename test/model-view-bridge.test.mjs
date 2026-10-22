@@ -122,7 +122,8 @@ async function step(context, item) {
     return { posted: posted.slice(mark), delivered: context.natives.splice(0), result: null, throws: null };
   }
   if (item.register) {
-    const run = { echo: (params) => params, fail: () => { throw new Error("save failed"); }, none: () => undefined, text: "text" }[item.register.run];
+    const run = { echo: (params) => params, fail: () => { throw new Error("save failed"); }, none: () => undefined, text: "text",
+      context: (params, context) => context }[item.register.run];
     const pending = bridge.commands.register(item.register.name, run);
     if (item.answer) replyTo(lastId(), item.answer);
     try {
@@ -134,7 +135,8 @@ async function step(context, item) {
     return { posted: posted.slice(mark), delivered: [], result: null, throws };
   }
   if (item.request) {
-    dispatch(window, { sok: 1, id: item.request.id, command: item.request.command, params: item.request.params });
+    dispatch(window, { sok: 1, id: item.request.id, command: item.request.command, params: item.request.params,
+      ...(item.request.cids === undefined ? {} : { cids: item.request.cids }) });
     await settle();
     return { posted: posted.slice(mark), delivered: [], result: null, throws: null };
   }
@@ -207,7 +209,7 @@ for (const testCase of cases) {
 }
 
 test("the bridge conformance covers every case of its contracts but the listed one", () => {
-  assert.equal(cases.length, 14);
+  assert.equal(cases.length, 15);
   assert.equal(Object.keys(UNCOVERED).length, 1);
 });
 

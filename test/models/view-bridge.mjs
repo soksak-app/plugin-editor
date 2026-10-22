@@ -41,7 +41,9 @@ export function createViewBridge({ handler, report = () => {} }) {
       answer(message.id, { error: { code: NOT_REGISTERED, message: `view command ${message.command} is not registered` } });
       return;
     }
-    Promise.resolve().then(() => run(message.params)).then(
+    // The handler receives the cids of the cause of the request, and an empty context when the request has none (core view.js).
+    const context = message.cids === undefined ? {} : { cids: message.cids };
+    Promise.resolve().then(() => run(message.params, context)).then(
       (result) => answer(message.id, { result: result ?? null }),
       (error) => answer(message.id, { error: { code: FAILED, message: error?.message ?? String(error) } }));
   };

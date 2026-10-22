@@ -58,10 +58,18 @@ async function replay(testCase) {
         });
       } else if (step.bind) {
         ensureMarkup();
-        result = (await exposure.bind(markup.querySelector(step.bind.selector), step.bind.command, step.bind.params)) ?? null;
+        // paramsFromValue binds a function that reads the value of the element at each run.
+        const params = step.bind.paramsFromValue ? (event) => ({ value: event.currentTarget.value }) : step.bind.params;
+        result = (await exposure.bind(markup.querySelector(step.bind.selector), step.bind.command, params)) ?? null;
+      } else if (step.inspect) {
+        // inspect reads the bound element and changes nothing.
+        ensureMarkup();
+        markup.querySelector(step.inspect.selector);
       } else if (step.click) {
         ensureMarkup();
-        markup.querySelector(step.click.selector).click();
+        const target = markup.querySelector(step.click.selector);
+        if (step.click.value !== undefined) target.value = step.click.value;
+        target.click();
       } else if (step.race) {
         const pending = exposure.status(step.race.name, () => current, () => {});
         await exposure.dispose();
@@ -99,5 +107,5 @@ for (const testCase of contract.cases) {
 }
 
 test("the exposure conformance covers every case of the contract", () => {
-  assert.equal(contract.cases.length, 7);
+  assert.equal(contract.cases.length, 8);
 });
