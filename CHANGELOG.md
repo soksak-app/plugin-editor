@@ -42,3 +42,5 @@
 - F238-c-24: `ci.yml` runs `make check` after `make test`; `release.yml` runs `make test` and `make check` before packing.
 - F238-c-13.1, F238-c-13.2, F238-c-13.3: The models replay the published contributions, binder keydown and view event cases. The bridge drops an event that arrives before its subscription, and the page reads its initial theme from `window.sokTheme`. `make check` passes with `CORE_PLUGIN_API_DIR` set to core main.
 - F238-c-23.1: `scripts/check-plugin.mjs` loads the SDK from `CORE_PLUGIN_API_DIR`.
+- F238-c-13.5: The page's exposure port has no unregister, because the view channel publishes no removal of a registration; dispose ends the local listeners, bindings and declarations, and the model replays the copied dispose cases.
+- F238-c-13.6: The page's calls keep the 10000 millisecond limit and late-reply reporting of core calls.json; the model replays the four cases on a fake clock.

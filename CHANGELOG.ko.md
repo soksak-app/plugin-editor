@@ -42,3 +42,5 @@
 - F238-c-24: `ci.yml`은 `make test` 다음에 `make check`를 실행하고, `release.yml`은 pack 전에 `make test`와 `make check`를 실행한다.
 - F238-c-13.1, F238-c-13.2, F238-c-13.3: model은 공개된 contributions, binder keydown, view event case를 재생한다. bridge는 구독 전에 도착한 event를 버리며, page는 초기 theme을 `window.sokTheme`에서 읽는다. `CORE_PLUGIN_API_DIR`을 core main으로 지정하면 `make check`가 통과한다.
 - F238-c-23.1: `scripts/check-plugin.mjs`는 `CORE_PLUGIN_API_DIR`에서 SDK를 읽는다.
+- F238-c-13.5: view page의 exposure port에는 unregister가 없다. view channel이 registration의 제거를 게시하지 않기 때문이다. dispose는 로컬 listener, binding, 선언만 끝내며, model은 복사한 dispose case를 재생한다.
+- F238-c-13.6: page의 call은 core calls.json의 10000ms 제한과 late-reply 보고를 지킨다. model은 case 4개를 fake clock에서 재생한다.
