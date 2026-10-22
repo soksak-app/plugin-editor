@@ -131,3 +131,29 @@ test("the view page names its declared sidecar in each sidecar call", async (t) 
   assert.ok(reports.sidecarNames.length >= 2, "the page sent its sidecar calls");
   assert.deepEqual(reports.sidecarNames, reports.sidecarNames.map(() => declared[0]));
 });
+
+// E14: the page records its trace as the events of its catalog, and each sidecar send carries its correlation identifiers.
+test("the view page records the open, save and watch trace as declared events", async (t) => {
+  const { logs, run, sidecar, settle } = createViewPage(t, "trace");
+  await import("../build/test/ui/view.js?case=trace");
+  await run("editor.edit", { changes: [{ from: 8, to: 9, insert: "2" }] });
+  await run("editor.save");
+  sidecar.change("src/main.js", "changed on disk\n");
+  await settle();
+  const catalog = JSON.parse(readFileSync(new URL("../events.json", import.meta.url), "utf8")).events;
+  const events = logs.map((entry) => entry.event);
+  for (const event of ["open", "save", "watch.start", "watch.change"]) {
+    assert.ok(events.includes(event), `the page recorded ${event}; recorded ${events.join(", ")}`);
+    assert.ok(Object.hasOwn(catalog, `plugin.editor.${event}`), `plugin.editor.${event} is declared`);
+  }
+});
+
+test("each sidecar send of the view page carries its correlation identifiers", async (t) => {
+  const { reports, run, settle } = createViewPage(t, "send-cids");
+  await import("../build/test/ui/view.js?case=send-cids");
+  await run("editor.read");
+  await run("editor.save");
+  await settle();
+  assert.ok(reports.sendCids.length >= 2, "the page sent its sidecar calls");
+  for (const cids of reports.sendCids) assert.ok(Array.isArray(cids), `cids ${JSON.stringify(cids)} is a list`);
+});

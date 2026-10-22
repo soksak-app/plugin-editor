@@ -122,7 +122,8 @@ export function createViewContext({ bridge, start, files, log, report }) {
       contributions,
       runtime: {
         sidecar: () => ({
-          send: (surface, body, cids) => runtime.sidecar(SIDECAR).send(surface, body, cids),
+          // A view has no input chain (core docs/spec/native-surfaces.md, view input), so a send carries no identifiers.
+          send: (surface, body, cids = []) => runtime.sidecar(SIDECAR).send(surface, body, cids),
           on: (surface, fn) => runtime.sidecar(SIDECAR).on(surface, fn),
           onFailure: (surface, fn) => runtime.sidecar(SIDECAR).onFailure(surface, fn),
         }),
