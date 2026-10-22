@@ -4,7 +4,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { VIEW_IMPORTS, checkViewPage } from "@soksak/plugin-api";
 import { sha } from "./fakes.mjs";
 import { createViewPage } from "./view-host.mjs";
 
@@ -14,29 +13,30 @@ const PAGE = new URL("../ui/index.html", import.meta.url);
 
 test("the view page carries the import map of the view and the page script", () => {
   const html = readFileSync(PAGE, "utf8");
-  assert.equal(checkViewPage(html), undefined);
+  // The entries of the map equal the view imports of the SDK; the check of make check compares them (scripts/check-plugin.mjs).
   const map = JSON.parse(html.match(/<script type="importmap">([^<]+)<\/script>/)[1]);
-  assert.deepEqual(map, { imports: VIEW_IMPORTS });
+  assert.equal(Object.keys(map.imports).length, 4);
+  assert.ok(Object.values(map.imports).every((target) => target.startsWith("sok://core/")));
   assert.match(html, /<script type="module" src="\.\/view\.js"><\/script>/);
 });
 
 test("the view page refuses to mount without the start values of the surface", async (t) => {
   const host = createViewPage(t, "no-start");
   host.window.sokSurface = null;
-  await assert.rejects(import("../ui/view.js?case=no-start"),
+  await assert.rejects(import("../build/test/ui/view.js?case=no-start"),
     /the view of editor has no start values: the host provides window\.sokSurface/);
 });
 
 test("the view page refuses to mount without the declarations of the start values", async (t) => {
   const host = createViewPage(t, "no-declarations");
   host.window.sokSurface = Object.freeze({ surface: "editor-1", params: null, origin: null, project: null });
-  await assert.rejects(import("../ui/view.js?case=no-declarations"),
+  await assert.rejects(import("../build/test/ui/view.js?case=no-declarations"),
     /window\.sokSurface \{surface, params, origin, project, declarations\}/);
 });
 
 test("the view page registers its exposure from the declarations of the start values", async (t) => {
   const { reports, settle } = createViewPage(t, "declarations");
-  await import("../ui/view.js?case=declarations");
+  await import("../build/test/ui/view.js?case=declarations");
   await settle();
   const statuses = reports.native.filter(([name, payload]) => name === "registered" && payload.kind === "status")
     .map(([, payload]) => payload.name);
@@ -45,7 +45,7 @@ test("the view page registers its exposure from the declarations of the start va
 
 test("the view page opens the file of its tab through the view channel", async (t) => {
   const { reports, logs, run, settle, sidecar } = createViewPage(t, "open");
-  await import("../ui/view.js?case=open");
+  await import("../build/test/ui/view.js?case=open");
   assert.deepEqual(sidecar.sent.map((body) => body.operation), ["read", "watch"]);
   assert.equal(await run("editor.read"), "let a = 1;\n// TODO: b\n");
   // Every declared command of the plugin is registered through the channel, and the registrations of the statuses and
@@ -63,7 +63,7 @@ test("the view page opens the file of its tab through the view channel", async (
 
 test("the view page answers a forwarded exposure request from its own values", async (t) => {
   const { reports, expose, settle } = createViewPage(t, "exposure");
-  await import("../ui/view.js?case=exposure");
+  await import("../build/test/ui/view.js?case=exposure");
   await settle();
   const id = expose("status.get", { name: "editor.document" });
   await settle();
@@ -74,7 +74,7 @@ test("the view page answers a forwarded exposure request from its own values", a
 
 test("an uncaught error of the view page is an error event of the plugin", async (t) => {
   const { window, logs, settle } = createViewPage(t, "page-error");
-  await import("../ui/view.js?case=page-error");
+  await import("../build/test/ui/view.js?case=page-error");
   await settle();
   window.dispatchEvent(new window.ErrorEvent("error", { error: new Error("boom"), message: "boom" }));
   await settle();
@@ -84,7 +84,7 @@ test("an uncaught error of the view page is an error event of the plugin", async
 
 test("an edit of the view saves through the sidecar and reports the tab state", async (t) => {
   const { reports, run, settle, sidecar } = createViewPage(t, "save");
-  await import("../ui/view.js?case=save");
+  await import("../build/test/ui/view.js?case=save");
   await run("editor.edit", { changes: [{ from: 8, to: 9, insert: "2" }] });
   assert.deepEqual(reports.modified, [false, true]);
   await run("editor.save");
@@ -99,7 +99,7 @@ test("the first save of a blank document asks for its file through core.file.pla
   const files = new Map();
   const { reports, run, settle, sidecar } = createViewPage(t, "blank", { params: {}, files,
     place: () => ({ path: "notes/plan.md" }) });
-  await import("../ui/view.js?case=blank");
+  await import("../build/test/ui/view.js?case=blank");
   await run("editor.edit", { changes: [{ from: 0, to: 0, insert: "# plan\n" }] });
   await run("editor.save");
   assert.equal(files.get("notes/plan.md"), "# plan\n");
@@ -112,7 +112,7 @@ test("the first save of a blank document asks for its file through core.file.pla
 
 test("the theme of the view reaches the page through the queue and follows a change", async (t) => {
   const { window, post, settle } = createViewPage(t, "theme", { scheme: "light" });
-  await import("../ui/view.js?case=theme");
+  await import("../build/test/ui/view.js?case=theme");
   await settle();
   assert.equal(window.document.documentElement.style.colorScheme, "light");
   post({ sok: 1, event: "theme", data: { scheme: "dark", tokens: {} } });

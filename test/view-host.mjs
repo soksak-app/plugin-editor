@@ -1,17 +1,12 @@
-// The host side of the view channel for the tests of the view page: it runs the injected view-start script (the file the
-// host stages from @soksak/plugin-api into each view configuration) in a fresh window, serves the call route of a view
-// (the view calls of core docs/spec/native-surfaces.md#view-surfaces), and sends the
-// requests of core to the commands of the view. The page imports with a distinct query per case, so each case mounts a
-// fresh page into its own window.
+// The host side of the view channel for the tests of the view page: it installs the view script of the host (the wire model
+// of test/models/view-wire.mjs) into a fresh window, serves the call route of a view (the view calls of core
+// docs/spec/native-surfaces.md#view-surfaces), and sends the requests of core to the commands of the view. The page imports
+// with a distinct query per case, so each case mounts a fresh page into its own window.
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { createWindow, useWindow } from "./dom.mjs";
 import { fakeFiles } from "./fakes.mjs";
+import { installViewWire } from "./models/view-wire.mjs";
 
-const require = createRequire(import.meta.url);
-// The host injects the text of this file into each view configuration before any page script runs; the test runs the
-// same file from the installed @soksak/plugin-api.
-const VIEW_START = readFileSync(new URL("./view-start.js", new URL(`file://${require.resolve("@soksak/plugin-api")}`)), "utf8");
 const MANIFEST = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.url), "utf8"));
 const declared = (kind, name) => (MANIFEST.exposes[kind] ?? []).some((entry) => entry.name === name);
 
@@ -22,7 +17,7 @@ const settle = (rounds = 6) => {
 };
 
 /**
- * Creates one window with the view page of one case mounted: the start values, the injected view-start script, the host
+ * Creates one window with the view page of one case mounted: the start values, the view script of the host, the host
  * side of the sok-view channel, and the fetch of the core root files. The globals of the test process serve the window.
  *
  * Returns { window, sidecar, reports, logs, run, post, expose, settle }. reports holds the tab reports, the state writes, the
@@ -143,9 +138,11 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
   // The start values as the host injects them: declarations are the exposes of the plugin (core docs/spec/native-surfaces.md#view-surfaces).
   window.sokSurface = Object.freeze({ surface: "editor-1", params, origin: Object.freeze({ directory: null }),
     project: Object.freeze({ root: "/project" }), declarations: MANIFEST.exposes });
-  window.eval(VIEW_START);
+  // The view script of the host runs before the page: it posts the ready message and queues the host messages until the
+  // page attaches its listener.
+  installViewWire(window, { host: "editor", document: "6f1d2a3e-1111-4a2b-8c3d-0000000000e1" });
   // The theme script of the view ran before the page, and the host sends the current theme after the ready message; the
-  // test posts it before the page attaches, so it arrives through the queue of the injected script (the first messages).
+  // test posts it before the page attaches, so it arrives through the queue of the view script (the first messages).
   post({ sok: 1, event: "theme", data: { scheme, tokens: {} } });
 
   // Sends one command request of core to the page, as the workbench sends each request of a command of the view.

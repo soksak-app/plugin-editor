@@ -65,6 +65,9 @@ importers:
       '@soksak/plugin-api':
         specifier: github:soksak-app/core#main&path:/packages/plugin-api
         version: https://codeload.github.com/soksak-app/core/tar.gz/aa520cc75cfdecd6781284650227f1694020479e#path:/packages/plugin-api
+      acorn:
+        specifier: 8.19.0
+        version: 8.19.0
       crelt:
         specifier: 1.0.7
         version: 1.0.7
@@ -395,6 +398,11 @@ packages:
   '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/aa520cc75cfdecd6781284650227f1694020479e#path:/packages/plugin-api':
     resolution: {gitHosted: true, path: /packages/plugin-api, tarball: https://codeload.github.com/soksak-app/core/tar.gz/aa520cc75cfdecd6781284650227f1694020479e}
     version: 0.0.20
+    hasBin: true
+
+  acorn@8.19.0:
+    resolution: {integrity: sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw==}
+    engines: {node: '>=0.4.0'}
     hasBin: true
 
   bidi-js@1.1.0:
@@ -837,6 +845,8 @@ snapshots:
   '@marijn/find-cluster-break@1.0.4': {}
 
   '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/aa520cc75cfdecd6781284650227f1694020479e#path:/packages/plugin-api': {}
+
+  acorn@8.19.0: {}
 
   bidi-js@1.1.0:
     dependencies:

@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { window } from "./dom.mjs";
 import { fakeFiles, sha } from "./fakes.mjs";
-import { createBinder } from "@soksak/plugin-api";
+import { createBinder } from "./models/binder.mjs";
 
-const { mount } = await import("../ui/editor.js");
-const { markdownView, projectImagePath, safeImageSource } = await import("../ui/markdown.js");
-const { EditorView } = await import("@soksak/shared/editor.extension/@codemirror/view.js");
+const { mount } = await import("../build/test/ui/editor.js");
+const { markdownView, projectImagePath, safeImageSource } = await import("../build/test/ui/markdown.js");
+const { EditorView } = await import("../build/test/shared/@codemirror/view.js");
 const manifest = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.url), "utf8"));
 const declared = (kind, name) => manifest.exposes[kind].some((entry) => entry.name === name);
 
@@ -190,7 +190,7 @@ test("the tab is named after its file", async (t) => {
 });
 
 test("the editor colors come from a CodeMirror theme of the theme tokens and follow the scheme", async (t) => {
-  const { EditorView } = await import("@soksak/shared/editor.extension/@codemirror/view.js");
+  const { EditorView } = await import("../build/test/shared/@codemirror/view.js");
   const { root } = await setup(t, { scheme: "light" });
   const view = EditorView.findFromDOM(root.querySelector(".cm-editor"));
   assert.equal(view.state.facet(EditorView.darkTheme), false);

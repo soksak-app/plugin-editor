@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const { createEmitter } = await import("../ui/events.js");
+const { createEmitter } = await import("../build/test/ui/events.js");
 const pack = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
 const LEVELS = ["error", "warn", "info", "debug", "trace"];

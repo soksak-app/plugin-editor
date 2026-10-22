@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "build": "node scripts/build-vendor.mjs",
-    "test": "node scripts/build-vendor.mjs --check && node --import ./test/shared-modules.mjs --test test/*.test.mjs"
+    "test": "node scripts/build-vendor.mjs --check && node scripts/build-test.mjs && node --test test/*.test.mjs"
   },
   "devDependencies": {
     "@codemirror/commands": "6.11.1",
@@ -42,6 +42,7 @@
     "@lezer/lr": "1.4.11",
     "@marijn/find-cluster-break": "1.0.4",
     "@soksak/plugin-api": "github:soksak-app/core#main&path:/packages/plugin-api",
+    "acorn": "8.19.0",
     "crelt": "1.0.7",
     "esbuild": "0.28.2",
     "jsdom": "^30.1.1",
