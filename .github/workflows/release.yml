@@ -1,5 +1,4 @@
 name: release
-# build-machine: skip test reason=the ci workflow tests the tagged commit on main before the tag is pushed
 # build-machine: skip smoke reason=a plugin runs only inside the application; the core window checks start it
 
 on:
@@ -18,6 +17,14 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: pnpm/action-setup@v4
+      - name: Test
+        run: make test
+      - name: Check
+        run: make check
       - uses: actions/checkout@v4
         with:
           repository: soksak-app/core

@@ -39,3 +39,4 @@
 - F238-c-23: `make test` runs the plugin tests only; `make check` runs `scripts/check-plugin.mjs` (the manifest, the view page, the copied contract cases and the test SDK table) and the SDK tools `soksak-exposure`, `soksak-engines`, `soksak-events` and `soksak-records`. `make check` is not yet green: the installed release publishes no `contract/`, and the `resolveContributions` gap (F238-c-13.1) remains.
 - F238-c-13.4: The view page names its declared sidecar (`@soksak/sidecar-files`, the one dependency of `plugin.json`) in each sidecar call, and the view bridge model refuses a `runtime.sidecar()` call without a sidecar name.
 - F238-c-6: `@soksak/plugin-api` is pinned to the core release tag `v0.0.20` instead of core `main`. `make test` passes; `make check` fails against that tag until a core release publishes `view.js` and `contract/`.
+- F238-c-24: `ci.yml` runs `make check` after `make test`; `release.yml` runs `make test` and `make check` before packing.
