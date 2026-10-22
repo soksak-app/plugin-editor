@@ -220,3 +220,21 @@ test("runtime.sidecar() refuses a call without a sidecar name", () => {
   assert.throws(() => bridge.runtime.sidecar(), /sidecar name/);
   assert.deepEqual(created.posted.filter((message) => String(message.command).startsWith("runtime.sidecar")), []);
 });
+
+// The page's calls keep the time limit of core calls.json: a call without a host reply is rejected at its limit.
+test("a page call without a host reply is rejected at its limit", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+  const created = page();
+  installViewWire(created.window, { host: "probe" });
+  const bridge = createViewBridge({ handler: created.window.webkit.messageHandlers["sok-view"] });
+  let failure = null;
+  bridge.calls.request("demo.open", {}).catch((error) => { failure = error; });
+  const microtasks = async () => { for (let i = 0; i < 10; i += 1) await Promise.resolve(); };
+  t.mock.timers.tick(9999);
+  await microtasks();
+  assert.equal(failure, null, "the call is open before its limit");
+  t.mock.timers.tick(1);
+  await microtasks();
+  assert.equal(failure?.message, "command demo.open did not reply within 10000ms");
+  assert.equal(failure?.code, -32000);
+});

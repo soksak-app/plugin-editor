@@ -1,9 +1,12 @@
+import { createCalls } from "./calls.mjs";
+
 // Behavior model of createViewBridge for the view page: the requests of the page (calls.request), the host requests that
 // the page answers from its registered commands, the host events and the native subscriptions, the sidecar subscriptions,
 // the theme subscription, and the exposure calls. It runs over window.sokView of the view wire (view-wire.mjs) and posts
 // through handler.postMessage. The conformance test replays test/fixtures/contract/view-bridge.json, view-native.json and
 // view-commands.json. Untraced: the level gate of runtime.log, which the view page does not use (core
-// view-bridge.json case view.bridge.runtime-log-level-gate is not covered).
+// view-bridge.json case view.bridge.runtime-log-level-gate is not covered). The page's calls keep the time limit of calls.json
+// (test/models/calls.mjs).
 
 const NOT_REGISTERED = 1002;
 const FAILED = -32000;
@@ -21,18 +24,14 @@ export function createViewBridge({ handler, report = () => {} }) {
   const sokView = globalThis.window.sokView;
   if (sokView === undefined) throw new Error(`view channel of ${plugin} has no window.sokView`);
 
-  let nextId = 0;
-  const pending = new Map();
   const commands = new Map();
   const events = new Map();
   const natives = new Map();
 
   const post = (message) => handler.postMessage(message);
-  const request = (command, params) => new Promise((resolve, reject) => {
-    const id = ++nextId;
-    pending.set(id, { resolve, reject });
-    post({ sok: 1, id, command, params });
-  });
+  // The page's calls keep the limit of the call layer (core calls.json); the reports of the layer reach report.
+  const layer = createCalls({ plugin, send: (message) => post({ sok: 1, ...message }), report });
+  const request = (command, params, timeout) => layer.request(command, params, timeout);
   const answer = (id, payload) => post({ sok: 1, reply: id, ...payload });
 
   /** The host requests answered from the registered commands; a command that is not registered is refused. */
@@ -62,11 +61,8 @@ export function createViewBridge({ handler, report = () => {} }) {
       serve(message);
       return;
     }
-    if (message.id !== undefined && pending.has(message.id)) {
-      const waiter = pending.get(message.id);
-      pending.delete(message.id);
-      if (message.error !== undefined) waiter.reject(new Error(message.error.message));
-      else waiter.resolve(message.result ?? null);
+    if (message.id !== undefined && message.command === undefined && (message.result !== undefined || message.error !== undefined)) {
+      layer.reply(message.id, message.error !== undefined ? { error: message.error } : { result: message.result });
       return;
     }
     report({ kind: "unroutable", message });
