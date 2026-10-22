@@ -228,6 +228,215 @@
           }
         }
       ]
+    },
+    {
+      "id": "expose.dispose.refuses-a-registration-after-dispose",
+      "initial": 3,
+      "declarations": {
+        "status": [
+          {
+            "name": "demo.count",
+            "description": "The count of the demo.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "steps": [
+        {
+          "dispose": true,
+          "output": {
+            "registered": [
+              {
+                "kind": "unregister"
+              }
+            ],
+            "replies": [],
+            "effects": [],
+            "result": null,
+            "throws": null
+          }
+        },
+        {
+          "status": {
+            "name": "demo.count"
+          },
+          "output": {
+            "registered": [],
+            "replies": [],
+            "effects": [],
+            "result": null,
+            "throws": "exposure is disposed"
+          }
+        },
+        {
+          "request": {
+            "id": 1,
+            "method": "status.get",
+            "params": {
+              "name": "demo.count"
+            }
+          },
+          "output": {
+            "registered": [],
+            "replies": [],
+            "effects": [],
+            "result": null,
+            "throws": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "expose.dispose.removes-bindings",
+      "markup": "<button id=\"save\">Save</button>",
+      "declarations": {
+        "commands": [
+          {
+            "name": "demo.save",
+            "description": "Saves the item.",
+            "params": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                }
+              }
+            },
+            "result": {
+              "type": "null"
+            }
+          }
+        ]
+      },
+      "steps": [
+        {
+          "command": {
+            "name": "demo.save"
+          },
+          "output": {
+            "registered": [
+              {
+                "kind": "command",
+                "name": "demo.save"
+              }
+            ],
+            "replies": [],
+            "effects": [],
+            "result": null,
+            "throws": null
+          }
+        },
+        {
+          "bind": {
+            "selector": "#save",
+            "command": "demo.save",
+            "params": {
+              "id": "a"
+            }
+          },
+          "output": {
+            "registered": [],
+            "replies": [],
+            "effects": [],
+            "result": null,
+            "throws": null
+          }
+        },
+        {
+          "click": {
+            "selector": "#save"
+          },
+          "output": {
+            "registered": [],
+            "replies": [],
+            "effects": [
+              "click save",
+              "run demo.save {\"id\":\"a\"}"
+            ],
+            "result": null,
+            "throws": null
+          }
+        },
+        {
+          "dispose": true,
+          "output": {
+            "registered": [
+              {
+                "kind": "unregister"
+              }
+            ],
+            "replies": [],
+            "effects": [],
+            "result": null,
+            "throws": null
+          }
+        },
+        {
+          "click": {
+            "selector": "#save"
+          },
+          "output": {
+            "registered": [],
+            "replies": [],
+            "effects": [
+              "click save"
+            ],
+            "result": null,
+            "throws": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "expose.dispose.races-a-registration-loading-declarations",
+      "initial": 3,
+      "declarations": {
+        "status": [
+          {
+            "name": "demo.count",
+            "description": "The count of the demo.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "steps": [
+        {
+          "race": {
+            "name": "demo.count"
+          },
+          "output": {
+            "registered": [
+              {
+                "kind": "unregister"
+              }
+            ],
+            "replies": [],
+            "effects": [],
+            "result": null,
+            "throws": "exposure is disposed"
+          }
+        },
+        {
+          "request": {
+            "id": 1,
+            "method": "status.get",
+            "params": {
+              "name": "demo.count"
+            }
+          },
+          "output": {
+            "registered": [],
+            "replies": [],
+            "effects": [],
+            "result": null,
+            "throws": null
+          }
+        }
+      ]
     }
   ]
 }

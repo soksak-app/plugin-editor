@@ -27,6 +27,19 @@ async function replay(testCase) {
   };
   const exposure = createExpose(port, () => testCase.declarations ?? {});
   let markup = null;
+  const ensureMarkup = () => {
+    if (markup !== null) return;
+    markup = document.createElement("div");
+    markup.innerHTML = testCase.markup;
+    document.body.append(markup);
+    for (const element of markup.querySelectorAll("[id]")) {
+      element.addEventListener("click", () => effects.push(`click ${element.id}`));
+    }
+    for (const [id, box] of Object.entries(testCase.rects ?? {})) {
+      markup.querySelector(`#${id}`).getBoundingClientRect = () => ({ left: box.left, top: box.top, width: box.width, height: box.height,
+        right: box.left + box.width, bottom: box.top + box.height });
+    }
+  };
   const outputs = [];
   for (const step of testCase.steps) {
     registered.length = 0;
@@ -39,23 +52,31 @@ async function replay(testCase) {
         result = await exposure.status(step.status.name, () => current, (notify) => { changed = notify; });
       } else if (step.dispose) {
         result = await exposure.dispose();
+      } else if (step.command) {
+        result = await exposure.command(step.command.name, (params) => {
+          effects.push(`run ${step.command.name} ${JSON.stringify(params)}`);
+        });
+      } else if (step.bind) {
+        ensureMarkup();
+        result = (await exposure.bind(markup.querySelector(step.bind.selector), step.bind.command, step.bind.params)) ?? null;
+      } else if (step.click) {
+        ensureMarkup();
+        markup.querySelector(step.click.selector).click();
+      } else if (step.race) {
+        const pending = exposure.status(step.race.name, () => current, () => {});
+        await exposure.dispose();
+        try {
+          await pending;
+        } catch (error) {
+          throws = error.message;
+        }
       } else if (step.set !== undefined) {
         current = step.set;
         changed();
       } else if (step.request) {
         answer(step.request);
       } else if (step.dom) {
-        if (markup === null) {
-          markup = document.createElement("div");
-          markup.innerHTML = testCase.markup;
-          document.body.append(markup);
-          for (const [id, box] of Object.entries(testCase.rects ?? {})) {
-            const element = markup.querySelector(`#${id}`);
-            element.getBoundingClientRect = () => ({ left: box.left, top: box.top, width: box.width, height: box.height,
-              right: box.left + box.width, bottom: box.top + box.height });
-            element.addEventListener("click", () => effects.push(`click ${id}`));
-          }
-        }
+        ensureMarkup();
         result = await exposure.dom(step.dom.name, markup.querySelector(step.dom.selector));
       } else {
         throw new Error(`the replay has no step for ${JSON.stringify(step)}`);
@@ -78,5 +99,5 @@ for (const testCase of contract.cases) {
 }
 
 test("the exposure conformance covers every case of the contract", () => {
-  assert.equal(contract.cases.length, 4);
+  assert.equal(contract.cases.length, 7);
 });

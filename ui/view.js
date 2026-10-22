@@ -98,8 +98,6 @@ export function createViewContext({ bridge, start, files, log, report }) {
       answer({ id, method, params });
     }),
     reply: relay.reply,
-    // The view channel publishes no unregister call (core view-native.json), so the page has no record to send for it.
-    unregister: () => Promise.resolve(),
     report,
   }, () => start.declarations);
   return {

@@ -17,13 +17,16 @@ class ReplyError extends Error {
 }
 
 /**
- * Creates the exposure of one page. port is {register(kind, name), unregister(), onRequest(answer), reply(id, payload), report(text)}
- * and declarations() returns the declared {status, dom, commands} entries of the plugin. After dispose, the page answers no request
- * and records the unregister of the port (core expose.json, expose.dispose.ends-registrations-and-requests).
+ * Creates the exposure of one page. port is {register(kind, name), onRequest(answer), reply(id, payload), report(text)} and
+ * may hold unregister(), which a port that publishes removal provides. declarations() returns the declared {status, dom, commands}
+ * entries of the plugin. After dispose, the page refuses each registration with "exposure is disposed", answers no request, and
+ * ends its bindings. The view port holds no unregister: the view channel publishes no removal of a registration while the view
+ * is open (core expose.json, expose.dispose.*), so dispose ends the local listeners only.
  */
 export function createExpose(port, declarations) {
   const declared = (kind, name) => (declarations()[kind] ?? []).some((entry) => entry.name === name);
   const statuses = new Map();
+  const DISPOSED = "exposure is disposed";
   const commands = new Map();
   const doms = new Map();
   let disposed = false;
@@ -94,8 +97,12 @@ export function createExpose(port, declarations) {
   return {
     /** Registers a status: read() returns its value and subscribe(changed) calls changed() when the value changes. */
     async status(name, read, subscribe) {
+      if (disposed) throw new Error(DISPOSED);
       if (!declared("status", name)) throw new Error(`status ${name} is not declared`);
       if (statuses.has(name)) throw new Error(`status ${name} is already registered`);
+      // The declarations load asynchronously, so a dispose during the load ends the registration.
+      await Promise.resolve();
+      if (disposed) throw new Error(DISPOSED);
       const status = { read, version: 1, watching: false, waiting: [] };
       statuses.set(name, status);
       subscribe(() => {
@@ -108,6 +115,7 @@ export function createExpose(port, declarations) {
     },
 
     async command(name, run) {
+      if (disposed) throw new Error(DISPOSED);
       if (!declared("commands", name)) throw new Error(`command ${name} is not declared`);
       commands.set(name, run);
       await port.register("command", name);
@@ -116,6 +124,7 @@ export function createExpose(port, declarations) {
 
     /** Registers a dom name for the element it names; the element is the one that the requests act on. */
     async dom(name, element) {
+      if (disposed) throw new Error(DISPOSED);
       if (!declared("dom", name)) throw new Error(`dom ${name} is not declared`);
       if (doms.has(name)) throw new Error(`dom ${name} is already registered`);
       doms.set(name, { element });
@@ -130,7 +139,7 @@ export function createExpose(port, declarations) {
       disposed = true;
       for (const status of statuses.values()) status.watching = false;
       await binder.dispose();
-      await port.unregister();
+      if (port.unregister) await port.unregister();
       return null;
     },
   };
