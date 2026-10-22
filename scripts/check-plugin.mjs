@@ -5,14 +5,22 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { validateManifest, checkViewPage, VIEW_IMPORTS, INSTALLED_PLUGINS } from "@soksak/plugin-api";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const apiDir = path.resolve(process.env.CORE_PLUGIN_API_DIR || path.join(root, "node_modules", "@soksak", "plugin-api"));
 const manifest = JSON.parse(readFileSync(path.join(root, "plugin.json"), "utf8"));
 const table = JSON.parse(readFileSync(path.join(root, "scripts", "test-sdk.json"), "utf8"));
 const fixtures = path.join(root, "test", "fixtures", "contract");
+
+// The SDK is loaded from the API directory, so CORE_PLUGIN_API_DIR selects the source that the checks compare with.
+const sdk = await import(pathToFileURL(path.join(apiDir, "index.js")).href);
+for (const name of ["validateManifest", "checkViewPage", "VIEW_IMPORTS", "INSTALLED_PLUGINS"]) {
+  if (!(name in sdk)) {
+    throw new Error(`the API package at ${apiDir} does not export ${name}; set CORE_PLUGIN_API_DIR to the packages/plugin-api source of core`);
+  }
+}
+const { validateManifest, checkViewPage, VIEW_IMPORTS, INSTALLED_PLUGINS } = sdk;
 
 assert.equal(validateManifest(manifest), manifest, "plugin.json is not a valid manifest");
 console.log("Manifest check passed: plugin.json");
