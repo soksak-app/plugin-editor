@@ -15,7 +15,7 @@ test("the view page carries the import map of the view and the page script", () 
   const html = readFileSync(PAGE, "utf8");
   // The entries of the map equal the view imports of the SDK; the check of make check compares them (scripts/check-plugin.mjs).
   const map = JSON.parse(html.match(/<script type="importmap">([^<]+)<\/script>/)[1]);
-  assert.equal(Object.keys(map.imports).length, 4);
+  assert.equal(Object.keys(map.imports).length, 5);
   assert.ok(Object.values(map.imports).every((target) => target.startsWith("sok://core/")));
   assert.match(html, /<script type="module" src="\.\/view\.js"><\/script>/);
 });

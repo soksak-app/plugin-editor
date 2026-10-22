@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- F212.12-1-10-2: view 페이지 map이 core view import map의 screen-hash 항목을 가진다. `checkViewPage`가 이 항목을 요구한다. 시험은 다섯 항목을 단언한다. Red: `the view page carries the import map of the view and the page script` 시험이 `actual: 4, expected: 5`로 실패했고, CORE_PLUGIN_API_DIR 검사가 같은 누락 항목으로 실패했다. Green: `make test`가 141개 중 140개 통과와 1개 생략으로 통과하고, `make check`의 view page 검사가 통과한다. `make check`의 다음 검사는 fixture `test/fixtures/contract/contributions.json`이 core의 게시된 contract와 달라 실패하며, 이는 이 변경 밖이다.
 - F238-c-25: pre-push 훅이 `make push-check`를 실행한다. 이것은 ci workflow와 같이 `make test`, `make check`, push 범위의 commit message 검사를 실행한다. Red: push-check header test와 pre-push 훅 test가 실패했고, `.githooks/pre-push`는 없었다. Green: `test/makefile.test.mjs`가 4개 중 4개를 통과한다. `make check`는 고정 SDK에서 실패하며 이것은 F238-c-26이 기록한다.
 - F252-contract-editor: 복사한 계약 파일을 core origin/main에 맞췄다(`create-binder.json`, `expose.json`, `view-commands.json`이 바뀌었다). replay model은 새 함수 매개변수 bind와 command cids를 포괄하며, 노출 replay에 `inspect` 단계가 추가되었다.
 - F252-editor: 읽기 전용 파일의 저장 거부와 연결된 서식 도구가 없는 서식 실행 거부는 텍스트를 tab 오류로 표시하고 호출자에게 던진다. 잘못된 정규식은 찾기 막대에 메시지를 표시하고 `plugin.editor.find.invalid`로 기록한다. tab이 끝나거나 대체된 뒤의 Markdown 이미지 실패는 `plugin.editor.markdown.image`로 기록한다. 메시지가 없는 던져진 값은 텍스트로 표시한다. 거부된 `runtime.log` 기록은 `runtime.error {where: "log"}`로 표시하고 콘솔에도 남긴다.
