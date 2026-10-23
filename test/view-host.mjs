@@ -28,7 +28,7 @@ const settle = (rounds = 6) => {
 export function createViewPage(t, caseId, { params = { path: "src/main.js" }, stored = null,
   files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), scheme = "dark", refuseLog = null,
   place = () => { throw new Error("the test runs no core command"); } } = {}) {
-  const { window } = createWindow(`sok://editor/ui/index.html?case=${caseId}`);
+  const { window } = createWindow(`soksak://editor/ui/index.html?case=${caseId}`);
   useWindow(window);
   const sidecar = fakeFiles(files);
   const reports = { title: [], modified: [], error: [], errorLines: [], keep: [], state: [], registered: [], native: [], placed: [], subscribed: [], sidecarNames: [], sendCids: [] };
@@ -133,9 +133,11 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
     return id;
   };
 
+  const fetches = [];
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (input) => {
     const url = String(input);
+    fetches.push(url);
     if (url.endsWith("installed-plugins.json")) return { ok: true, status: 200, json: async () => ({ plugins: [] }) };
     // The origin of the view serves no other document to the test, so the page gets the status of a missing file.
     return { ok: false, status: 404, json: async () => { throw new Error(`${url} is not served`); } };
@@ -159,5 +161,5 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
     pending.set(id, { resolve, reject });
     post({ sok: 1, id, command: name, params: paramsOfRun });
   });
-  return { window, sidecar, files, reports, logs, received, run, post, expose, settle };
+  return { window, sidecar, files, reports, logs, received, fetches, run, post, expose, settle };
 }

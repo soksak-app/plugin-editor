@@ -16,7 +16,7 @@ const settle = async () => {
 };
 
 /** The window of a view page of the plugin probe, with the sok-view handler that records each posted message. */
-function page(url = "sok://probe/") {
+function page(url = "soksak://probe/") {
   const { window } = createWindow(url);
   const posted = [];
   window.webkit = { messageHandlers: { "sok-view": { postMessage: (message) => posted.push(message) } } };
@@ -38,13 +38,11 @@ async function step(context, item) {
   const replyTo = (id, body) => dispatch(window, { sok: 1, id, ...body });
   const lastId = () => posted.at(-1).id;
   if (item.action === "create") {
-    const url = item.input?.url ?? "sok://probe/";
+    const url = item.input?.url ?? "soksak://probe/";
     const created = page(url);
     Object.assign(context, { window: created.window, posted: created.posted, state: { ...state, plugin: null } });
     try {
-      if (new URL(url).protocol === "sok:") {
-        installViewWire(created.window, { host: "probe" });
-      }
+      installViewWire(created.window, { host: "probe" });
       context.bridge = createViewBridge({ handler: created.window.webkit.messageHandlers["sok-view"], report: (event) => context.reports.push(event) });
       context.state.plugin = context.bridge.plugin;
     } catch (error) {

@@ -60,6 +60,13 @@ test("the view page opens the file of its tab through the view channel", async (
   await settle();
 });
 
+test("the view page loads installed plugins from the canonical core origin", { timeout: 5000 }, async (t) => {
+  const host = createViewPage(t, "canonical-core-origin");
+  await import("../build/test/ui/view.js?case=canonical-core-origin");
+  assert.ok(host.fetches.includes("soksak://core/installed-plugins.json"),
+    `the view fetched the installed plugin record from ${host.fetches.join(", ")}`);
+});
+
 test("the view page answers a forwarded exposure request from its own values", async (t) => {
   const { reports, expose, settle } = createViewPage(t, "exposure");
   await import("../build/test/ui/view.js?case=exposure");

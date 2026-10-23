@@ -20,7 +20,7 @@ function replay(testCase) {
     const deliveredMark = delivered.length;
     let throws = null;
     if (step.load) {
-      ({ window } = createWindow(`sok://${step.load.host}/`));
+      ({ window } = createWindow(`soksak://${step.load.host}/`));
       window.webkit = { messageHandlers: { "sok-view": handler } };
       installViewWire(window, { host: step.load.host, document: step.load.document });
     } else if (step.attach) {

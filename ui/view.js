@@ -1,4 +1,4 @@
-// The editor view page (core docs/spec/plugins.md#view-surfaces): the host serves it at sok://editor/ui/index.html in the
+// The editor view page (core docs/spec/plugins.md#view-surfaces): the host serves it at soksak://editor/ui/index.html in the
 // web view of the surface, and injects the view channel script and the theme script before this page runs. The page builds
 // the surface context of its view over the view channel (@soksak/plugin-api/view) and mounts the editor module into a
 // shadow root of the page. The tab reports and the event records are the served calls tab.title, tab.modified, tab.error,
@@ -11,7 +11,7 @@ import { createEmitter, errorText } from "./events.js";
 import { SIDECAR } from "./view-sidecar.js";
 
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"];
-const CORE_ROOT = "sok://core";
+const CORE_ROOT = "soksak://core";
 
 /**
  * The frozen start values of the surface, which the host of the view sets before the page runs (core

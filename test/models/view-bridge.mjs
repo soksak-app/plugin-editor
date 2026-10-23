@@ -17,8 +17,8 @@ const FAILED = -32000;
  */
 export function createViewBridge({ handler, report = () => {} }) {
   const location = globalThis.window.location;
-  if (location.protocol !== "sok:") {
-    throw new Error(`view channel requires a view page on sok://<plugin id>, got ${location.href}`);
+  if (location.protocol !== "soksak:") {
+    throw new Error(`view channel requires a view page on soksak://<plugin id>, got ${location.href}`);
   }
   const plugin = location.host;
   const sokView = globalThis.window.sokView;

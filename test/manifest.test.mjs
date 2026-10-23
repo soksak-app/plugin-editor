@@ -11,7 +11,7 @@ test("plugin.json is a valid manifest that opens every file with path params and
   const FILES_SIDECAR = ["@", "soksak/sidecar-files"].join("");
   assert.equal(manifest.dependencies[FILES_SIDECAR], ">=0.0.8", "the current files manifest requires the display-name contract");
   const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.equal(pkg.version, "0.0.5", "the package version includes the current sidecar requirement");
+  assert.equal(pkg.version, "0.0.6", "the package version includes the canonical view origin");
   assert.ok(manifest.exposes.commands.some((entry) => entry.name === manifest.surface.save));
 });
 

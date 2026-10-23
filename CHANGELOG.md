@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- E27: Load the installed plugin record and shared contribution modules from `soksak://core`. Red: the owning view test recorded `sok://core/installed-plugins.json` and failed its canonical URL assertion. Green: the same test passes; the bridge model now installs the view wire for canonical URLs, all current source, test and fixture URLs use the canonical scheme, `make test` passes 141 tests with one listed skip, and `CORE_PLUGIN_API_DIR=<core>/packages/plugin-api make check` passes. Package 0.0.6 is packed locally and not published.
+
 - E26: Require files sidecar 0.0.8 or later, which declares the required process display identity. Raise the plugin version to 0.0.5. Red: the owning manifest test rejected the previous `>=0.0.5` range; Green: it passes with the new range and version.
 
 - F238-c-28: The view page begins with its doctype and holds no import map, which the host inserts after the doctype. The page check of `scripts/check-plugin.mjs` no longer compares a copy of the map, for the core checklist item F212.12-1-10-6. Red: `make check` with CORE_PLUGIN_API_DIR failed with `view page has an import map`. Green: `make test` passes 140 of 141 with one skipped case, and `make check` with CORE_PLUGIN_API_DIR exits 0.

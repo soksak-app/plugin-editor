@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E27: 설치된 plugin record와 shared contribution module을 `soksak://core`에서 load한다. Red: owning view test가 `sok://core/installed-plugins.json`을 기록해 canonical URL assertion에서 실패했다. Green: 같은 test가 통과한다. bridge model은 canonical URL에서도 view wire를 설치하며, 현재 source, test, fixture URL은 canonical scheme을 사용한다. `make test`는 명시된 skip 1개를 제외한 141개 test가 통과하고, `CORE_PLUGIN_API_DIR=<core>/packages/plugin-api make check`도 통과한다. Package 0.0.6을 로컬 pack했으며 공개하지 않았다.
+
 - E26: 필수 process display identity를 선언하는 files sidecar 0.0.8 이상을 요구하고 plugin version을 0.0.5로 올린다. Red: owning manifest test가 기존 `>=0.0.5` 범위에서 실패했다. Green: 새 dependency 범위와 version으로 통과한다.
 
 - F238-c-28: view 페이지는 doctype으로 시작하고 import map을 갖지 않는다. host가 doctype 뒤에 이를 넣는다. `scripts/check-plugin.mjs`의 page 검사는 더 이상 map 복사본을 비교하지 않는다(core F212.12-1-10-6). Red: CORE_PLUGIN_API_DIR로 `make check`가 `view page has an import map`으로 실패했다. Green: `make test`가 141개 중 140개 통과와 1개 생략으로 통과하고, CORE_PLUGIN_API_DIR로 `make check`가 0으로 끝난다.
