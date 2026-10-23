@@ -9,7 +9,9 @@ test("plugin.json is a valid manifest that opens every file with path params and
   assert.equal(manifest.surface.params.properties.path.type, "string");
   // The needle of the sidecar name is built from parts so that the test sources name no SDK package.
   const FILES_SIDECAR = ["@", "soksak/sidecar-files"].join("");
-  assert.equal(manifest.dependencies[FILES_SIDECAR], ">=0.0.5", "readBytes requires files sidecar 0.0.5 or later");
+  assert.equal(manifest.dependencies[FILES_SIDECAR], ">=0.0.8", "the current files manifest requires the display-name contract");
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.equal(pkg.version, "0.0.5", "the package version includes the current sidecar requirement");
   assert.ok(manifest.exposes.commands.some((entry) => entry.name === manifest.surface.save));
 });
 
