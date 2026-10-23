@@ -7,6 +7,7 @@
 - E27-1: Remove the package-version assertion that duplicated package metadata; keep the manifest test focused on the declared files sidecar range.
 
 - E27: Load the installed plugin record and shared contribution modules from `soksak://core`. Red: the owning view test recorded `sok://core/installed-plugins.json` and failed its canonical URL assertion. Green: the same test passes; the bridge model now installs the view wire for canonical URLs, all current source, test and fixture URLs use the canonical scheme, `make test` passes 141 tests with one listed skip, and `CORE_PLUGIN_API_DIR=<core>/packages/plugin-api make check` passes. Package 0.0.6 is packed locally and not published.
+- E28: Resolve editor extension points through the declared view bridge instead of fetching the ungranted global installed-plugin record. Red: the owning view test failed because it observed no `extension` or `formatter` bridge calls. Green: the same test observes both calls and no global fetch; `make test` and `CORE_PLUGIN_API_DIR=<core>/packages/plugin-api make check` pass. Package 0.0.7 is packed locally and not published.
 
 - E26: Require files sidecar 0.0.8 or later, which declares the required process display identity. Raise the plugin version to 0.0.5. Red: the owning manifest test rejected the previous `>=0.0.5` range; Green: it passes with the new range and version.
 

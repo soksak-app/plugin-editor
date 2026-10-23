@@ -133,5 +133,12 @@ export function createViewBridge({ handler, report = () => {} }) {
     reply: (id, payload) => request("runtime.native.call", { name: "exposureReply", payload: { id, ...payload } }),
   };
 
-  return { calls, commands: commandsApi, runtime, exposure, plugin };
+  const contributions = (point) => request("runtime.contributions", { point }).then((items) => items.map((entry) => ({
+    ...entry,
+    fail: (reason) => request("runtime.contributions.fail", {
+      point, plugin: entry.plugin, index: entry.index, reason: reason instanceof Error ? reason.message : String(reason),
+    }),
+  })));
+
+  return { calls, commands: commandsApi, runtime, exposure, contributions, plugin };
 }

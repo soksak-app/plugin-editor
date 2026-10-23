@@ -4,7 +4,7 @@
 // shadow root of the page. The tab reports and the event records are the served calls tab.title, tab.modified, tab.error,
 // tab.keep and runtime.log (core docs/spec/native-surfaces.md#view-surfaces, view calls). The page reads the start values
 // of the surface (the tab, its params, its project) from window.sokSurface, which the host sets before the page runs.
-import { INSTALLED_PLUGINS, createExpose, resolveContributions } from "@soksak/plugin-api";
+import { createExpose } from "@soksak/plugin-api";
 import { createViewBridge } from "@soksak/plugin-api/view";
 import { mount } from "./editor.js";
 import { createEmitter, errorText } from "./events.js";
@@ -55,15 +55,6 @@ function createReporter(log) {
     { where, error: String(error?.message ?? error).slice(0, 1024) });
 }
 
-/** The connected items of the extension points of this plugin, from the installed record of the core root. */
-export async function loadFiles() {
-  const response = await fetch(`${CORE_ROOT}/${INSTALLED_PLUGINS}`);
-  if (!response.ok) throw new Error(`failed to load ${CORE_ROOT}/${INSTALLED_PLUGINS}: ${response.status}`);
-  const installed = await response.json();
-  if (typeof installed.error === "string") throw new Error(installed.error);
-  return resolveContributions(installed.plugins);
-}
-
 /**
  * The surface context of the view of one page, over the view bridge: the tab reports, the tab state, the sidecar, the
  * commands, the core commands, the event records, the theme and the exposure run through the view calls, events and
@@ -71,27 +62,19 @@ export async function loadFiles() {
  *
  *     bridge    createViewBridge() of @soksak/plugin-api/view over the sok-view handler of the view
  *     start     the frozen start values {surface, params, origin, project, declarations}
- *     files     the resolved items of the installed record, from loadFiles()
  *     log       the levels of runtime.log, from createLog()
  *     report    report(text): stores one error of the context
  *
  * Returns {context}.
  */
-export function createViewContext({ bridge, start, files, log, report }) {
+export function createViewContext({ bridge, start, log, report }) {
   if (typeof report !== "function") throw new TypeError("createViewContext requires the report function");
   const { calls, commands, runtime, exposure: relay } = bridge;
   // The fire-and-forget calls of the context: a refusal of the route is a record, not a lost report.
   const send = (command, params) => calls.request(command, params)
     .then(undefined, (error) => report(`view call ${command}: ${error?.message ?? error}`));
   // The connected items of the point `editor.<point>`: the module of each item is served from the core root (grant rule 4).
-  const contributions = (point) => files
-    .filter((entry) => entry.state === "connected" && entry.point === `editor.${point}`)
-    .map(({ plugin, item, module }) => ({
-      plugin, item, module: `${CORE_ROOT}${module}`,
-      // A DOM surface marks an invalid item for its provider through core; the view calls declare no such mark (core
-      // docs/spec/plugins.md#view-surfaces gives a view only the connected items), so the page records the reason.
-      fail: (reason) => report(`contribution of ${plugin} to editor.${point} is invalid: ${reason}`),
-    }));
+  const contributions = (point) => bridge.contributions(point);
   // The exposure of the page: the local entries answer the binds and the exposure requests, and each registration goes
   // through the channel. A command is declared by commands.register of the bridge, which registers the same handler for
   // the requests of core, so the local registration sends no declaration of its own. Each forwarded exposure request of the
@@ -192,8 +175,7 @@ for (const event of losses.splice(0)) reportLoss(event);
 installPageErrors(report);
 if (window.sokTheme) applyTheme(window.sokTheme);
 bridge.runtime.theme(applyTheme);
-const files = await loadFiles();
-const { context } = createViewContext({ bridge, start, files, log, report: (text) => report("context", text) });
+const { context } = createViewContext({ bridge, start, log, report: (text) => report("context", text) });
 const host = document.body.appendChild(document.createElement("div"));
 host.style.cssText = "height:100%";
 try {

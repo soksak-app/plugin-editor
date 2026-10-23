@@ -7,6 +7,7 @@
 - E27-1: package metadata와 중복되는 package version assertion을 제거하고, manifest test는 선언한 files sidecar 범위를 검증한다.
 
 - E27: 설치된 plugin record와 shared contribution module을 `soksak://core`에서 load한다. Red: owning view test가 `sok://core/installed-plugins.json`을 기록해 canonical URL assertion에서 실패했다. Green: 같은 test가 통과한다. bridge model은 canonical URL에서도 view wire를 설치하며, 현재 source, test, fixture URL은 canonical scheme을 사용한다. `make test`는 명시된 skip 1개를 제외한 141개 test가 통과하고, `CORE_PLUGIN_API_DIR=<core>/packages/plugin-api make check`도 통과한다. Package 0.0.6을 로컬 pack했으며 공개하지 않았다.
+- E28: 허용되지 않은 전역 installed-plugin record fetch 대신 선언된 view bridge로 editor extension point를 조회한다. Red: owning view test가 `extension`, `formatter` bridge call을 관측하지 못해 실패했다. Green: 같은 test가 두 call과 전역 fetch 부재를 확인하며 `make test`, `CORE_PLUGIN_API_DIR=<core>/packages/plugin-api make check`가 통과한다. Package 0.0.7은 로컬 pack 상태이며 공개하지 않았다.
 
 - E26: 필수 process display identity를 선언하는 files sidecar 0.0.8 이상을 요구하고 plugin version을 0.0.5로 올린다. Red: owning manifest test가 기존 `>=0.0.5` 범위에서 실패했다. Green: 새 dependency 범위와 version으로 통과한다.
 

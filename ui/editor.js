@@ -831,7 +831,7 @@ function checkTabState(value, tab) {
 async function loadContributions(context, file, emitEvent) {
   const applies = (item) => item.extensions === undefined || item.extensions.includes(file.extension);
   const extensions = [];
-  for (const { plugin, item, module, fail } of context.contributions("extension")) {
+  for (const { plugin, item, module, fail } of await context.contributions("extension")) {
     if (!applies(item)) continue;
     try {
       const exported = await import(module);
@@ -843,7 +843,7 @@ async function loadContributions(context, file, emitEvent) {
     }
   }
   const formatters = [];
-  for (const { plugin, item, module, fail } of context.contributions("formatter")) {
+  for (const { plugin, item, module, fail } of await context.contributions("formatter")) {
     try {
       const exported = await import(module);
       if (typeof exported.format !== "function") throw new Error("the module does not export format(text, file)");

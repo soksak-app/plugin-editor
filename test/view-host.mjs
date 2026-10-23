@@ -27,11 +27,12 @@ const settle = (rounds = 6) => {
  */
 export function createViewPage(t, caseId, { params = { path: "src/main.js" }, stored = null,
   files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), scheme = "dark", refuseLog = null,
-  place = () => { throw new Error("the test runs no core command"); } } = {}) {
+  contributions = () => [], place = () => { throw new Error("the test runs no core command"); } } = {}) {
   const { window } = createWindow(`soksak://editor/ui/index.html?case=${caseId}`);
   useWindow(window);
   const sidecar = fakeFiles(files);
-  const reports = { title: [], modified: [], error: [], errorLines: [], keep: [], state: [], registered: [], native: [], placed: [], subscribed: [], sidecarNames: [], sendCids: [] };
+  const reports = { title: [], modified: [], error: [], errorLines: [], keep: [], state: [], registered: [], native: [], placed: [],
+    subscribed: [], sidecarNames: [], sendCids: [], contributions: [] };
   const logs = [];
   const received = [];
   const pending = new Map();
@@ -76,6 +77,9 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
           logs.push(params);
           return null;
         case "runtime.error": reports.errorLines.push(params); return null;
+        case "runtime.contributions":
+          reports.contributions.push(params.point);
+          return contributions(params.point);
         case "runtime.native.on": subscribed(params.name); return null;
         case "runtime.sidecar.send":
           reports.sidecarNames.push(params.sidecar);
