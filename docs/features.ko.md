@@ -3,6 +3,7 @@
 [English](features.md)
 
 - [o] E27 — P0: 설치된 plugin record와 shared contribution module을 canonical `soksak://core` origin에서 load한다. 현재 core는 resource를 그곳에서 제공하고 이전 `sok://core` 주소를 더는 받지 않는다. Red: owning view test가 `sok://core/installed-plugins.json`을 기록해 canonical URL assertion에서 실패했다. Green: 같은 test가 `soksak://core/installed-plugins.json`으로 통과한다. bridge model은 canonical URL에서 view wire를 설치하며 현재 source, test, fixture URL은 canonical scheme을 사용한다. editor version 0.0.6의 `make test`는 명시된 skip 1개를 제외한 141개 test가 통과하고 `CORE_PLUGIN_API_DIR=<core>/packages/plugin-api make check`도 통과한다.
+- [o] E27-1 — P2: manifest test는 files sidecar version range를 검증하고 package version metadata를 중복 assertion하지 않는다. Red: manifest 동작과 무관한 고정 `package.json` version assertion이 있었다. Green: `node --test test/manifest.test.mjs`가 files sidecar 최소 범위를 포함한 두 manifest case를 통과한다.
 - [o] E26 — P1: `sidecar.json.displayName` identity를 요구하는 files sidecar 0.0.8 이상을 사용한다. Plugin package version은 0.0.5다. Red: `test/manifest.test.mjs`가 변경 전 `>=0.0.5` 선언을 `>=0.0.8` 기대와 비교해 실패했다. Green: dependency 하한과 package version을 올린 뒤 manifest test가 통과한다.
 - [ ] E26-1 — P1: files sidecar 최소 버전 0.0.8을 선언한 editor 0.0.6을 게시하고 설치된 plugin registry를 갱신한다. 0.0.6은 canonical `soksak://core` origin도 사용한다. local archive는 version이 게시될 때까지 미배포 상태다.
 
