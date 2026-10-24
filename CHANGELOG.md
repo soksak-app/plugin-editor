@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- E29: Editor `0.0.7` now declares `engines.soksak` `^0.0.21` because published core `v0.0.20` rejects its view composition without `surface.module`. Red: `test/core-version.test.mjs` failed with `">=0.0.18" !== "^0.0.21"`. Green: the same test passes 1/1, the candidate manifest and copied contract checks pass, and the candidate engines and events checks pass. `make check` reaches the pinned SDK engines check and fails because the pin is `v0.0.20`; the package release remains gated on a matching core release. No SDK pin, plugin version, archive or registry changed.
+
 - E27-1: Remove the package-version assertion that duplicated package metadata; keep the manifest test focused on the declared files sidecar range.
 
 - E27: Load the installed plugin record and shared contribution modules from `soksak://core`. Red: the owning view test recorded `sok://core/installed-plugins.json` and failed its canonical URL assertion. Green: the same test passes; the bridge model now installs the view wire for canonical URLs, all current source, test and fixture URLs use the canonical scheme, `make test` passes 141 tests with one listed skip, and `CORE_PLUGIN_API_DIR=<core>/packages/plugin-api make check` passes. Package 0.0.6 is packed locally and not published.
