@@ -4,6 +4,14 @@
 
 ## 미배포
 
+- F239-77-editor: Editor event catalog를 event name, level과 required/optional
+  field 의미를 바꾸지 않고 schema 3 JSON Schema로 변환한다. Red: 현재 core의
+  event checker가 schema 2 catalog를 거부하고 compact field 이름을 schema
+  keyword로 처리했다. Green: 현재 core `events-check`가 선언 17개와 source emit을
+  모두 받는다. Package test는 기존 skip 한 건을 포함해 143개 중 142개 통과하고,
+  현재 core source에 대한 manifest, exposure, engines, events, records 및 contract-copy
+  검사가 통과한다. Runtime acceptance는 대기 중이다.
+
 - E29: Editor `0.0.7`은 공개 core `v0.0.20`이 `surface.module` 없는 view composition을 거부하므로 `engines.soksak` `^0.0.21`을 선언한다. Red: `test/core-version.test.mjs`가 `">=0.0.18" !== "^0.0.21"`로 실패했다. Green: 같은 test가 1/1 통과하고 candidate manifest와 copied contract 검사, candidate engines 및 events 검사가 통과한다. `make check`는 pinned SDK engines 검사에서 중단되며 pin이 `v0.0.20`이기 때문이다. 일치하는 core release가 게시될 때까지 package release를 gate에 둔다. SDK pin, plugin version, archive, registry는 바꾸지 않았다.
 
 - E27-1: package metadata와 중복되는 package version assertion을 제거하고, manifest test는 선언한 files sidecar 범위를 검증한다.

@@ -31,7 +31,7 @@ test("the emitter refuses a name outside the plugin and a level that does not ex
 test("the release holds the catalog, and every entry follows the catalog form", () => {
   assert.ok(pack.files.includes("events.json"));
   const catalog = JSON.parse(readFileSync(new URL("../events.json", import.meta.url), "utf8"));
-  assert.equal(catalog.schema, 2);
+  assert.equal(catalog.schema, 3);
   assert.deepEqual(catalog.layers, ["plugin"]);
   assert.ok(Object.keys(catalog.events).length > 0);
   for (const [name, entry] of Object.entries(catalog.events)) {
@@ -40,8 +40,12 @@ test("the release holds the catalog, and every entry follows the catalog form", 
     assert.ok(CLASSES.includes(entry.class), `${name}: class ${entry.class}`);
     for (const level of [entry.level].flat()) assert.ok(LEVELS.includes(level), `${name}: level ${level}`);
     assert.ok(entry.description.length > 0, name);
-    for (const [field, type] of Object.entries(entry.fields)) {
-      assert.ok(type.split("|").every((part) => TYPES.includes(part)), `${name}.${field}: type ${type}`);
+    assert.equal(entry.fields.$schema, "https://json-schema.org/draft/2020-12/schema", name);
+    assert.equal(entry.fields.type, "object", name);
+    assert.ok(Array.isArray(entry.fields.required), name);
+    for (const field of entry.fields.required) assert.ok(Object.hasOwn(entry.fields.properties, field), `${name}.${field}`);
+    for (const [field, property] of Object.entries(entry.fields.properties)) {
+      for (const type of [property.type].flat()) assert.ok(TYPES.includes(type), `${name}.${field}: type ${type}`);
     }
   }
 });

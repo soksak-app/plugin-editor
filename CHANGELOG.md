@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+- F239-77-editor: Convert the Editor event catalog to schema 3 JSON Schema
+  without changing event names, levels or required/optional field semantics.
+  Red: current core's event checker rejected the schema-2 catalog and parsed
+  compact field names as schema keywords. Green: current core's `events-check`
+  accepts all 17 declarations and their source emits. The package test passes
+  142/143 with one existing skip; manifest, exposure, engines, events, records
+  and contract-copy checks pass against current core source. Runtime acceptance
+  is still pending.
+
 - E29: Editor `0.0.7` now declares `engines.soksak` `^0.0.21` because published core `v0.0.20` rejects its view composition without `surface.module`. Red: `test/core-version.test.mjs` failed with `">=0.0.18" !== "^0.0.21"`. Green: the same test passes 1/1, the candidate manifest and copied contract checks pass, and the candidate engines and events checks pass. `make check` reaches the pinned SDK engines check and fails because the pin is `v0.0.20`; the package release remains gated on a matching core release. No SDK pin, plugin version, archive or registry changed.
 
 - E27-1: Remove the package-version assertion that duplicated package metadata; keep the manifest test focused on the declared files sidecar range.
