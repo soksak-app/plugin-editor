@@ -4,12 +4,15 @@ import { createCalls } from "./calls.mjs";
 // the page answers from its registered commands, the host events and the native subscriptions, the sidecar subscriptions,
 // the theme subscription, and the exposure calls. It runs over window.sokView of the view wire (view-wire.mjs) and posts
 // through handler.postMessage. The conformance test replays test/fixtures/contract/view-bridge.json, view-native.json and
-// view-commands.json. Untraced: the level gate of runtime.log, which the view page does not use (core
-// view-bridge.json case view.bridge.runtime-log-without-level-query is not covered). The page's calls keep the time limit of calls.json
+// view-commands.json. The page's runtime.log has no level query: it sends each record through the call layer, and its field
+// builder runs for each record (core packages/plugin-api/view.js). The page's calls keep the time limit of calls.json
 // (test/models/calls.mjs).
 
 const NOT_REGISTERED = 1002;
 const FAILED = -32000;
+const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"];
+const LOG_EVENT = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/;
+const LOG_CID = /^[^"\\\u0000-\u001f\u007f]+$/;
 
 /**
  * Creates the bridge of the view page of window. report(event) stores a message that the bridge cannot route.
@@ -90,7 +93,34 @@ export function createViewBridge({ handler, report = () => {} }) {
     },
   };
 
+  const log = Object.freeze(Object.fromEntries(LOG_LEVELS.map((level) => [
+    level,
+    (event, fields = {}, options) => {
+      if (typeof event !== "string" || !LOG_EVENT.test(event)) {
+        throw new TypeError("log requires an event name of lowercase words separated by dots");
+      }
+      if (options !== undefined && (options === null || typeof options !== "object" || Array.isArray(options)
+        || Object.keys(options).some((key) => key !== "cids"))) {
+        throw new TypeError("log options may only hold cids");
+      }
+      const cids = options?.cids;
+      if (cids !== undefined && (!Array.isArray(cids) || !cids.every((cid) => typeof cid === "string" && LOG_CID.test(cid)))) {
+        throw new TypeError("log cids must be an array of non-empty strings without a quote, a backslash or a control character");
+      }
+      const built = typeof fields === "function" ? fields() : fields;
+      if (built === null || typeof built !== "object" || Array.isArray(built)) throw new TypeError("log requires fields as an object");
+      if ("surface" in built) throw new TypeError("log fields must not name the surface; the context adds it");
+      const params = { level, event, fields: { ...built }, ...(cids === undefined || cids.length === 0 ? {} : { cids }) };
+      request("runtime.log", params).catch((error) => {
+        const where = `log plugin.${plugin}.${event}`;
+        const text = String(error?.message ?? error);
+        request("runtime.error", { where, text }).catch((failure) => report({ where, text, error: failure }));
+      });
+    },
+  ])));
+
   const runtime = {
+    log,
     native: {
       /** Subscribes listener to the host event name; the first listener of a name posts the subscription. */
       async on(name, listener) {

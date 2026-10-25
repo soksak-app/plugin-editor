@@ -4,6 +4,12 @@
 
 ## 미배포
 
+- F252-contract-editor-1: view bridge model이
+  `view.bridge.runtime-log-without-level-query`를 재생한다. Red: 제외를 해제한 뒤
+  model에 `log` 단계가 없어 사례가 실패했다. Green:
+  `node --test test/model-view-bridge.test.mjs`가 skip 없이 18/18 통과하며,
+  runtime 동작은 바뀌지 않았다.
+
 - F239-77-editor: Editor event catalog를 event name, level과 required/optional
   field 의미를 바꾸지 않고 schema 3 JSON Schema로 변환한다. Red: 현재 core의
   event checker가 schema 2 catalog를 거부하고 compact field 이름을 schema

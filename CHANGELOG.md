@@ -13,6 +13,12 @@
   and contract-copy checks pass against current core source. Runtime acceptance
   is still pending.
 
+- F252-contract-editor-1: The view bridge model now replays
+  `view.bridge.runtime-log-without-level-query`. Red: after removing the
+  exclusion, the case failed because the model had no `log` step. Green:
+  `node --test test/model-view-bridge.test.mjs` passes 18/18 with no skips;
+  runtime behavior is unchanged.
+
 - E29: Editor `0.0.7` now declares `engines.soksak` `^0.0.21` because published core `v0.0.20` rejects its view composition without `surface.module`. Red: `test/core-version.test.mjs` failed with `">=0.0.18" !== "^0.0.21"`. Green: the same test passes 1/1, the candidate manifest and copied contract checks pass, and the candidate engines and events checks pass. `make check` reaches the pinned SDK engines check and fails because the pin is `v0.0.20`; the package release remains gated on a matching core release. No SDK pin, plugin version, archive or registry changed.
 
 - E27-1: Remove the package-version assertion that duplicated package metadata; keep the manifest test focused on the declared files sidecar range.

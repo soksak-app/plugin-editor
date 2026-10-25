@@ -8,9 +8,6 @@ import { installViewWire } from "./models/view-wire.mjs";
 import { createViewBridge } from "./models/view-bridge.mjs";
 
 const load = (name) => JSON.parse(readFileSync(new URL(`./fixtures/contract/${name}`, import.meta.url), "utf8"));
-const UNCOVERED = {
-  "view.bridge.runtime-log-without-level-query": "the view page writes runtime.log as a plain call, and the model has no runtime.log",
-};
 const settle = async () => {
   for (let i = 0; i < 4; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
 };
@@ -74,6 +71,18 @@ async function step(context, item) {
     context.last = bridge.runtime.sidecar(item.input.sidecar).send(item.input.id, item.input.body, item.input.cids);
     await settle();
     return posted.slice(mark)[0];
+  }
+  if (item.action === "log" || item.action === "log-builder") {
+    assert.equal(bridge.runtime.log.enabled, undefined, "the view bridge has no level query");
+    let built = false;
+    const fields = item.action === "log-builder"
+      ? () => { built = true; return item.input.fields; }
+      : item.input.fields;
+    bridge.runtime.log[item.input.level](item.input.event, fields,
+      item.input.cids === undefined ? undefined : { cids: item.input.cids });
+    await settle();
+    if (item.action === "log-builder") return { calls: posted.length - mark, built };
+    return posted.slice(mark);
   }
   if (item.action === "sidecar-subscribe") {
     const sidecar = bridge.runtime.sidecar(item.input.sidecar);
@@ -186,10 +195,6 @@ function pick(actual, expected) {
 }
 
 for (const testCase of cases) {
-  if (UNCOVERED[testCase.id]) {
-    test(testCase.id, { skip: `not covered by the view bridge model: ${UNCOVERED[testCase.id]}` }, () => {});
-    continue;
-  }
   test(testCase.id, async () => {
     const actual = await replay(testCase);
     testCase.steps.forEach((item, index) => {
@@ -206,9 +211,8 @@ for (const testCase of cases) {
   });
 }
 
-test("the bridge conformance covers every case of its contracts but the listed one", () => {
+test("the bridge conformance replays every case of its contracts", () => {
   assert.equal(cases.length, 15);
-  assert.equal(Object.keys(UNCOVERED).length, 1);
 });
 
 // F238-c-13.4: a sidecar call names its sidecar, and the bridge refuses a call that names none (core
