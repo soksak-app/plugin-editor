@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- F239-77-editor: Complete local schema-3 catalog acceptance with the matching installed diagnostic cohort. The current SDK checks 9 sources with zero pending rules and 17 events; both host installations contain the exact source catalog and pass application log audits. Public publication remains separate.
+
 - F239-77-editor: Convert the Editor event catalog to schema 3 JSON Schema
   without changing event names, levels or required/optional field semantics.
   Red: current core's event checker rejected the schema-2 catalog and parsed

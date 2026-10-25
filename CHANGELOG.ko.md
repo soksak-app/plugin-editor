@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- F239-77-editor: 일치하는 설치 diagnostic cohort로 로컬 schema-3 catalog acceptance를 완료한다. 현재 SDK가 source 9개와 pending rule 0개, event 17개를 검사하며 양쪽 host 설치본의 catalog가 source와 정확히 일치하고 application log audit을 통과한다. Public publication은 별도다.
+
 - F252-contract-editor-1: view bridge model이
   `view.bridge.runtime-log-without-level-query`를 재생한다. Red: 제외를 해제한 뒤
   model에 `log` 단계가 없어 사례가 실패했다. Green:

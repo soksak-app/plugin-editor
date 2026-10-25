@@ -2,9 +2,8 @@
 
 [English](features.md)
 
-- [~] F239-77-editor — P1, core F239-77 연결: 현재 core catalog reader가 Editor package를 설치하고 검증할 수 있도록 event catalog를 schema 3 JSON Schema로 변환한다. Event name, class, level과 required/optional field 의미를 유지한다. Runtime acceptance에는 schema-3 core와 일치하는 plugin cohort의 새 설치가 필요하다.
+- [o] F239-77-editor — P1, core F239-77 연결: Event 이름, class, level 및 required/optional field 의미를 보존하며 event catalog를 schema 3 JSON Schema로 전환한다. 현재 공개 SDK census 및 catalog 명령이 implementation source 9개, pending rule 0개, 선언 event 17개로 통과한다. Source catalog는 새로 설치한 양쪽 diagnostic host configuration과 byte 단위로 일치한다. 일반 CLI 설치와 application log audit이 일치하는 core/plugin/sidecar cohort를 받아들인다. Catalog migration 단위만 완료하며 public publication과 관련 없는 과거 동작 추적은 별도다. 예전 설치 SDK 명령은 schema 3을 거절하며 통과로 기록하지 않는다.
 
-- [~] F239-77-editor — P1, core F239-77 연결: 현재 core catalog reader가 Editor package를 설치하고 검증할 수 있도록 event catalog를 schema 3 JSON Schema로 변환한다. Event name, class, level과 required/optional field 의미를 유지한다. Runtime acceptance에는 schema-3 core와 일치하는 plugin cohort의 새 설치가 필요하다.
 
 - [o] E29 — P0, E26-1의 후속 항목: Editor `0.0.7`은 공개 core `v0.0.20`을 포함하는 `engines.soksak: ">=0.0.18"`을 선언한다. Manifest는 해당 reader가 요구하는 `surface.module` 없는 view composition을 사용하므로, 이 범위는 실패하는 설치까지 지원한다고 주장한다. 기대 동작: 이 manifest를 받는 core candidate만 선언하는 `^0.0.21`을 사용하고, 일치하는 core release가 게시될 때까지 public release E26-1을 대기 상태로 둔다. Red: 변경 전 `test/core-version.test.mjs`가 `">=0.0.18" !== "^0.0.21"`로 실패했다. Green: 같은 test가 1/1 통과하고 `CORE_PLUGIN_API_DIR` candidate 검사에서 manifest, exposure, engines, events, records와 copied contract cases가 통과한다. 일치하는 core release가 게시될 때까지 package release는 gate에 둔다. 이 항목은 SDK pin, plugin version, archive 또는 registry를 바꾸지 않는다.
 
