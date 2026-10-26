@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- E32: Declare the runtime-added `surface` field in the editor view frame event schema. Red: the actual context-scoped frame payload was rejected as an additional property; the catalog test also rejected the valid JSON Schema type `integer`. Green: Ajv 2020 accepts the emitted payload and rejects unexpected fields, and the catalog test accepts `integer`; the focused frame test passes 1/1 and the related editor, diagnostic and event tests pass 58/58.
+
 - E31: Add `editor.diagnostics.content-trace` using the shared core observer. Red: the owning diagnostics test found no explicit content-frame measurement lifecycle. Green: the editor command test verifies shared observer inputs, runtime trace routing, current dimensions, history counts, duplicate-start refusal and exact `--card` restoration; the editor, diagnostics and view tests pass. The palette is stable measurement setup: source records measure ResizeObserver-to-animation-frame cadence under that fixture, not physical paint or normal-theme latency.
 
 - E30: Move the hidden CodeMirror fixture lifecycle into the diagnostic-only module and pass it the same state factory as the normal editor. Red: the owning diagnostics test found no hidden editor lifecycle export. Green: diagnostic module, editor integration and release staging tests pass; the editor module contains no hidden view creation or cleanup. The diagnostic result also reports the editor view's actual window history length. The normal package excludes `diagnostics.json` and its module. Core owns physical footprint measurement and threshold acceptance.

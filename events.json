@@ -393,12 +393,13 @@
           "height": { "type": "number", "minimum": 0 },
           "documentTimeOriginMs": { "type": "number", "minimum": 0 },
           "resizeAtMs": { "type": "number", "minimum": 0 },
-          "frameTimeMs": { "type": "number", "minimum": 0 }
+          "frameTimeMs": { "type": "number", "minimum": 0 },
+          "surface": { "type": "string" }
         },
-        "required": ["sequence", "width", "height", "documentTimeOriginMs", "resizeAtMs", "frameTimeMs"],
+        "required": ["sequence", "width", "height", "documentTimeOriginMs", "resizeAtMs", "frameTimeMs", "surface"],
         "additionalProperties": false
       },
-      "description": "A diagnostic-only document root size was read at the next animation frame after ResizeObserver, with timestamps from the editor view document clock."
+      "description": "A diagnostic-only document root size was read at the next animation frame after ResizeObserver, with timestamps from the editor view document clock; surface is added by the view runtime."
     },
     "plugin.editor.page.error": {
       "layer": "plugin",

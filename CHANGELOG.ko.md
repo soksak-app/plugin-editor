@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E32: Editor view frame event schema에 runtime이 추가하는 `surface` field를 선언한다. Red: 실제 context-scoped frame payload가 추가 속성으로 거절됐고, catalog test도 유효한 JSON Schema type `integer`를 거절했다. Green: Ajv 2020이 실제 payload를 허용하고 예상하지 않은 field는 거절하며 catalog test가 `integer`를 허용한다. 집중 frame test 1/1, 관련 editor, diagnostic, event test 58/58 통과한다.
+
 - E31: 공유 core observer를 사용하는 `editor.diagnostics.content-trace`를 추가한다. Red: owning diagnostics test에서 명시적인 content-frame measurement lifecycle이 없었다. Green: editor command test가 공유 observer 입력, runtime trace 전달, 현재 크기, history count, 중복 start 거부와 `--card` 정확한 복원을 검증하며 editor, diagnostics, view test가 통과한다. Palette는 고정된 측정 준비이며 source record는 해당 fixture의 ResizeObserver 다음 animation frame cadence를 측정한다. 실제 paint나 일반 theme의 latency를 입증하지 않는다.
 
 - E30: hidden CodeMirror fixture lifecycle을 진단 전용 module로 옮기고 일반 editor와 같은 state factory를 전달한다. Red: owning diagnostics test가 hidden editor lifecycle export 부재를 확인했다. Green: diagnostics module, editor 통합과 release staging test가 통과하며 editor module에는 hidden view 생성이나 정리 코드가 없다. Diagnostic result는 editor view의 실제 window history length도 제공한다. 일반 package에는 `diagnostics.json`과 해당 module을 넣지 않는다. 물리 footprint 측정과 threshold acceptance는 core 소유다.

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import Ajv2020 from "ajv/dist/2020.js";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { window } from "./dom.mjs";
@@ -11,10 +12,12 @@ const { markdownView, projectImagePath, safeImageSource } = await import("../bui
 const { EditorView } = await import("../build/test/shared/@codemirror/view.js");
 const { attach: attachDiagnostics } = await import("../build/test/ui/editor-diagnostics.js");
 const manifest = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.url), "utf8"));
+const eventCatalog = JSON.parse(readFileSync(new URL("../events.json", import.meta.url), "utf8"));
+const validateContentFrame = new Ajv2020({ allErrors: true }).compile(eventCatalog.events["plugin.editor.view.content_frame"].fields);
 const declared = (kind, name) => manifest.exposes[kind].some((entry) => entry.name === name);
 
 async function setup(t, { path = "src/main.js", params = { path }, files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark", log = [], stored = null,
-  diagnostics = null, place = () => { throw new Error("the test runs no core command"); } } = {}) {
+  diagnostics = null, scopeSurface = null, place = () => { throw new Error("the test runs no core command"); } } = {}) {
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const root = host.attachShadow({ mode: "open" });
@@ -34,7 +37,10 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
       state: { read: async () => stored, write: (value) => reports.state.push(value) }, keep: (reason, on) => reports.keep.push([reason, on]) },
     runtime: { sidecar: () => sidecar,
       command: async (name, commandParams) => { reports.commands.push([name, commandParams]); return place(name, commandParams); },
-      log: Object.fromEntries(["error", "warn", "info", "debug", "trace"].map((level) => [level, (event, fields) => logs.push({ level, event, fields: typeof fields === "function" ? fields() : fields })])),
+      log: Object.fromEntries(["error", "warn", "info", "debug", "trace"].map((level) => [level, (event, fields) => {
+        const values = typeof fields === "function" ? fields() : fields;
+        logs.push({ level, event, fields: scopeSurface === null ? values : { ...values, surface: scopeSurface } });
+      }])),
       theme: (fn) => ({ ready: Promise.resolve(fn({ scheme, tokens: {} })), dispose: Promise.resolve(() => {}) }) },
     // default: a test without contributions connects none to either point.
     contributions: (point) => contributions[point] ?? [],
@@ -87,7 +93,7 @@ test("a diagnostic hidden editor uses an independent maintained editor state and
   assert.equal(editor.root.querySelector("[data-editor-diagnostic-hidden]"), null, "disposing the view removes its hidden editor");
 });
 
-test("content frame diagnostics observe the view root and restore its card style", async (t) => {
+test("content frame diagnostics observe the view root and restore its card style", { timeout: 5000 }, async (t) => {
   resetViewFrameProbe();
   t.after(resetViewFrameProbe);
   const documentRoot = window.document.documentElement;
@@ -106,7 +112,7 @@ test("content frame diagnostics observe the view root and restore its card style
     if (hadCard) style.setProperty("--card", priorCard, priorPriority);
     else style.removeProperty("--card");
   });
-  const editor = await setup(t, { diagnostics: { attach: attachDiagnostics } });
+  const editor = await setup(t, { diagnostics: { attach: attachDiagnostics }, scopeSurface: "editor-1" });
   const run = editor.run;
   const before = await run("editor.diagnostics.content-trace", { action: "read" });
   assert.deepEqual(before, { enabled: false, sequence: 0, width: 640, height: 480,
@@ -126,10 +132,15 @@ test("content frame diagnostics observe the view root and restore its card style
   assert.equal(probe.options.timeOriginMs, window.performance.timeOrigin);
   assert.equal(typeof probe.options.log.trace, "function");
   emitViewFrameProbe();
-  assert.deepEqual(editor.logs.at(-1), { level: "trace", event: "view.content_frame", fields: {
+  const frameRecord = editor.logs.at(-1);
+  assert.deepEqual(frameRecord, { level: "trace", event: "view.content_frame", fields: {
     sequence: 0, width: 640, height: 480,
-    documentTimeOriginMs: window.performance.timeOrigin, resizeAtMs: 0, frameTimeMs: 1,
+    documentTimeOriginMs: window.performance.timeOrigin, resizeAtMs: 0, frameTimeMs: 1, surface: "editor-1",
   } });
+  assert.equal(validateContentFrame(frameRecord.fields), true,
+    `the context-scoped frame payload does not match events.json: ${JSON.stringify(validateContentFrame.errors)}`);
+  assert.equal(validateContentFrame({ ...frameRecord.fields, unexpected: true }), false,
+    "the published frame schema accepted an unexpected field");
   assert.equal((await run("editor.diagnostics.content-trace", { action: "read" })).sequence, 1);
   const stopped = await run("editor.diagnostics.content-trace", { action: "stop" });
   assert.equal(stopped.enabled, false);

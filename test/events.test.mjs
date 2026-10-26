@@ -7,7 +7,7 @@ const pack = JSON.parse(readFileSync(new URL("../package.json", import.meta.url)
 
 const LEVELS = ["error", "warn", "info", "debug", "trace"];
 const CLASSES = ["lifecycle", "input", "call", "io", "frame"];
-const TYPES = ["string", "number", "boolean", "array", "object", "null"];
+const TYPES = ["string", "number", "integer", "boolean", "array", "object", "null"];
 
 /** A runtime whose log functions record the calls. */
 function fakeRuntime() {
