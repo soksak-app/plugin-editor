@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- E30: Move the hidden CodeMirror fixture lifecycle into the diagnostic-only module and pass it the same state factory as the normal editor. Red: the owning diagnostics test found no hidden editor lifecycle export. Green: diagnostic module, editor integration and release staging tests pass; the editor module contains no hidden view creation or cleanup. The diagnostic result also reports the editor view's actual window history length. The normal package excludes `diagnostics.json` and its module. Core owns physical footprint measurement and threshold acceptance.
+
 - F239-77-editor: Complete local schema-3 catalog acceptance with the matching installed diagnostic cohort. The current SDK checks 9 sources with zero pending rules and 17 events; both host installations contain the exact source catalog and pass application log audits. Public publication remains separate.
 
 - F239-77-editor: Convert the Editor event catalog to schema 3 JSON Schema

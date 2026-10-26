@@ -8,11 +8,12 @@ import { createBinder } from "./models/binder.mjs";
 const { mount } = await import("../build/test/ui/editor.js");
 const { markdownView, projectImagePath, safeImageSource } = await import("../build/test/ui/markdown.js");
 const { EditorView } = await import("../build/test/shared/@codemirror/view.js");
+const { attach: attachDiagnostics } = await import("../build/test/ui/editor-diagnostics.js");
 const manifest = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.url), "utf8"));
 const declared = (kind, name) => manifest.exposes[kind].some((entry) => entry.name === name);
 
 async function setup(t, { path = "src/main.js", params = { path }, files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark", log = [], stored = null,
-  place = () => { throw new Error("the test runs no core command"); } } = {}) {
+  diagnostics = null, place = () => { throw new Error("the test runs no core command"); } } = {}) {
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const root = host.attachShadow({ mode: "open" });
@@ -36,9 +37,13 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
       theme: (fn) => ({ ready: Promise.resolve(fn({ scheme, tokens: {} })), dispose: Promise.resolve(() => {}) }) },
     // default: a test without contributions connects none to either point.
     contributions: (point) => contributions[point] ?? [],
+    diagnostics,
     exposure: {
       status(name, read) { assert.ok(declared("status", name), `undeclared status ${name}`); statuses.set(name, read); },
-      command(name, run) { assert.ok(declared("commands", name), `undeclared command ${name}`); commands.set(name, run); },
+      command(name, run) {
+        assert.ok(declared("commands", name) || (name === "editor.memory.hidden" && diagnostics), `undeclared command ${name}`);
+        commands.set(name, run);
+      },
       dom(name) { assert.ok(declared("dom", name), `undeclared dom ${name}`); },
       bind: binder.bind, delegate: binder.delegate, dispose: binder.dispose,
     },
@@ -55,6 +60,30 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
   const status = (name) => statuses.get(name)();
   return { root, run, status, reports, sidecar, files, binder, controller, logs, dispose };
 }
+
+test("a diagnostic hidden editor uses an independent maintained editor state and ends with its view", async (t) => {
+  const editor = await setup(t, { diagnostics: { attach: attachDiagnostics } });
+  const diagnosticCommand = editor.run;
+  const historyEntries = editor.root.ownerDocument.defaultView.history.length;
+  assert.equal(historyEntries, 1, "the editor view starts with one history entry");
+  const original = diagnosticCommand("editor.read");
+  const mounted = await diagnosticCommand("editor.memory.hidden", { action: "mount" });
+  assert.deepEqual(mounted, { mounted: true, documentLength: original.length, lines: 3, historyEntries });
+  const hiddenHost = editor.root.querySelector("[data-editor-diagnostic-hidden]");
+  assert.ok(hiddenHost, "the hidden editor has its diagnostic container");
+  const hidden = EditorView.findFromDOM(hiddenHost.querySelector(".cm-editor"));
+  assert.ok(hidden, "the hidden container holds the maintained CodeMirror view");
+  assert.equal(hidden.state.doc.toString(), original);
+  await assert.rejects(diagnosticCommand("editor.memory.hidden", { action: "mount" }), /already mounted/);
+  diagnosticCommand("editor.edit", { changes: [{ from: 0, to: 0, insert: "// main only\n" }] });
+  assert.equal(hidden.state.doc.toString(), original, "the hidden editor keeps its independent document after a main edit");
+  assert.deepEqual(await diagnosticCommand("editor.memory.hidden", { action: "read" }), mounted);
+  assert.deepEqual(await diagnosticCommand("editor.memory.hidden", { action: "remove" }),
+    { mounted: false, documentLength: 0, lines: 0, historyEntries });
+  assert.equal(editor.root.querySelector("[data-editor-diagnostic-hidden]"), null);
+  await editor.dispose();
+  assert.equal(editor.root.querySelector("[data-editor-diagnostic-hidden]"), null, "disposing the view removes its hidden editor");
+});
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 

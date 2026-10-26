@@ -657,30 +657,38 @@ export async function mount(root, context) {
     return null;
   };
 
+  const updateEditorState = (update) => {
+    if (!update.docChanged && !update.selectionSet) return;
+    const before = fileState.modified;
+    describe();
+    if (fileState.modified !== before) context.tab.modified(fileState.modified);
+    if (update.docChanged && find.open) refreshFind();
+    if (update.docChanged && markdownRendered) queueMicrotask(() => { void refreshMarkdownImages(); });
+    publishFile();
+    writeTabState();
+  };
+  const createEditorState = (doc, { onUpdate = updateEditorState,
+    contentAttributes = { "data-expose": "editor.content" } } = {}) => EditorState.create({
+    doc,
+    extensions: [
+      lineNumbers(), highlightActiveLineGutter(), highlightSpecialChars(), history(), drawSelection(),
+      indentOnInput(), bracketMatching(), highlightActiveLine(), syntaxHighlighting(classHighlighter), todoMarks, found,
+      keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+      languageSlot.of(languageSupport(fileState.language)), contributed.of(contributions.extensions), markdownView,
+      editable.of(fileState.readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []),
+      separator.of(fileState.readOnly || fileState.newline === "none" || fileState.newline === null
+        ? [] : EditorState.lineSeparator.of(LINE_SEPARATORS[fileState.newline])),
+      frameTheme, scheme.of(EditorView.darkTheme.of(frame.dataset.scheme !== "light")),
+      EditorView.contentAttributes.of(contentAttributes),
+      label.of(EditorView.contentAttributes.of({ "aria-label": name() })),
+      EditorView.updateListener.of(onUpdate),
+    ],
+  });
+
   view = new EditorView({
     parent: host,
     root,
-    state: EditorState.create({
-      doc: "",
-      extensions: [
-        lineNumbers(), highlightActiveLineGutter(), highlightSpecialChars(), history(), drawSelection(),
-        indentOnInput(), bracketMatching(), highlightActiveLine(), syntaxHighlighting(classHighlighter), todoMarks, found,
-        keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
-        languageSlot.of(languageSupport(language)), contributed.of(contributions.extensions), markdownView,
-        editable.of([]), separator.of([]), frameTheme, scheme.of(EditorView.darkTheme.of(true)),
-        EditorView.contentAttributes.of({ "data-expose": "editor.content" }), label.of(EditorView.contentAttributes.of({ "aria-label": name() })),
-        EditorView.updateListener.of((update) => {
-          if (!update.docChanged && !update.selectionSet) return;
-          const before = fileState.modified;
-          describe();
-          if (fileState.modified !== before) context.tab.modified(fileState.modified);
-          if (update.docChanged && find.open) refreshFind();
-          if (update.docChanged && markdownRendered) queueMicrotask(() => { void refreshMarkdownImages(); });
-          publishFile();
-          writeTabState();
-        }),
-      ],
-    }),
+    state: createEditorState(""),
   });
   const content = view.contentDOM;
   view.scrollDOM.addEventListener("scroll", writeTabState);
@@ -730,6 +738,14 @@ export async function mount(root, context) {
   expose.command("editor.find.previous", recorded("editor.find.previous", () => step(-1)));
   expose.command("editor.replace", recorded("editor.replace", replaceCurrent));
   expose.command("editor.replace.all", recorded("editor.replace.all", replaceAll));
+  let disposeDiagnostics = null;
+  if (context.diagnostics != null) {
+    if (typeof context.diagnostics.attach !== "function") throw new TypeError("the editor diagnostics declaration has no attach function");
+    disposeDiagnostics = await context.diagnostics.attach({ expose, root, EditorView,
+      createState: () => createEditorState(view.state.doc.toString(), { onUpdate: () => {}, contentAttributes: {} }),
+      readHistoryEntries: () => root.ownerDocument.defaultView.history.length });
+    if (typeof disposeDiagnostics !== "function") throw new TypeError("the editor diagnostics attach function must return its disposer");
+  }
   for (const element of root.querySelectorAll("[data-expose]")) {
     if (element !== content) expose.dom(element.dataset.expose, element);
   }
@@ -803,6 +819,7 @@ export async function mount(root, context) {
       revokeMarkdownImageUrls(markdownImageUrls);
       markdownImageUrls = new Map();
       view.scrollDOM.removeEventListener("scroll", writeTabState);
+      await disposeDiagnostics?.();
       (await subscription.dispose)();
       fileListeners.clear();
       findListeners.clear();

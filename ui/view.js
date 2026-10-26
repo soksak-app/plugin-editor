@@ -8,6 +8,7 @@ import { createExpose } from "@soksak/plugin-api";
 import { createViewBridge } from "@soksak/plugin-api/view";
 import { mount } from "./editor.js";
 import { createEmitter, errorText } from "./events.js";
+import { loadDiagnostics } from "./view-diagnostics.js";
 import { SIDECAR } from "./view-sidecar.js";
 
 const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"];
@@ -67,7 +68,7 @@ function createReporter(log) {
  *
  * Returns {context}.
  */
-export function createViewContext({ bridge, start, log, report }) {
+export function createViewContext({ bridge, start, log, report, diagnostics = null }) {
   if (typeof report !== "function") throw new TypeError("createViewContext requires the report function");
   const { calls, commands, runtime, exposure: relay } = bridge;
   // The fire-and-forget calls of the context: a refusal of the route is a record, not a lost report.
@@ -97,6 +98,7 @@ export function createViewContext({ bridge, start, log, report }) {
       surfaceId: start.surface,
       project: start.project,
       origin: start.origin,
+      diagnostics,
       tab: {
         params: start.params ?? null,
         title: (text) => send("tab.title", text),
@@ -175,7 +177,8 @@ for (const event of losses.splice(0)) reportLoss(event);
 installPageErrors(report);
 if (window.sokTheme) applyTheme(window.sokTheme);
 bridge.runtime.theme(applyTheme);
-const { context } = createViewContext({ bridge, start, log, report: (text) => report("context", text) });
+const diagnostics = await loadDiagnostics();
+const { context } = createViewContext({ bridge, start, log, diagnostics, report: (text) => report("context", text) });
 const host = document.body.appendChild(document.createElement("div"));
 host.style.cssText = "height:100%";
 try {

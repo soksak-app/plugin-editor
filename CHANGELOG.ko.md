@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E30: hidden CodeMirror fixture lifecycle을 진단 전용 module로 옮기고 일반 editor와 같은 state factory를 전달한다. Red: owning diagnostics test가 hidden editor lifecycle export 부재를 확인했다. Green: diagnostics module, editor 통합과 release staging test가 통과하며 editor module에는 hidden view 생성이나 정리 코드가 없다. Diagnostic result는 editor view의 실제 window history length도 제공한다. 일반 package에는 `diagnostics.json`과 해당 module을 넣지 않는다. 물리 footprint 측정과 threshold acceptance는 core 소유다.
+
 - F239-77-editor: 일치하는 설치 diagnostic cohort로 로컬 schema-3 catalog acceptance를 완료한다. 현재 SDK가 source 9개와 pending rule 0개, event 17개를 검사하며 양쪽 host 설치본의 catalog가 source와 정확히 일치하고 application log audit을 통과한다. Public publication은 별도다.
 
 - F252-contract-editor-1: view bridge model이

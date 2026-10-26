@@ -1,0 +1,26 @@
+{
+  "module": "ui/editor-diagnostics.js",
+  "exposes": {
+    "commands": [
+      {
+        "name": "editor.memory.hidden",
+        "description": "Mounts, reads or removes one hidden maintained CodeMirror editor instance for the editor process footprint measurement.",
+        "params": {
+          "type": "object",
+          "properties": {
+            "action": { "type": "string", "enum": ["mount", "read", "remove"] }
+          }
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "mounted": { "type": "boolean" },
+            "documentLength": { "type": "integer" },
+            "lines": { "type": "integer" },
+            "historyEntries": { "type": "integer" }
+          }
+        }
+      }
+    ]
+  }
+}

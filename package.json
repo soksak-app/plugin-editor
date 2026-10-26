@@ -16,7 +16,18 @@
   "files": [
     "plugin.json",
     "events.json",
-    "ui"
+    "ui/index.html",
+    "ui/view.js",
+    "ui/view-diagnostics.js",
+    "ui/editor.js",
+    "ui/events.js",
+    "ui/find.js",
+    "ui/languages.js",
+    "ui/markdown.js",
+    "ui/requests.js",
+    "ui/todo.js",
+    "ui/view-sidecar.js",
+    "ui/vendor"
   ],
   "scripts": {
     "build": "node scripts/build-vendor.mjs",
