@@ -392,14 +392,16 @@
           "width": { "type": "number", "minimum": 0 },
           "height": { "type": "number", "minimum": 0 },
           "documentTimeOriginMs": { "type": "number", "minimum": 0 },
+          "firstResizeAtMs": { "type": "number", "minimum": 0 },
           "resizeAtMs": { "type": "number", "minimum": 0 },
+          "resizeCount": { "type": "integer", "minimum": 1 },
           "frameTimeMs": { "type": "number", "minimum": 0 },
           "surface": { "type": "string" }
         },
-        "required": ["sequence", "width", "height", "documentTimeOriginMs", "resizeAtMs", "frameTimeMs", "surface"],
+        "required": ["sequence", "width", "height", "documentTimeOriginMs", "firstResizeAtMs", "resizeAtMs", "resizeCount", "frameTimeMs", "surface"],
         "additionalProperties": false
       },
-      "description": "A diagnostic-only document root size was read at the next animation frame after ResizeObserver, with timestamps from the editor view document clock; surface is added by the view runtime."
+      "description": "A diagnostic-only document root size was read at the next animation frame after ResizeObserver. Multiple resize deliveries before that frame are represented by their first and latest source timestamps and a positive count; the frame timestamp is no earlier than the latest resize. The surface is added by the view runtime. This records size, not physical presentation."
     },
     "plugin.editor.page.error": {
       "layer": "plugin",

@@ -2,6 +2,8 @@
 
 [한국어](features.ko.md)
 
+- [o] E35 — P1, linked to core F212.14-5-23: Consume the current shared view-frame event contract. Require first and latest ResizeObserver timestamps, a positive resize count, equal first/latest timestamps when count is one, and a frame timestamp no earlier than the latest resize. Preserve every field in `plugin.editor.view.content_frame` and reject missing, invalid or extra fields. Red: the current SDK payload was refused as unexpected fields, and the adapter accepted count one with different first/latest times. Green: the Editor content-frame owner passes 1/1, including current-field forwarding and invalid time, count and field cases. `make check CORE_PLUGIN_API_DIR=<core>/packages/plugin-api` passes the event catalog and package checks.
+
 - [o] F239-77-editor — P1, linked to core F239-77: Convert the event catalog to schema 3 JSON Schema while preserving event names, classes, levels and required/optional field semantics. Current public SDK census and catalog commands pass: 9 implementation sources, zero pending rules and 17 declared events. The source catalog is byte-identical to both freshly installed diagnostic host configurations. Normal CLI installation and application log audits accept the matching core/plugin/sidecar cohort. This closes the catalog migration unit only; public publication and unrelated historical behavior findings remain separate. The older installed SDK command rejects schema 3 and is not recorded as passing.
 
 

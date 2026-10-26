@@ -4,6 +4,13 @@
 
 ## 미배포
 
+- E35: 현재 공유 view-frame event contract를 소비한다. 첫·최신
+  ResizeObserver 시각, 양수 resize count, count 1의 동일 시각, 최신 resize
+  이후인 frame 시각을 요구한다. Red: 현재 SDK payload가 예상하지 않은
+  field로 거부됐고 adapter도 count 1의 시각 불일치를 받았다. Green: 현재
+  field 전달과 잘못된 시각·count·field를 검사하는 Editor content-frame
+  owner 1/1 및 current-core `make check`의 catalog·package 검사가 통과한다.
+
 - E34: 진단 전용 hidden-memory view 시작을 추가한다. Red: 추적 editor test에서 hidden-memory 인자가 일반 편집기 UI와 files sidecar를 초기화하고, diagnostics가 없는 경우에도 거부되지 않았다. Green: 숨김 시작은 전달된 문서로 유지 중인 CodeMirror view 하나를 만들고, `editor.memory.hidden`으로 준비 상태와 history를 제공하며 명령 또는 dispose 때 제거한다. Editor owner test 51/51, diagnostics test 6/6, content-frame 회귀 test와 current-core SDK 검사가 통과한다. 일반 editor 시작은 바뀌지 않는다.
 
 - E33: `CORE_PLUGIN_API_DIR`를 각 SDK validator CLI에 적용한다. Red: tracked dry-run test에서 override를 지정해도 설치된 engines CLI가 선택됐다. Green: override가 있으면 선언한 API directory의 public checker 파일을 실행하고 없으면 설치된 CLI binary를 기본으로 유지한다. Makefile owner test 6/6 통과한다. 개발 도구 선택만 바꾸며 SDK pin, engines range 또는 public release gate를 바꾸지 않는다.

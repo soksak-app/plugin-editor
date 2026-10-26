@@ -21,6 +21,6 @@ export function emitViewFrameProbe() {
   const rect = options.document.documentElement.getBoundingClientRect();
   options.log.trace("view.content_frame", {
     sequence: 0, width: rect.width, height: rect.height,
-    documentTimeOriginMs: options.timeOriginMs, resizeAtMs: 0, frameTimeMs: 1,
+    documentTimeOriginMs: options.timeOriginMs, firstResizeAtMs: 0, resizeAtMs: 0, resizeCount: 1, frameTimeMs: 1,
   });
 }

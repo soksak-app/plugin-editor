@@ -2,6 +2,8 @@
 
 [English](features.md)
 
+- [o] E35 — P1, core F212.14-5-23 연결: 현재 공유 view-frame event contract를 소비한다. 첫·최신 ResizeObserver 시각, 양수 resize count와 최신 resize 이후인 frame 시각을 요구하며 count가 1이면 첫 시각과 최신 시각이 같아야 한다. `plugin.editor.view.content_frame`의 모든 field를 보존하고 누락·잘못된 값·추가 field를 거부한다. Red: 현재 SDK payload가 예상하지 않은 field로 거부됐고, adapter는 count가 1인 서로 다른 첫/최신 시각을 받았다. Green: 현재 field 전달과 잘못된 시각·count·field 검사를 포함해 Editor content-frame owner 1/1 통과한다. `make check CORE_PLUGIN_API_DIR=<core>/packages/plugin-api`가 event catalog 및 package 검사를 통과한다.
+
 - [o] F239-77-editor — P1, core F239-77 연결: Event 이름, class, level 및 required/optional field 의미를 보존하며 event catalog를 schema 3 JSON Schema로 전환한다. 현재 공개 SDK census 및 catalog 명령이 implementation source 9개, pending rule 0개, 선언 event 17개로 통과한다. Source catalog는 새로 설치한 양쪽 diagnostic host configuration과 byte 단위로 일치한다. 일반 CLI 설치와 application log audit이 일치하는 core/plugin/sidecar cohort를 받아들인다. Catalog migration 단위만 완료하며 public publication과 관련 없는 과거 동작 추적은 별도다. 예전 설치 SDK 명령은 schema 3을 거절하며 통과로 기록하지 않는다.
 
 

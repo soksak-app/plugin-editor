@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+- E35: Consume the current shared view-frame event contract. Require the
+  first and latest ResizeObserver timestamps, a positive resize count, equal
+  timestamps for count one, and a frame timestamp no earlier than the latest
+  resize. Red: the current SDK payload was refused as unexpected fields, and
+  the adapter accepted a mismatched count-one interval. Green: the Editor
+  content-frame owner passes 1/1 with current-field forwarding and invalid
+  time, count and field cases; current-core `make check` passes the catalog
+  and package checks.
+
 - E34: Add a diagnostic-only hidden-memory view start. Red: tracked editor tests showed that hidden-memory params initialized the normal editor UI and files sidecar, and were not refused without diagnostics. Green: the hidden start creates one maintained CodeMirror view from the supplied document, reports its readiness and history through `editor.memory.hidden`, and removes it on command or disposal. The editor owner tests pass 51/51, diagnostics tests pass 6/6, and the content-frame regression and current-core SDK checks pass. Normal editor starts are unchanged.
 
 - E33: Apply `CORE_PLUGIN_API_DIR` to each SDK validator CLI. Red: the tracked dry-run test showed that an override still selected the installed engines CLI. Green: the public checker files run from the declared API directory when present; installed CLI binaries remain the default without an override. The Makefile owner tests pass 6/6. This changes development tool selection only and does not alter the SDK pin, engines range or public release gate.

@@ -2,7 +2,9 @@
 import { observeViewDocumentFrames } from "@soksak/plugin-api/diagnostic-view-frames";
 
 const FRAME_CARD = "rgb(17, 193, 231)";
-const FRAME_FIELDS = Object.freeze(["sequence", "width", "height", "documentTimeOriginMs", "resizeAtMs", "frameTimeMs"]);
+const FRAME_FIELDS = Object.freeze([
+  "sequence", "width", "height", "documentTimeOriginMs", "firstResizeAtMs", "resizeAtMs", "resizeCount", "frameTimeMs",
+]);
 
 export function createHiddenEditorView({ root, initialView, readHistoryEntries }) {
   if (!root || typeof root.contains !== "function" || typeof root.ownerDocument?.createElement !== "function") {
@@ -100,7 +102,10 @@ export function createViewFrameMeasurement({ document, runtime, readHistoryEntri
           }
           if (!Number.isSafeInteger(fields.sequence) || fields.sequence !== sequence ||
             !Number.isFinite(fields.documentTimeOriginMs) || fields.documentTimeOriginMs < 0 ||
-            !Number.isFinite(fields.resizeAtMs) || fields.resizeAtMs < 0 ||
+            !Number.isFinite(fields.firstResizeAtMs) || fields.firstResizeAtMs < 0 ||
+            !Number.isFinite(fields.resizeAtMs) || fields.resizeAtMs < fields.firstResizeAtMs ||
+            !Number.isSafeInteger(fields.resizeCount) || fields.resizeCount < 1 ||
+            (fields.resizeCount === 1 && fields.firstResizeAtMs !== fields.resizeAtMs) ||
             !Number.isFinite(fields.frameTimeMs) || fields.frameTimeMs < fields.resizeAtMs ||
             !Number.isFinite(fields.width) || fields.width < 0 ||
             !Number.isFinite(fields.height) || fields.height < 0) {
@@ -109,7 +114,8 @@ export function createViewFrameMeasurement({ document, runtime, readHistoryEntri
           sequence += 1;
           return runtime.log.trace("view.content_frame", {
             sequence: fields.sequence, width: fields.width, height: fields.height,
-            documentTimeOriginMs: fields.documentTimeOriginMs, resizeAtMs: fields.resizeAtMs, frameTimeMs: fields.frameTimeMs,
+            documentTimeOriginMs: fields.documentTimeOriginMs, firstResizeAtMs: fields.firstResizeAtMs,
+            resizeAtMs: fields.resizeAtMs, resizeCount: fields.resizeCount, frameTimeMs: fields.frameTimeMs,
           });
         } },
         ResizeObserver: viewWindow.ResizeObserver,

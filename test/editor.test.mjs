@@ -177,13 +177,33 @@ test("content frame diagnostics observe the view root and restore its card style
   const frameRecord = editor.logs.at(-1);
   assert.deepEqual(frameRecord, { level: "trace", event: "view.content_frame", fields: {
     sequence: 0, width: 640, height: 480,
-    documentTimeOriginMs: window.performance.timeOrigin, resizeAtMs: 0, frameTimeMs: 1, surface: "editor-1",
+    documentTimeOriginMs: window.performance.timeOrigin, firstResizeAtMs: 0, resizeAtMs: 0, resizeCount: 1,
+    frameTimeMs: 1, surface: "editor-1",
   } });
   assert.equal(validateContentFrame(frameRecord.fields), true,
     `the context-scoped frame payload does not match events.json: ${JSON.stringify(validateContentFrame.errors)}`);
   assert.equal(validateContentFrame({ ...frameRecord.fields, unexpected: true }), false,
     "the published frame schema accepted an unexpected field");
   assert.equal((await run("editor.diagnostics.content-trace", { action: "read" })).sequence, 1);
+  const sharedTrace = inspectViewFrameProbe().options.log.trace;
+  const validSource = {
+    sequence: 1, width: 640, height: 480, documentTimeOriginMs: window.performance.timeOrigin,
+    firstResizeAtMs: 10, resizeAtMs: 12, resizeCount: 2, frameTimeMs: 13,
+  };
+  const invalidSource = [
+    { ...validSource, resizeAtMs: 9 },
+    { ...validSource, frameTimeMs: 11 },
+    { ...validSource, resizeCount: 0 },
+    { ...validSource, resizeCount: 1.5 },
+    { ...validSource, resizeCount: 1 },
+    { ...validSource, unexpected: true },
+    Object.fromEntries(Object.entries(validSource).filter(([name]) => name !== "firstResizeAtMs")),
+  ];
+  for (const fields of invalidSource) assert.throws(() => sharedTrace("view.content_frame", fields));
+  sharedTrace("view.content_frame", validSource);
+  assert.deepEqual(editor.logs.at(-1).fields, { ...validSource, surface: "editor-1" },
+    "the editor forwards every source coalescing field and keeps context surface identity");
+  assert.equal((await run("editor.diagnostics.content-trace", { action: "read" })).sequence, 2);
   const stopped = await run("editor.diagnostics.content-trace", { action: "stop" });
   assert.equal(stopped.enabled, false);
   assert.equal(stopped.width, before.width);
