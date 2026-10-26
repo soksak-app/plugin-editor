@@ -4,6 +4,7 @@ import test from "node:test";
 import { window } from "./dom.mjs";
 import { fakeFiles, sha } from "./fakes.mjs";
 import { createBinder } from "./models/binder.mjs";
+import { emitViewFrameProbe, inspectViewFrameProbe, resetViewFrameProbe } from "./models/diagnostic-view-frames.mjs";
 
 const { mount } = await import("../build/test/ui/editor.js");
 const { markdownView, projectImagePath, safeImageSource } = await import("../build/test/ui/markdown.js");
@@ -41,7 +42,8 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
     exposure: {
       status(name, read) { assert.ok(declared("status", name), `undeclared status ${name}`); statuses.set(name, read); },
       command(name, run) {
-        assert.ok(declared("commands", name) || (name === "editor.memory.hidden" && diagnostics), `undeclared command ${name}`);
+        assert.ok(declared("commands", name) || ((name === "editor.memory.hidden" || name === "editor.diagnostics.content-trace") && diagnostics),
+          `undeclared command ${name}`);
         commands.set(name, run);
       },
       dom(name) { assert.ok(declared("dom", name), `undeclared dom ${name}`); },
@@ -68,7 +70,7 @@ test("a diagnostic hidden editor uses an independent maintained editor state and
   assert.equal(historyEntries, 1, "the editor view starts with one history entry");
   const original = diagnosticCommand("editor.read");
   const mounted = await diagnosticCommand("editor.memory.hidden", { action: "mount" });
-  assert.deepEqual(mounted, { mounted: true, documentLength: original.length, lines: 3, historyEntries });
+  assert.deepEqual(mounted, { mounted: true, documentLength: original.length, lines: 3, historyEntries, regionHistoryEntries: 0 });
   const hiddenHost = editor.root.querySelector("[data-editor-diagnostic-hidden]");
   assert.ok(hiddenHost, "the hidden editor has its diagnostic container");
   const hidden = EditorView.findFromDOM(hiddenHost.querySelector(".cm-editor"));
@@ -79,10 +81,68 @@ test("a diagnostic hidden editor uses an independent maintained editor state and
   assert.equal(hidden.state.doc.toString(), original, "the hidden editor keeps its independent document after a main edit");
   assert.deepEqual(await diagnosticCommand("editor.memory.hidden", { action: "read" }), mounted);
   assert.deepEqual(await diagnosticCommand("editor.memory.hidden", { action: "remove" }),
-    { mounted: false, documentLength: 0, lines: 0, historyEntries });
+    { mounted: false, documentLength: 0, lines: 0, historyEntries, regionHistoryEntries: 0 });
   assert.equal(editor.root.querySelector("[data-editor-diagnostic-hidden]"), null);
   await editor.dispose();
   assert.equal(editor.root.querySelector("[data-editor-diagnostic-hidden]"), null, "disposing the view removes its hidden editor");
+});
+
+test("content frame diagnostics observe the view root and restore its card style", async (t) => {
+  resetViewFrameProbe();
+  t.after(resetViewFrameProbe);
+  const documentRoot = window.document.documentElement;
+  const originalRect = documentRoot.getBoundingClientRect;
+  documentRoot.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, right: 640, top: 0, bottom: 480, width: 640, height: 480 });
+  t.after(() => { documentRoot.getBoundingClientRect = originalRect; });
+  const style = documentRoot.style;
+  const hadCard = Array.from({ length: style.length }, (_, index) => style.item(index)).includes("--card");
+  const priorCard = style.getPropertyValue("--card");
+  const priorPriority = style.getPropertyPriority("--card");
+  style.setProperty("--card", "rgb(9, 8, 7)", "important");
+  const originalResizeObserver = window.ResizeObserver;
+  window.ResizeObserver = class ResizeObserverProbe {};
+  t.after(() => {
+    window.ResizeObserver = originalResizeObserver;
+    if (hadCard) style.setProperty("--card", priorCard, priorPriority);
+    else style.removeProperty("--card");
+  });
+  const editor = await setup(t, { diagnostics: { attach: attachDiagnostics } });
+  const run = editor.run;
+  const before = await run("editor.diagnostics.content-trace", { action: "read" });
+  assert.deepEqual(before, { enabled: false, sequence: 0, width: 640, height: 480,
+    historyEntries: 1, regionHistoryEntries: 0 });
+  const start = await run("editor.diagnostics.content-trace", { action: "start" });
+  assert.deepEqual(start, { ...before, enabled: true });
+  assert.equal(style.getPropertyValue("--card"), "rgb(17, 193, 231)");
+  assert.equal(style.getPropertyPriority("--card"), "");
+  await assert.rejects(run("editor.diagnostics.content-trace", { action: "start" }), /already enabled/);
+  const probe = inspectViewFrameProbe();
+  assert.equal(probe.options.document, editor.root.ownerDocument);
+  assert.equal(probe.options.document.documentElement, documentRoot);
+  assert.equal(probe.options.ResizeObserver, window.ResizeObserver);
+  assert.equal(typeof probe.options.requestAnimationFrame, "function");
+  assert.equal(typeof probe.options.cancelAnimationFrame, "function");
+  assert.equal(typeof probe.options.now, "function");
+  assert.equal(probe.options.timeOriginMs, window.performance.timeOrigin);
+  assert.equal(typeof probe.options.log.trace, "function");
+  emitViewFrameProbe();
+  assert.deepEqual(editor.logs.at(-1), { level: "trace", event: "view.content_frame", fields: {
+    sequence: 0, width: 640, height: 480,
+    documentTimeOriginMs: window.performance.timeOrigin, resizeAtMs: 0, frameTimeMs: 1,
+  } });
+  assert.equal((await run("editor.diagnostics.content-trace", { action: "read" })).sequence, 1);
+  const stopped = await run("editor.diagnostics.content-trace", { action: "stop" });
+  assert.equal(stopped.enabled, false);
+  assert.equal(stopped.width, before.width);
+  assert.equal(stopped.height, before.height);
+  assert.equal(style.getPropertyValue("--card"), "rgb(9, 8, 7)");
+  assert.equal(style.getPropertyPriority("--card"), "important");
+  assert.equal(inspectViewFrameProbe().stopCount, 1);
+  style.removeProperty("--card");
+  await run("editor.diagnostics.content-trace", { action: "start" });
+  await editor.dispose();
+  assert.equal(Array.from({ length: style.length }, (_, index) => style.item(index)).includes("--card"), false);
+  assert.equal(inspectViewFrameProbe().stopCount, 2);
 });
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));

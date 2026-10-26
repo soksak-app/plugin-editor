@@ -39,6 +39,15 @@
           ]
         }
       }
+    },
+    {
+      "specifier": "@soksak/plugin-api/diagnostic-view-frames",
+      "exports": {
+        "observeViewDocumentFrames": {
+          "model": "test/models/diagnostic-view-frames.mjs",
+          "cases": ["diagnostics.json"]
+        }
+      }
     }
   ]
 }

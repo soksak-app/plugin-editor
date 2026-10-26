@@ -6,6 +6,7 @@ const { loadDiagnostics } = await import("../build/test/ui/view-diagnostics.js")
 const editorDiagnostics = await import("../build/test/ui/editor-diagnostics.js");
 const declaration = JSON.parse(readFileSync(new URL("../diagnostics.json", import.meta.url), "utf8"));
 const packageManifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+const events = JSON.parse(readFileSync(new URL("../events.json", import.meta.url), "utf8"));
 
 test("diagnostic declaration and module stay out of the published editor package", () => {
   assert.ok(packageManifest.files.includes("ui/view-diagnostics.js"));
@@ -13,10 +14,21 @@ test("diagnostic declaration and module stay out of the published editor package
   assert.ok(!packageManifest.files.includes(declaration.module));
   assert.equal(declaration.exposes.commands[0].name, "editor.memory.hidden");
   assert.equal(declaration.exposes.commands[0].result.properties.historyEntries.type, "integer");
+  assert.equal(declaration.exposes.commands[0].result.properties.regionHistoryEntries.type, "integer");
+  assert.equal(declaration.exposes.commands[1].name, "editor.diagnostics.content-trace");
+  assert.deepEqual(declaration.exposes.commands[1].params.properties.action.enum, ["start", "stop", "read"]);
+  assert.equal(declaration.exposes.commands[1].result.properties.sequence.type, "integer");
+  assert.equal(declaration.exposes.commands[1].result.properties.regionHistoryEntries.type, "integer");
+  assert.equal(events.events["plugin.editor.view.content_frame"].class, "frame");
+  assert.equal(events.events["plugin.editor.view.content_frame"].level, "trace");
 });
 
 test("the diagnostic module owns the hidden editor fixture lifecycle", () => {
   assert.equal(typeof editorDiagnostics.createHiddenEditorFixture, "function");
+});
+
+test("the diagnostic module owns an explicit content-frame measurement lifecycle", () => {
+  assert.equal(typeof editorDiagnostics.createViewFrameMeasurement, "function");
 });
 
 test("a release editor view loads without a diagnostic declaration", async (t) => {

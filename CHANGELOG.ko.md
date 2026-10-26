@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E31: 공유 core observer를 사용하는 `editor.diagnostics.content-trace`를 추가한다. Red: owning diagnostics test에서 명시적인 content-frame measurement lifecycle이 없었다. Green: editor command test가 공유 observer 입력, runtime trace 전달, 현재 크기, history count, 중복 start 거부와 `--card` 정확한 복원을 검증하며 editor, diagnostics, view test가 통과한다. Palette는 고정된 측정 준비이며 source record는 해당 fixture의 ResizeObserver 다음 animation frame cadence를 측정한다. 실제 paint나 일반 theme의 latency를 입증하지 않는다.
+
 - E30: hidden CodeMirror fixture lifecycle을 진단 전용 module로 옮기고 일반 editor와 같은 state factory를 전달한다. Red: owning diagnostics test가 hidden editor lifecycle export 부재를 확인했다. Green: diagnostics module, editor 통합과 release staging test가 통과하며 editor module에는 hidden view 생성이나 정리 코드가 없다. Diagnostic result는 editor view의 실제 window history length도 제공한다. 일반 package에는 `diagnostics.json`과 해당 module을 넣지 않는다. 물리 footprint 측정과 threshold acceptance는 core 소유다.
 
 - F239-77-editor: 일치하는 설치 diagnostic cohort로 로컬 schema-3 catalog acceptance를 완료한다. 현재 SDK가 source 9개와 pending rule 0개, event 17개를 검사하며 양쪽 host 설치본의 catalog가 source와 정확히 일치하고 application log audit을 통과한다. Public publication은 별도다.

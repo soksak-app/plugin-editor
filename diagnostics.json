@@ -17,7 +17,29 @@
             "mounted": { "type": "boolean" },
             "documentLength": { "type": "integer" },
             "lines": { "type": "integer" },
-            "historyEntries": { "type": "integer" }
+            "historyEntries": { "type": "integer" },
+            "regionHistoryEntries": { "type": "integer" }
+          }
+        }
+      },
+      {
+        "name": "editor.diagnostics.content-trace",
+        "description": "Starts or stops post-layout observation of the editor view document root and reads its current dimensions.",
+        "params": {
+          "type": "object",
+          "properties": {
+            "action": { "type": "string", "enum": ["start", "stop", "read"] }
+          }
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "sequence": { "type": "integer" },
+            "width": { "type": "number" },
+            "height": { "type": "number" },
+            "historyEntries": { "type": "integer" },
+            "regionHistoryEntries": { "type": "integer" }
           }
         }
       }

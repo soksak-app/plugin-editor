@@ -380,6 +380,26 @@
       },
       "description": "A Markdown preview failed to read its images after the tab showed no result: reason is disposed (the tab ended first) or superseded (a later preview replaced it); error is the failure of the read."
     },
+    "plugin.editor.view.content_frame": {
+      "layer": "plugin",
+      "class": "frame",
+      "level": "trace",
+      "fields": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 0 },
+          "width": { "type": "number", "minimum": 0 },
+          "height": { "type": "number", "minimum": 0 },
+          "documentTimeOriginMs": { "type": "number", "minimum": 0 },
+          "resizeAtMs": { "type": "number", "minimum": 0 },
+          "frameTimeMs": { "type": "number", "minimum": 0 }
+        },
+        "required": ["sequence", "width", "height", "documentTimeOriginMs", "resizeAtMs", "frameTimeMs"],
+        "additionalProperties": false
+      },
+      "description": "A diagnostic-only document root size was read at the next animation frame after ResizeObserver, with timestamps from the editor view document clock."
+    },
     "plugin.editor.page.error": {
       "layer": "plugin",
       "class": "lifecycle",

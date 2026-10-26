@@ -741,7 +741,7 @@ export async function mount(root, context) {
   let disposeDiagnostics = null;
   if (context.diagnostics != null) {
     if (typeof context.diagnostics.attach !== "function") throw new TypeError("the editor diagnostics declaration has no attach function");
-    disposeDiagnostics = await context.diagnostics.attach({ expose, root, EditorView,
+    disposeDiagnostics = await context.diagnostics.attach({ expose, root, document: root.ownerDocument, runtime: context.runtime, EditorView,
       createState: () => createEditorState(view.state.doc.toString(), { onUpdate: () => {}, contentAttributes: {} }),
       readHistoryEntries: () => root.ownerDocument.defaultView.history.length });
     if (typeof disposeDiagnostics !== "function") throw new TypeError("the editor diagnostics attach function must return its disposer");
