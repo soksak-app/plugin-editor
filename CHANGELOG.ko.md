@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E34: 진단 전용 hidden-memory view 시작을 추가한다. Red: 추적 editor test에서 hidden-memory 인자가 일반 편집기 UI와 files sidecar를 초기화하고, diagnostics가 없는 경우에도 거부되지 않았다. Green: 숨김 시작은 전달된 문서로 유지 중인 CodeMirror view 하나를 만들고, `editor.memory.hidden`으로 준비 상태와 history를 제공하며 명령 또는 dispose 때 제거한다. Editor owner test 51/51, diagnostics test 6/6, content-frame 회귀 test와 current-core SDK 검사가 통과한다. 일반 editor 시작은 바뀌지 않는다.
+
 - E33: `CORE_PLUGIN_API_DIR`를 각 SDK validator CLI에 적용한다. Red: tracked dry-run test에서 override를 지정해도 설치된 engines CLI가 선택됐다. Green: override가 있으면 선언한 API directory의 public checker 파일을 실행하고 없으면 설치된 CLI binary를 기본으로 유지한다. Makefile owner test 6/6 통과한다. 개발 도구 선택만 바꾸며 SDK pin, engines range 또는 public release gate를 바꾸지 않는다.
 
 - E32: Editor view frame event schema에 runtime이 추가하는 `surface` field를 선언한다. Red: 실제 context-scoped frame payload가 추가 속성으로 거절됐고, catalog test도 유효한 JSON Schema type `integer`를 거절했다. Green: Ajv 2020이 실제 payload를 허용하고 예상하지 않은 field는 거절하며 catalog test가 `integer`를 허용한다. 집중 frame test 1/1, 관련 editor, diagnostic, event test 58/58 통과한다.

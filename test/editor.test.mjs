@@ -69,28 +69,70 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
   return { root, run, status, reports, sidecar, files, binder, controller, logs, dispose };
 }
 
-test("a diagnostic hidden editor uses an independent maintained editor state and ends with its view", async (t) => {
-  const editor = await setup(t, { diagnostics: { attach: attachDiagnostics } });
-  const diagnosticCommand = editor.run;
-  const historyEntries = editor.root.ownerDocument.defaultView.history.length;
-  assert.equal(historyEntries, 1, "the editor view starts with one history entry");
-  const original = diagnosticCommand("editor.read");
-  const mounted = await diagnosticCommand("editor.memory.hidden", { action: "mount" });
-  assert.deepEqual(mounted, { mounted: true, documentLength: original.length, lines: 3, historyEntries, regionHistoryEntries: 0 });
-  const hiddenHost = editor.root.querySelector("[data-editor-diagnostic-hidden]");
-  assert.ok(hiddenHost, "the hidden editor has its diagnostic container");
-  const hidden = EditorView.findFromDOM(hiddenHost.querySelector(".cm-editor"));
-  assert.ok(hidden, "the hidden container holds the maintained CodeMirror view");
-  assert.equal(hidden.state.doc.toString(), original);
-  await assert.rejects(diagnosticCommand("editor.memory.hidden", { action: "mount" }), /already mounted/);
-  diagnosticCommand("editor.edit", { changes: [{ from: 0, to: 0, insert: "// main only\n" }] });
-  assert.equal(hidden.state.doc.toString(), original, "the hidden editor keeps its independent document after a main edit");
-  assert.deepEqual(await diagnosticCommand("editor.memory.hidden", { action: "read" }), mounted);
-  assert.deepEqual(await diagnosticCommand("editor.memory.hidden", { action: "remove" }),
-    { mounted: false, documentLength: 0, lines: 0, historyEntries, regionHistoryEntries: 0 });
-  assert.equal(editor.root.querySelector("[data-editor-diagnostic-hidden]"), null);
-  await editor.dispose();
-  assert.equal(editor.root.querySelector("[data-editor-diagnostic-hidden]"), null, "disposing the view removes its hidden editor");
+test("a diagnostic hidden-memory start skips the visible editor and creates one hidden view", { timeout: 5000 }, async (t) => {
+  const documentText = "const first = 1;\nconst second = 2;\n";
+  assert.deepEqual(manifest.surface.params.properties.diagnosticMode.enum, ["hidden-memory"]);
+  assert.equal(manifest.surface.params.properties.document.type, "string");
+  const editor = await setup(t, {
+    params: { diagnosticMode: "hidden-memory", document: documentText },
+    diagnostics: { attach: attachDiagnostics },
+  });
+  assert.equal(editor.root.querySelector("#view .cm-editor"), null, "hidden-memory mode does not construct the visible EditorView");
+  assert.equal(editor.root.querySelector("#frame"), null, "hidden-memory mode does not build the ordinary editor UI");
+  assert.equal(editor.root.querySelectorAll(".cm-editor").length, 1, "hidden-memory mode constructs exactly one CodeMirror view");
+  assert.ok(editor.root.querySelector("[data-editor-diagnostic-hidden] .cm-editor"),
+    "the sole CodeMirror view belongs to the hidden diagnostic container");
+  const status = await editor.run("editor.memory.hidden", { action: "read" });
+  assert.deepEqual(status, {
+    mounted: true,
+    documentLength: documentText.length,
+    lines: 3,
+    historyEntries: 1,
+    regionHistoryEntries: 0,
+  });
+  const view = EditorView.findFromDOM(editor.root.querySelector(".cm-editor"));
+  assert.equal(view.state.doc.toString(), documentText);
+  assert.deepEqual(await editor.run("editor.memory.hidden", { action: "remove" }), {
+    mounted: false,
+    documentLength: 0,
+    lines: 0,
+    historyEntries: 1,
+    regionHistoryEntries: 0,
+  });
+  assert.equal(editor.root.querySelector(".cm-editor"), null, "the diagnostic command removes the initial hidden view");
+});
+
+test("a hidden-memory start is refused without the diagnostic declaration", { timeout: 5000 }, async (t) => {
+  const host = window.document.createElement("div");
+  window.document.body.append(host);
+  const root = host.attachShadow({ mode: "open" });
+  t.after(() => host.remove());
+  await assert.rejects(mount(root, {
+    surfaceId: "editor-1",
+    project: { root: "/project" },
+    tab: { params: { diagnosticMode: "hidden-memory", document: "const x = 1;" },
+      state: { read: async () => null, write() {} }, title() {}, modified() {}, error() {} },
+    runtime: { sidecar() { throw new Error("hidden-memory start must not connect the files sidecar"); } },
+    contributions() { return []; },
+    exposure: {},
+  }), /requires the editor diagnostic declaration/);
+  assert.equal(root.querySelectorAll(".cm-editor").length, 0, "refusal occurs before EditorView construction");
+});
+
+test("a hidden-memory start removes its view when diagnostic attachment fails", { timeout: 5000 }, async (t) => {
+  const host = window.document.createElement("div");
+  window.document.body.append(host);
+  const root = host.attachShadow({ mode: "open" });
+  t.after(() => host.remove());
+  await assert.rejects(mount(root, {
+    surfaceId: "editor-1",
+    project: { root: "/project" },
+    tab: { params: { diagnosticMode: "hidden-memory", document: "const x = 1;" } },
+    diagnostics: { attach: async () => { throw new Error("diagnostic attach failed"); } },
+    exposure: { dispose: async () => {} },
+  }), /diagnostic attach failed/);
+  assert.equal(root.querySelector(".cm-editor"), null, "a failed diagnostic attach destroys the constructed view");
+  assert.equal(root.querySelector("[data-editor-diagnostic-hidden]"), null, "a failed diagnostic attach removes its host");
 });
 
 test("content frame diagnostics observe the view root and restore its card style", { timeout: 5000 }, async (t) => {

@@ -4,11 +4,11 @@
     "commands": [
       {
         "name": "editor.memory.hidden",
-        "description": "Mounts, reads or removes one hidden maintained CodeMirror editor instance for the editor process footprint measurement.",
+        "description": "Reads or removes the one hidden maintained CodeMirror editor instance selected by the diagnostic view start parameters.",
         "params": {
           "type": "object",
           "properties": {
-            "action": { "type": "string", "enum": ["mount", "read", "remove"] }
+            "action": { "type": "string", "enum": ["read", "remove"] }
           }
         },
         "result": {

@@ -166,6 +166,21 @@ const found = StateField.define({
 });
 
 export async function mount(root, context) {
+  const startParams = context.tab.params;
+  if (startParams !== null && typeof startParams === "object"
+    && (Object.hasOwn(startParams, "diagnosticMode") || Object.hasOwn(startParams, "document"))) {
+    if (startParams.diagnosticMode !== "hidden-memory") {
+      throw new TypeError("editor diagnostic start requires diagnosticMode hidden-memory");
+    }
+    if (context.diagnostics == null || typeof context.diagnostics.attach !== "function") {
+      throw new Error("editor hidden-memory start requires the editor diagnostic declaration");
+    }
+    if (typeof startParams.document !== "string" || startParams.document.length === 0
+      || Object.keys(startParams).some((key) => key !== "diagnosticMode" && key !== "document")) {
+      throw new TypeError("editor hidden-memory start requires only diagnosticMode and a nonempty document string");
+    }
+    return mountHiddenMemory(root, context, startParams.document);
+  }
   // The tab state {path, selection, scroll} restores the file, the cursor and the scroll position of a restored or restarted
   // tab (core docs/spec/plugins.md#memory-saver); its path follows the first save of a blank document, which params do not.
   // default: a new tab has no tab state and reads null.
@@ -828,6 +843,53 @@ export async function mount(root, context) {
       view.destroy();
       await expose.dispose();
       root.replaceChildren();
+    },
+  };
+}
+
+async function mountHiddenMemory(root, context, documentText) {
+  if (context.project === null) throw new Error("this window shows no project");
+  if (typeof context.exposure?.dispose !== "function") throw new TypeError("editor hidden-memory start requires exposure disposal");
+  const host = root.ownerDocument.createElement("div");
+  host.dataset.editorDiagnosticHidden = "";
+  host.style.cssText = "position:fixed;left:-10000px;top:0;width:800px;height:600px;visibility:hidden;overflow:hidden;contain:strict";
+  root.append(host);
+  let view = null;
+  let disposeDiagnostics = null;
+  try {
+    view = new EditorView({ parent: host, root, state: EditorState.create({ doc: documentText, extensions: [history()] }) });
+    disposeDiagnostics = await context.diagnostics.attach({
+      expose: context.exposure,
+      root,
+      document: root.ownerDocument,
+      runtime: context.runtime,
+      EditorView,
+      initialView: view,
+      readHistoryEntries: () => root.ownerDocument.defaultView.history.length,
+    });
+    if (typeof disposeDiagnostics !== "function") throw new TypeError("the editor diagnostics attach function must return its disposer");
+  } catch (error) {
+    let cleanupError;
+    try { await disposeDiagnostics?.(); } catch (failure) { cleanupError = failure; }
+    try { view?.destroy(); } catch (failure) { cleanupError = cleanupError === undefined ? failure : new AggregateError([cleanupError, failure]); }
+    host.remove();
+    try { await context.exposure.dispose(); } catch (failure) {
+      cleanupError = cleanupError === undefined ? failure : new AggregateError([cleanupError, failure]);
+    }
+    if (cleanupError !== undefined) throw new AggregateError([error, cleanupError], "editor hidden-memory start failed and cleanup was incomplete");
+    throw error;
+  }
+  return {
+    focus: () => view?.focus(),
+    async dispose() {
+      let firstError;
+      try { await disposeDiagnostics(); } catch (error) { firstError = error; }
+      view = null;
+      host.remove();
+      try { await context.exposure.dispose(); } catch (error) {
+        firstError = firstError === undefined ? error : new AggregateError([firstError, error], "editor hidden-memory cleanup failed");
+      }
+      if (firstError !== undefined) throw firstError;
     },
   };
 }

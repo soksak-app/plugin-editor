@@ -4,15 +4,19 @@ import { observeViewDocumentFrames } from "@soksak/plugin-api/diagnostic-view-fr
 const FRAME_CARD = "rgb(17, 193, 231)";
 const FRAME_FIELDS = Object.freeze(["sequence", "width", "height", "documentTimeOriginMs", "resizeAtMs", "frameTimeMs"]);
 
-export function createHiddenEditorFixture({ root, EditorView, createState, readHistoryEntries }) {
-  if (!root || typeof root.append !== "function" || typeof root.ownerDocument?.createElement !== "function") {
+export function createHiddenEditorView({ root, initialView, readHistoryEntries }) {
+  if (!root || typeof root.contains !== "function" || typeof root.ownerDocument?.createElement !== "function") {
     throw new TypeError("the hidden editor fixture requires a view root");
   }
-  if (typeof EditorView !== "function" || typeof createState !== "function" || typeof readHistoryEntries !== "function") {
-    throw new TypeError("the hidden editor fixture requires the maintained editor view, state factory and history reader");
+  if (initialView === null || typeof initialView?.destroy !== "function" || typeof initialView?.state?.doc?.toString !== "function"
+    || typeof readHistoryEntries !== "function") {
+    throw new TypeError("the hidden editor view requires its initial maintained editor view and history reader");
   }
-  let host = null;
-  let view = null;
+  let view = initialView;
+  const host = view.dom?.parentElement;
+  if (!host || !root.contains(host) || !host.hasAttribute("data-editor-diagnostic-hidden")) {
+    throw new TypeError("the initial editor view must be mounted in the hidden diagnostic container");
+  }
   const read = () => {
     const historyEntries = readHistoryEntries();
     if (!Number.isInteger(historyEntries) || historyEntries < 0) {
@@ -24,32 +28,16 @@ export function createHiddenEditorFixture({ root, EditorView, createState, readH
       : { mounted: true, documentLength: view.state.doc.length, lines: view.state.doc.lines, historyEntries,
         regionHistoryEntries: 0 };
   };
-  const mount = () => {
-    if (view !== null) throw new Error("the hidden editor is already mounted");
-    host = root.ownerDocument.createElement("div");
-    host.dataset.editorDiagnosticHidden = "";
-    host.style.cssText = "position:fixed;left:-10000px;top:0;width:800px;height:600px;visibility:hidden;overflow:hidden;contain:strict";
-    root.append(host);
-    try {
-      view = new EditorView({ parent: host, root, state: createState() });
-    } catch (error) {
-      host.remove();
-      host = null;
-      throw error;
-    }
-    return read();
-  };
   const remove = () => {
     try {
       view?.destroy();
     } finally {
       view = null;
       host?.remove();
-      host = null;
     }
     return read();
   };
-  return Object.freeze({ mount, read, remove, dispose: remove });
+  return Object.freeze({ read, remove, dispose: remove });
 }
 
 export function createViewFrameMeasurement({ document, runtime, readHistoryEntries,
@@ -165,15 +153,15 @@ export function createViewFrameMeasurement({ document, runtime, readHistoryEntri
   return Object.freeze({ start, stop, read, dispose: stop });
 }
 
-export async function attach({ expose, root, document, runtime, EditorView, createState, readHistoryEntries }) {
+export async function attach({ expose, root, document, runtime, initialView = null, readHistoryEntries }) {
   if (typeof expose?.command !== "function") throw new TypeError("editor diagnostics require expose.command");
-  const fixture = createHiddenEditorFixture({ root, EditorView, createState, readHistoryEntries });
+  const hiddenEditor = initialView === null ? null : createHiddenEditorView({ root, initialView, readHistoryEntries });
   const contentTrace = createViewFrameMeasurement({ document, runtime, readHistoryEntries });
   await expose.command("editor.memory.hidden", async ({ action } = {}) => {
-    if (action === "mount") return fixture.mount();
-    if (action === "read") return fixture.read();
-    if (action === "remove") return fixture.remove();
-    throw new TypeError("editor.memory.hidden action must be mount, read or remove");
+    if (hiddenEditor === null) throw new Error("editor.memory.hidden requires hidden-memory diagnostic start mode");
+    if (action === "read") return hiddenEditor.read();
+    if (action === "remove") return hiddenEditor.remove();
+    throw new TypeError("editor.memory.hidden action must be read or remove");
   });
   await expose.command("editor.diagnostics.content-trace", async ({ action } = {}) => {
     if (action === "start") return contentTrace.start();
@@ -189,7 +177,7 @@ export async function attach({ expose, root, document, runtime, EditorView, crea
       firstError = error;
     }
     try {
-      fixture.dispose();
+      hiddenEditor?.dispose();
     } catch (error) {
       if (firstError !== undefined) throw new AggregateError([firstError, error], "editor diagnostic cleanup failed");
       throw error;

@@ -18,6 +18,13 @@
       "properties": {
         "path": {
           "type": "string"
+        },
+        "diagnosticMode": {
+          "type": "string",
+          "enum": ["hidden-memory"]
+        },
+        "document": {
+          "type": "string"
         }
       }
     },

@@ -13,6 +13,7 @@ test("diagnostic declaration and module stay out of the published editor package
   assert.ok(!packageManifest.files.includes("diagnostics.json"));
   assert.ok(!packageManifest.files.includes(declaration.module));
   assert.equal(declaration.exposes.commands[0].name, "editor.memory.hidden");
+  assert.deepEqual(declaration.exposes.commands[0].params.properties.action.enum, ["read", "remove"]);
   assert.equal(declaration.exposes.commands[0].result.properties.historyEntries.type, "integer");
   assert.equal(declaration.exposes.commands[0].result.properties.regionHistoryEntries.type, "integer");
   assert.equal(declaration.exposes.commands[1].name, "editor.diagnostics.content-trace");
@@ -23,8 +24,8 @@ test("diagnostic declaration and module stay out of the published editor package
   assert.equal(events.events["plugin.editor.view.content_frame"].level, "trace");
 });
 
-test("the diagnostic module owns the hidden editor fixture lifecycle", () => {
-  assert.equal(typeof editorDiagnostics.createHiddenEditorFixture, "function");
+test("the diagnostic module owns the initial hidden editor lifecycle", () => {
+  assert.equal(typeof editorDiagnostics.createHiddenEditorView, "function");
 });
 
 test("the diagnostic module owns an explicit content-frame measurement lifecycle", () => {
