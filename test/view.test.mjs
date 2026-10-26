@@ -64,7 +64,8 @@ test("the view page resolves extension points through the view bridge", { timeou
   const host = createViewPage(t, "view-contributions");
   await import("../build/test/ui/view.js?case=view-contributions");
   assert.deepEqual(host.reports.contributions, ["extension", "formatter"]);
-  assert.deepEqual(host.fetches, [], `the view fetched ${host.fetches.join(", ")}`);
+  assert.deepEqual(host.fetches, ["soksak://editor/diagnostics.json"],
+    `the view fetched ${host.fetches.join(", ")}; it reads only its diagnostic declaration, not the global plugin list`);
 });
 
 test("the view page answers a forwarded exposure request from its own values", async (t) => {
