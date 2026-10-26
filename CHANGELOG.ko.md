@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E33: `CORE_PLUGIN_API_DIR`를 각 SDK validator CLI에 적용한다. Red: tracked dry-run test에서 override를 지정해도 설치된 engines CLI가 선택됐다. Green: override가 있으면 선언한 API directory의 public checker 파일을 실행하고 없으면 설치된 CLI binary를 기본으로 유지한다. Makefile owner test 6/6 통과한다. 개발 도구 선택만 바꾸며 SDK pin, engines range 또는 public release gate를 바꾸지 않는다.
+
 - E32: Editor view frame event schema에 runtime이 추가하는 `surface` field를 선언한다. Red: 실제 context-scoped frame payload가 추가 속성으로 거절됐고, catalog test도 유효한 JSON Schema type `integer`를 거절했다. Green: Ajv 2020이 실제 payload를 허용하고 예상하지 않은 field는 거절하며 catalog test가 `integer`를 허용한다. 집중 frame test 1/1, 관련 editor, diagnostic, event test 58/58 통과한다.
 
 - E31: 공유 core observer를 사용하는 `editor.diagnostics.content-trace`를 추가한다. Red: owning diagnostics test에서 명시적인 content-frame measurement lifecycle이 없었다. Green: editor command test가 공유 observer 입력, runtime trace 전달, 현재 크기, history count, 중복 start 거부와 `--card` 정확한 복원을 검증하며 editor, diagnostics, view test가 통과한다. Palette는 고정된 측정 준비이며 source record는 해당 fixture의 ResizeObserver 다음 animation frame cadence를 측정한다. 실제 paint나 일반 theme의 latency를 입증하지 않는다.

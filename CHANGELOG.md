@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- E33: Apply `CORE_PLUGIN_API_DIR` to each SDK validator CLI. Red: the tracked dry-run test showed that an override still selected the installed engines CLI. Green: the public checker files run from the declared API directory when present; installed CLI binaries remain the default without an override. The Makefile owner tests pass 6/6. This changes development tool selection only and does not alter the SDK pin, engines range or public release gate.
+
 - E32: Declare the runtime-added `surface` field in the editor view frame event schema. Red: the actual context-scoped frame payload was rejected as an additional property; the catalog test also rejected the valid JSON Schema type `integer`. Green: Ajv 2020 accepts the emitted payload and rejects unexpected fields, and the catalog test accepts `integer`; the focused frame test passes 1/1 and the related editor, diagnostic and event tests pass 58/58.
 
 - E31: Add `editor.diagnostics.content-trace` using the shared core observer. Red: the owning diagnostics test found no explicit content-frame measurement lifecycle. Green: the editor command test verifies shared observer inputs, runtime trace routing, current dimensions, history counts, duplicate-start refusal and exact `--card` restoration; the editor, diagnostics and view tests pass. The palette is stable measurement setup: source records measure ResizeObserver-to-animation-frame cadence under that fixture, not physical paint or normal-theme latency.
