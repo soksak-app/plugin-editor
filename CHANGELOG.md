@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- E38: Restore the Editor documentation contract by removing checklist IDs from specifications, adding implementation/validation/release status fields, and aligning changelog identifiers and code spans in both languages. Preserve the historical model skip and its completed F252 follow-up.
+
 - E37: Expose markerColor in successful content-trace START replies from the same RGB definition as the diagnostic CSS paint. Keep read, stop and cleanup behavior unchanged. The missing-field owner Red becomes Green 1/1; current-SDK checks and diagnostic packaging pass. Captured-pixel acceptance remains with core F239-233.
 
 - E36: Return the editor document's performance clock anchor from a successful content-trace start. The tracked content-frame owner fails when the start response omits it and passes after the response includes the document time origin, current view time and fixed 1 ms resolution bound. The diagnostic declaration owner and current plugin API checks pass; application measurements remain separate.
@@ -29,20 +31,9 @@
 
 - F239-77-editor: Complete local schema-3 catalog acceptance with the matching installed diagnostic cohort. The current SDK checks 9 sources with zero pending rules and 17 events; both host installations contain the exact source catalog and pass application log audits. Public publication remains separate.
 
-- F239-77-editor: Convert the Editor event catalog to schema 3 JSON Schema
-  without changing event names, levels or required/optional field semantics.
-  Red: current core's event checker rejected the schema-2 catalog and parsed
-  compact field names as schema keywords. Green: current core's `events-check`
-  accepts all 17 declarations and their source emits. The package test passes
-  142/143 with one existing skip; manifest, exposure, engines, events, records
-  and contract-copy checks pass against current core source. Runtime acceptance
-  is still pending.
+- F239-77-editor: Convert the Editor event catalog to schema 3 JSON Schema without changing event names, levels or required/optional field semantics. Red: current core's event checker rejected the schema-2 catalog and parsed compact field names as schema keywords. Green: current core's `events-check` accepts all 17 declarations and their source emits. The package test passes 142 tests with one skipped `view.bridge.runtime-log-without-level-query` case, an uncovered model case recorded by F252-contract-editor; the linked F252-contract-editor-1 follow-up adds plain `runtime.log` replay. Manifest, exposure, engines, records and contract-copy checks pass against current core source. Runtime acceptance remains separate.
 
-- F252-contract-editor-1: The view bridge model now replays
-  `view.bridge.runtime-log-without-level-query`. Red: after removing the
-  exclusion, the case failed because the model had no `log` step. Green:
-  `node --test test/model-view-bridge.test.mjs` passes 18/18 with no skips;
-  runtime behavior is unchanged.
+- F252-contract-editor-1: The view bridge model now replays `view.bridge.runtime-log-without-level-query`. Red: after removing the exclusion, the case failed because the model had no `log` step. Green: `node --test test/model-view-bridge.test.mjs` passes 18/18 with no skips; runtime behavior is unchanged.
 
 - E29: Editor `0.0.7` now declares `engines.soksak` `^0.0.21` because published core `v0.0.20` rejects its view composition without `surface.module`. Red: `test/core-version.test.mjs` failed with `">=0.0.18" !== "^0.0.21"`. Green: the same test passes 1/1, the candidate manifest and copied contract checks pass, and the candidate engines and events checks pass. `make check` reaches the pinned SDK engines check and fails because the pin is `v0.0.20`; the package release remains gated on a matching core release. No SDK pin, plugin version, archive or registry changed.
 

@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E38: Specification의 checklist ID를 제거하고 implementation/validation/release status field를 추가하며, 영어와 한국어 changelog의 identifier와 code span을 맞춰 Editor 문서 contract를 복구한다. 과거 model skip과 완료된 F252 후속 항목의 사실을 보존한다.
+
 - E37: diagnostic CSS paint와 같은 RGB 정의에서 성공한 content-trace START 응답의 markerColor를 제공한다. Read, stop과 cleanup 동작은 유지한다. Field 누락 owner Red가 Green 1/1로 바뀌며 current-SDK 검사와 diagnostic packaging이 통과한다. Captured-pixel acceptance는 core F239-233에 남는다.
 
 - E36: 성공한 content-trace 시작에서 editor document의 performance clock anchor를 반환한다. 추적한 content-frame owner는 시작 응답에 anchor가 없을 때 실패하고, document time origin·현재 view time·고정 1 ms 해상도 상한을 넣은 뒤 통과한다. 진단 declaration owner와 current plugin API 검사도 통과하며 application 측정은 별도다.
@@ -27,19 +29,9 @@
 
 - F239-77-editor: 일치하는 설치 diagnostic cohort로 로컬 schema-3 catalog acceptance를 완료한다. 현재 SDK가 source 9개와 pending rule 0개, event 17개를 검사하며 양쪽 host 설치본의 catalog가 source와 정확히 일치하고 application log audit을 통과한다. Public publication은 별도다.
 
-- F252-contract-editor-1: view bridge model이
-  `view.bridge.runtime-log-without-level-query`를 재생한다. Red: 제외를 해제한 뒤
-  model에 `log` 단계가 없어 사례가 실패했다. Green:
-  `node --test test/model-view-bridge.test.mjs`가 skip 없이 18/18 통과하며,
-  runtime 동작은 바뀌지 않았다.
+- F239-77-editor: Editor event catalog를 event name, level과 required/optional field 의미를 바꾸지 않고 schema 3 JSON Schema로 변환한다. Red: 현재 core의 event checker가 schema 2 catalog를 거부하고 compact field 이름을 schema keyword로 처리했다. Green: 현재 core `events-check`가 선언 17개와 source emit을 모두 받는다. 당시 package test는 `view.bridge.runtime-log-without-level-query` 사례 하나가 미포괄 상태로 skip되어 142개 통과했다. F252-contract-editor에 기록된 model 공백은 연결된 F252-contract-editor-1 후속 항목에서 plain `runtime.log` 재생을 추가해 해결했다. 현재 core source에 대한 manifest, exposure, engines, events, records 및 contract-copy 검사가 통과한다. Runtime acceptance는 별도다.
 
-- F239-77-editor: Editor event catalog를 event name, level과 required/optional
-  field 의미를 바꾸지 않고 schema 3 JSON Schema로 변환한다. Red: 현재 core의
-  event checker가 schema 2 catalog를 거부하고 compact field 이름을 schema
-  keyword로 처리했다. Green: 현재 core `events-check`가 선언 17개와 source emit을
-  모두 받는다. Package test는 기존 skip 한 건을 포함해 143개 중 142개 통과하고,
-  현재 core source에 대한 manifest, exposure, engines, events, records 및 contract-copy
-  검사가 통과한다. Runtime acceptance는 대기 중이다.
+- F252-contract-editor-1: view bridge model이 `view.bridge.runtime-log-without-level-query`를 재생한다. Red: 제외를 해제한 뒤 model에 `log` 단계가 없어 사례가 실패했다. Green: `node --test test/model-view-bridge.test.mjs`가 skip 없이 18/18 통과하며 runtime 동작은 바뀌지 않았다.
 
 - E29: Editor `0.0.7`은 공개 core `v0.0.20`이 `surface.module` 없는 view composition을 거부하므로 `engines.soksak` `^0.0.21`을 선언한다. Red: `test/core-version.test.mjs`가 `">=0.0.18" !== "^0.0.21"`로 실패했다. Green: 같은 test가 1/1 통과하고 candidate manifest와 copied contract 검사, candidate engines 및 events 검사가 통과한다. `make check`는 pinned SDK engines 검사에서 중단되며 pin이 `v0.0.20`이기 때문이다. 일치하는 core release가 게시될 때까지 package release를 gate에 둔다. SDK pin, plugin version, archive, registry는 바꾸지 않았다.
 

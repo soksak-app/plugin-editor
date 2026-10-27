@@ -2,6 +2,13 @@
 
 [한국어](features.ko.md)
 
+| Feature | Implementation | Validation | Release |
+| --- | --- | --- | --- |
+| E36 source-clock anchor | Successful content-trace start returns the view document clock anchor | Content-frame owner and current-SDK checks pass | Unreleased |
+| E37 paint marker color | Successful content-trace start returns the RGB triplet used by the CSS marker | Content-frame owner passes 1/1; current-SDK checks and diagnostic packaging pass | Unreleased |
+
+- [o] E38 — P2: Restore the Editor documentation contract. Remove checklist IDs from specifications, add the implementation/validation/release status table, and align English and Korean changelog entries. Preserve the factual F252 model-skip history and its completed follow-up. Red: the current core documentation checker reports checklist IDs in the specification, missing status fields, and changelog identifier/code mismatches. Green: the checker and current-SDK record check pass with matching English and Korean records.
+
 - [o] E36 — P1, linked to core F239-221: Return a source-clock anchor from the successful `editor.diagnostics.content-trace` start reply: the view document's `performance.timeOrigin`, an immediate `performance.now()` reading, and the fixed 1 ms WebKit resolution bound. Core uses it to map view content frames through the matching native exposure request/reply interval, not the main-page logger clock. Red: the existing content-frame owner fails because the successful start reply has no anchor. Green: the same owner validates all three anchor fields and preserves the existing frame observer and cleanup behavior; the diagnostic declaration owner and `CORE_PLUGIN_API_DIR=<core>/packages/plugin-api make check` pass. Application measurements remain separate.
 
 - [o] E37 — P1, linked to core F239-233: Return the existing diagnostic paint marker RGB triplet in successful content-trace START replies. One frozen RGB definition drives the unchanged CSS color and the copied markerColor result; read and stop shapes remain unchanged. Red: the unchanged content-frame owner observes the missing markerColor field. Green: the same owner passes 1/1 with the exact triplet and existing cleanup, and current-SDK manifest, diagnostic schema and package checks pass. The immutable diagnostic package is prepared; core F239-233 owns captured-pixel acceptance.
