@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- E37: Expose markerColor in successful content-trace START replies from the same RGB definition as the diagnostic CSS paint. Keep read, stop and cleanup behavior unchanged. The missing-field owner Red becomes Green 1/1; current-SDK checks and diagnostic packaging pass. Captured-pixel acceptance remains with core F239-233.
+
 - E36: Return the editor document's performance clock anchor from a successful content-trace start. The tracked content-frame owner fails when the start response omits it and passes after the response includes the document time origin, current view time and fixed 1 ms resolution bound. The diagnostic declaration owner and current plugin API checks pass; application measurements remain separate.
 
 - E35: Consume the current shared view-frame event contract. Require the

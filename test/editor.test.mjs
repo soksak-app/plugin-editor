@@ -160,8 +160,9 @@ test("content frame diagnostics observe the view root and restore its card style
   assert.deepEqual(before, { enabled: false, sequence: 0, width: 640, height: 480,
     historyEntries: 1, regionHistoryEntries: 0 });
   const start = await run("editor.diagnostics.content-trace", { action: "start" });
+  assert.deepEqual(start.markerColor, [17, 193, 231], "the start result declares the exact paint marker RGB");
   assert.ok(start.sourceClock && typeof start.sourceClock === "object", "the start result includes a source clock anchor");
-  const { sourceClock, ...startState } = start;
+  const { sourceClock, markerColor, ...startState } = start;
   assert.deepEqual(startState, { ...before, enabled: true });
   assert.deepEqual(Object.keys(sourceClock).sort(), ["documentTimeOriginMs", "sourceNowMs", "sourceResolutionMs"]);
   assert.equal(sourceClock.documentTimeOriginMs, window.performance.timeOrigin);

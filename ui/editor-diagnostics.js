@@ -1,7 +1,8 @@
 // The editor footprint fixture is available only when diagnostics.json is staged.
 import { observeViewDocumentFrames } from "@soksak/plugin-api/diagnostic-view-frames";
 
-const FRAME_CARD = "rgb(17, 193, 231)";
+const FRAME_CARD_RGB = Object.freeze([17, 193, 231]);
+const FRAME_CARD = `rgb(${FRAME_CARD_RGB.join(", ")})`;
 const FRAME_FIELDS = Object.freeze([
   "sequence", "width", "height", "documentTimeOriginMs", "firstResizeAtMs", "resizeAtMs", "resizeCount", "frameTimeMs",
 ]);
@@ -134,7 +135,7 @@ export function createViewFrameMeasurement({ document, runtime, readHistoryEntri
       });
       if (typeof stop !== "function") throw new TypeError("the shared view frame observer must return its stop function");
       stopObserver = stop;
-      return { ...read(), sourceClock };
+      return { ...read(), sourceClock, markerColor: [...FRAME_CARD_RGB] };
     } catch (error) {
       const stop = stopObserver;
       active = false;

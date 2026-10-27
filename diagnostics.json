@@ -47,6 +47,10 @@
                 "sourceNowMs": { "type": "number" },
                 "sourceResolutionMs": { "type": "number" }
               }
+            },
+            "markerColor": {
+              "type": "array",
+              "items": { "type": "integer" }
             }
           }
         }

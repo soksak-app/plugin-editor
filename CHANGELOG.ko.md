@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E37: diagnostic CSS paint와 같은 RGB 정의에서 성공한 content-trace START 응답의 markerColor를 제공한다. Read, stop과 cleanup 동작은 유지한다. Field 누락 owner Red가 Green 1/1로 바뀌며 current-SDK 검사와 diagnostic packaging이 통과한다. Captured-pixel acceptance는 core F239-233에 남는다.
+
 - E36: 성공한 content-trace 시작에서 editor document의 performance clock anchor를 반환한다. 추적한 content-frame owner는 시작 응답에 anchor가 없을 때 실패하고, document time origin·현재 view time·고정 1 ms 해상도 상한을 넣은 뒤 통과한다. 진단 declaration owner와 current plugin API 검사도 통과하며 application 측정은 별도다.
 
 - E35: 현재 공유 view-frame event contract를 소비한다. 첫·최신
