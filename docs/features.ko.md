@@ -6,8 +6,11 @@
 | --- | --- | --- | --- |
 | E36 source-clock anchor | 성공한 content-trace 시작이 view document clock anchor를 반환 | Content-frame owner와 current-SDK 검사 통과 | 미배포 |
 | E37 paint marker color | 성공한 content-trace 시작이 CSS marker의 RGB triplet을 반환 | Content-frame owner 1/1, current-SDK 검사와 diagnostic packaging 통과 | 미배포 |
+| E39 view logging bridge | Editor view가 SDK bridge logger와 error reporter를 사용 | View owner test 16/16, record check 통과 | 미배포 |
 
 - [o] E38 — P2: Editor 문서 contract를 복구한다. Specification의 checklist ID를 제거하고 implementation/validation/release status table을 추가하며 영어와 한국어 changelog 항목을 정렬한다. F252 model skip의 사실 기록과 완료된 후속 항목을 보존한다. Red: 현재 core documentation checker가 specification checklist ID, status field 누락, changelog identifier/code 불일치를 보고한다. Green: 영어와 한국어 기록을 맞춘 뒤 checker와 current-SDK record 검사가 통과한다.
+
+- [o] E39 — P1, core F239-240 연결: Editor view의 event와 error 기록에 `bridge.runtime.log` 및 `bridge.runtime.error`를 사용한다. View의 단일 기록 `runtime.log` 직접 호출과 중복 refusal 처리를 제거하고 Editor event 이름, field 및 bridge error-line 전달을 보존한다. Red: consumer fake-bridge owner가 `context.runtime.log` 대신 `undefined`를 받아 실패한다. Green: `node --test test/view.test.mjs`가 bridge logger identity, event 전달과 refused-record error routing을 포함해 16/16 통과하고, `pnpm exec soksak-records`가 86개 파일을 통과한다. 이 저장소에는 `docs-check` target이 없다.
 
 - [o] E36 — P1, core F239-221 연결: 성공한 `editor.diagnostics.content-trace` 시작 응답에서 source clock anchor를 반환한다. View document의 `performance.timeOrigin`, 즉시 읽은 `performance.now()`와 고정된 1 ms WebKit 정밀도 상한을 담는다. Core는 main-page logger clock 대신 일치하는 native exposure request/reply 구간을 통해 view content frame을 매핑한다. Red: 기존 content-frame owner는 성공 응답에 anchor가 없어 실패한다. Green: 같은 owner가 세 anchor field를 검증하고 기존 frame observer와 cleanup 동작을 유지한다. 진단 declaration owner와 `CORE_PLUGIN_API_DIR=<core>/packages/plugin-api make check`도 통과한다. Application 측정은 별도다.
 

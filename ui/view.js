@@ -1,17 +1,16 @@
 // The editor view page (core docs/spec/plugins.md#view-surfaces): the host serves it at soksak://editor/ui/index.html in the
 // web view of the surface, and injects the view channel script and the theme script before this page runs. The page builds
 // the surface context of its view over the view channel (@soksak/plugin-api/view) and mounts the editor module into a
-// shadow root of the page. The tab reports and the event records are the served calls tab.title, tab.modified, tab.error,
-// tab.keep and runtime.log (core docs/spec/native-surfaces.md#view-surfaces, view calls). The page reads the start values
-// of the surface (the tab, its params, its project) from window.sokSurface, which the host sets before the page runs.
+// shadow root of the page. The tab reports are served calls tab.title, tab.modified, tab.error and tab.keep; event records use
+// the SDK bridge's runtime.log and runtime.error (core docs/spec/native-surfaces.md#view-surfaces, view calls). The page reads
+// the surface start values (tab, params and project) from window.sokSurface, which the host sets before the page runs.
 import { createExpose } from "@soksak/plugin-api";
 import { createViewBridge } from "@soksak/plugin-api/view";
 import { mount } from "./editor.js";
-import { createEmitter, errorText } from "./events.js";
+import { createEmitter } from "./events.js";
 import { loadDiagnostics } from "./view-diagnostics.js";
 import { SIDECAR } from "./view-sidecar.js";
 
-const LOG_LEVELS = ["error", "warn", "info", "debug", "trace"];
 const CORE_ROOT = "soksak://core";
 
 /**
@@ -27,28 +26,6 @@ export function startValues(windowRef = window) {
   return start;
 }
 
-/**
- * The levels of runtime.log over the served call runtime.log {level, event, fields}. The fields are built before the send,
- * because a call carries values and not builders; the level gate of the main page applies at delivery (core
- * docs/spec/native-surfaces.md#view-surfaces, view calls), so a builder runs while the level is off.
- */
-export function createLog(calls) {
-  return Object.fromEntries(LOG_LEVELS.map((level) => [level, (event, fields) => calls.request("runtime.log",
-    { level, event, fields: typeof fields === "function" ? fields() : fields })
-    .then(() => undefined, (error) => refusedLog(calls, event, error))]));
-}
-
-/**
- * A refused record is an error of the view: it is shown as the error line of the view (runtime.error), and the console of the
- * page keeps the line too. A refusal of the error line itself has no other route left, so the console takes it.
- */
-function refusedLog(calls, event, error) {
-  const text = `${event}: ${errorText(error)}`;
-  console.error(`runtime.log ${text}`);
-  calls.request("runtime.error", { where: "log", text })
-    .then(() => undefined, (refusal) => console.error(`runtime.error log: ${errorText(refusal)}`));
-}
-
 /** The reporter of this page: report(where, error) stores the error as the event plugin.editor.page.error. */
 function createReporter(log) {
   const emitEvent = createEmitter({ log }, "editor");
@@ -61,14 +38,13 @@ function createReporter(log) {
  * commands, the core commands, the event records, the theme and the exposure run through the view calls, events and
  * commands of core docs/spec/native-surfaces.md#view-surfaces.
  *
- *     bridge    createViewBridge() of @soksak/plugin-api/view over the sok-view handler of the view
- *     start     the frozen start values {surface, params, origin, project, declarations}
- *     log       the levels of runtime.log, from createLog()
+ *     bridge      createViewBridge() of @soksak/plugin-api/view over the sok-view handler, including runtime.log and runtime.error
+ *     start       the frozen start values {surface, params, origin, project, declarations}
  *     report    report(text): stores one error of the context
  *
  * Returns {context}.
  */
-export function createViewContext({ bridge, start, log, report, diagnostics = null }) {
+export function createViewContext({ bridge, start, report, diagnostics = null }) {
   if (typeof report !== "function") throw new TypeError("createViewContext requires the report function");
   const { calls, commands, runtime, exposure: relay } = bridge;
   // The fire-and-forget calls of the context: a refusal of the route is a record, not a lost report.
@@ -123,7 +99,7 @@ export function createViewContext({ bridge, start, log, report, diagnostics = nu
         }),
         command: (name, params) => calls.request(name, params),
         // The transport of the records: the emit sites of the plugin are the callers of ui/events.js.
-        log,
+        log: runtime.log,
         theme: runtime.theme,
       },
       exposure: {
@@ -170,7 +146,7 @@ const losses = [];
 let reportLoss = (event) => losses.push(event);
 const bridge = createViewBridge({ handler: window.webkit.messageHandlers["sok-view"],
   report: (event) => { if (event.kind !== "open-calls") reportLoss(event); } });
-const log = createLog(bridge.calls);
+const log = bridge.runtime.log;
 const report = createReporter(log);
 reportLoss = ({ kind, plugin: _plugin, ...fields }) => report("calls", `${kind} ${JSON.stringify(fields)}`);
 for (const event of losses.splice(0)) reportLoss(event);
@@ -178,7 +154,7 @@ installPageErrors(report);
 if (window.sokTheme) applyTheme(window.sokTheme);
 bridge.runtime.theme(applyTheme);
 const diagnostics = await loadDiagnostics();
-const { context } = createViewContext({ bridge, start, log, diagnostics, report: (text) => report("context", text) });
+const { context } = createViewContext({ bridge, start, diagnostics, report: (text) => report("context", text) });
 const host = document.body.appendChild(document.createElement("div"));
 host.style.cssText = "height:100%";
 try {

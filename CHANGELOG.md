@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- E39: Route Editor view event records through the SDK bridge logger and its error reporter. Remove the direct single-record `runtime.log` sender and duplicate refusal handler. The consumer fake-bridge Red showed that the view context exposed `undefined` instead of the bridge logger; the view owner now passes 16/16, including refused-record error routing, and the record check passes 86 files.
+
 - E38: Restore the Editor documentation contract by removing checklist IDs from specifications, adding implementation/validation/release status fields, and aligning changelog identifiers and code spans in both languages. Preserve the historical model skip and its completed F252 follow-up.
 
 - E37: Expose markerColor in successful content-trace START replies from the same RGB definition as the diagnostic CSS paint. Keep read, stop and cleanup behavior unchanged. The missing-field owner Red becomes Green 1/1; current-SDK checks and diagnostic packaging pass. Captured-pixel acceptance remains with core F239-233.

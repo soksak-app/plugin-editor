@@ -42,6 +42,28 @@ test("the view page registers its exposure from the declarations of the start va
   assert.deepEqual(statuses.toSorted(), manifest.exposes.status.map((entry) => entry.name).toSorted());
 });
 
+test("the view context uses the logger supplied by its SDK bridge", async (t) => {
+  const { window } = createViewPage(t, "bridge-logger");
+  const page = await import("../build/test/ui/view.js?case=bridge-logger");
+  const bridgeLog = Object.freeze(Object.fromEntries(["error", "warn", "info", "debug", "trace"]
+    .map((level) => [level, () => {}])));
+  const bridge = {
+    calls: { request: () => { throw new Error("view context made a raw log call"); } },
+    commands: { register: async () => {} },
+    contributions: () => [],
+    exposure: { register: async () => {}, reply: () => {} },
+    runtime: {
+      error: async () => {},
+      log: bridgeLog,
+      native: { on: async () => () => {} },
+      sidecar: () => ({ send: async () => {}, on: async () => {}, onFailure: async () => {} }),
+      theme: () => {},
+    },
+  };
+  const { context } = page.createViewContext({ bridge, start: window.sokSurface, report: () => {} });
+  assert.strictEqual(context.runtime.log, bridgeLog);
+});
+
 test("the view page opens the file of its tab through the view channel", async (t) => {
   const { reports, logs, run, settle, sidecar } = createViewPage(t, "open");
   await import("../build/test/ui/view.js?case=open");
@@ -165,13 +187,11 @@ test("each sidecar send of the view page carries its correlation identifiers", a
   for (const cids of reports.sendCids) assert.ok(Array.isArray(cids), `cids ${JSON.stringify(cids)} is a list`);
 });
 
-test("a refused runtime.log is shown as an error line of the view and written to the console", async (t) => {
-  const consoleError = t.mock.method(console, "error", () => {});
+test("a refused bridge log is shown through the bridge error route", async (t) => {
   const { reports, settle } = createViewPage(t, "log-refused", { refuseLog: "log route refused" });
   await import("../build/test/ui/view.js?case=log-refused");
   await settle();
-  assert.ok(consoleError.mock.callCount() > 0, "the refused record reached no console line");
-  assert.ok(reports.errorLines.length > 0, "the refused record reached no error line of the view");
-  for (const line of reports.errorLines) assert.equal(line.where, "log");
-  assert.match(reports.errorLines[0].text, /^[a-z.]+: log route refused$/);
+  assert.ok(reports.errorLines.length > 0, "the bridge reported no refused record through runtime.error");
+  assert.match(reports.errorLines[0].where, /^log plugin\.editor\.[a-z.]+$/);
+  assert.equal(reports.errorLines[0].text, "log route refused");
 });

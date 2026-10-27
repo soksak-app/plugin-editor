@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E39: Editor view의 event record를 SDK bridge logger와 error reporter로 전달한다. 단일 record `runtime.log` 직접 sender와 중복 refusal handler를 제거한다. Consumer fake-bridge Red는 view context가 bridge logger 대신 `undefined`를 제공함을 보였다. Refused-record error routing을 포함한 view owner 16/16과 86개 파일 record check가 통과한다.
+
 - E38: Specification의 checklist ID를 제거하고 implementation/validation/release status field를 추가하며, 영어와 한국어 changelog의 identifier와 code span을 맞춰 Editor 문서 contract를 복구한다. 과거 model skip과 완료된 F252 후속 항목의 사실을 보존한다.
 
 - E37: diagnostic CSS paint와 같은 RGB 정의에서 성공한 content-trace START 응답의 markerColor를 제공한다. Read, stop과 cleanup 동작은 유지한다. Field 누락 owner Red가 Green 1/1로 바뀌며 current-SDK 검사와 diagnostic packaging이 통과한다. Captured-pixel acceptance는 core F239-233에 남는다.
