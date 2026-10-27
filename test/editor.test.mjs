@@ -160,7 +160,14 @@ test("content frame diagnostics observe the view root and restore its card style
   assert.deepEqual(before, { enabled: false, sequence: 0, width: 640, height: 480,
     historyEntries: 1, regionHistoryEntries: 0 });
   const start = await run("editor.diagnostics.content-trace", { action: "start" });
-  assert.deepEqual(start, { ...before, enabled: true });
+  assert.ok(start.sourceClock && typeof start.sourceClock === "object", "the start result includes a source clock anchor");
+  const { sourceClock, ...startState } = start;
+  assert.deepEqual(startState, { ...before, enabled: true });
+  assert.deepEqual(Object.keys(sourceClock).sort(), ["documentTimeOriginMs", "sourceNowMs", "sourceResolutionMs"]);
+  assert.equal(sourceClock.documentTimeOriginMs, window.performance.timeOrigin);
+  assert.ok(Number.isFinite(sourceClock.sourceNowMs) && sourceClock.sourceNowMs >= 0);
+  assert.ok(sourceClock.sourceNowMs <= window.performance.now());
+  assert.equal(sourceClock.sourceResolutionMs, 1);
   assert.equal(style.getPropertyValue("--card"), "rgb(17, 193, 231)");
   assert.equal(style.getPropertyPriority("--card"), "");
   await assert.rejects(run("editor.diagnostics.content-trace", { action: "start" }), /already enabled/);

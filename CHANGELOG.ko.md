@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E36: 성공한 content-trace 시작에서 editor document의 performance clock anchor를 반환한다. 추적한 content-frame owner는 시작 응답에 anchor가 없을 때 실패하고, document time origin·현재 view time·고정 1 ms 해상도 상한을 넣은 뒤 통과한다. 진단 declaration owner와 current plugin API 검사도 통과하며 application 측정은 별도다.
+
 - E35: 현재 공유 view-frame event contract를 소비한다. 첫·최신
   ResizeObserver 시각, 양수 resize count, count 1의 동일 시각, 최신 resize
   이후인 frame 시각을 요구한다. Red: 현재 SDK payload가 예상하지 않은

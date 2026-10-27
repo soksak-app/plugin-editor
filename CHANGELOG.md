@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- E36: Return the editor document's performance clock anchor from a successful content-trace start. The tracked content-frame owner fails when the start response omits it and passes after the response includes the document time origin, current view time and fixed 1 ms resolution bound. The diagnostic declaration owner and current plugin API checks pass; application measurements remain separate.
+
 - E35: Consume the current shared view-frame event contract. Require the
   first and latest ResizeObserver timestamps, a positive resize count, equal
   timestamps for count one, and a frame timestamp no earlier than the latest

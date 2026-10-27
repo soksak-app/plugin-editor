@@ -39,7 +39,15 @@
             "width": { "type": "number" },
             "height": { "type": "number" },
             "historyEntries": { "type": "integer" },
-            "regionHistoryEntries": { "type": "integer" }
+            "regionHistoryEntries": { "type": "integer" },
+            "sourceClock": {
+              "type": "object",
+              "properties": {
+                "documentTimeOriginMs": { "type": "number" },
+                "sourceNowMs": { "type": "number" },
+                "sourceResolutionMs": { "type": "number" }
+              }
+            }
           }
         }
       }

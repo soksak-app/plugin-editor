@@ -8,7 +8,7 @@ const declaration = JSON.parse(readFileSync(new URL("../diagnostics.json", impor
 const packageManifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const events = JSON.parse(readFileSync(new URL("../events.json", import.meta.url), "utf8"));
 
-test("diagnostic declaration and module stay out of the published editor package", () => {
+test("diagnostic declaration and module stay out of the published editor package", { timeout: 5000 }, () => {
   assert.ok(packageManifest.files.includes("ui/view-diagnostics.js"));
   assert.ok(!packageManifest.files.includes("diagnostics.json"));
   assert.ok(!packageManifest.files.includes(declaration.module));
@@ -20,6 +20,14 @@ test("diagnostic declaration and module stay out of the published editor package
   assert.deepEqual(declaration.exposes.commands[1].params.properties.action.enum, ["start", "stop", "read"]);
   assert.equal(declaration.exposes.commands[1].result.properties.sequence.type, "integer");
   assert.equal(declaration.exposes.commands[1].result.properties.regionHistoryEntries.type, "integer");
+  assert.deepEqual(declaration.exposes.commands[1].result.properties.sourceClock, {
+    type: "object",
+    properties: {
+      documentTimeOriginMs: { type: "number" },
+      sourceNowMs: { type: "number" },
+      sourceResolutionMs: { type: "number" },
+    },
+  });
   assert.equal(events.events["plugin.editor.view.content_frame"].class, "frame");
   assert.equal(events.events["plugin.editor.view.content_frame"].level, "trace");
 });

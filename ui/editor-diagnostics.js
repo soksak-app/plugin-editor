@@ -83,6 +83,14 @@ export function createViewFrameMeasurement({ document, runtime, readHistoryEntri
       || !Number.isFinite(viewWindow.performance.timeOrigin)) {
       throw new TypeError("content frame measurement requires view document resize, animation frame and performance APIs");
     }
+    const sourceClock = {
+      documentTimeOriginMs: viewWindow.performance.timeOrigin,
+      sourceNowMs: viewWindow.performance.now(),
+      sourceResolutionMs: 1,
+    };
+    if (!Number.isFinite(sourceClock.sourceNowMs) || sourceClock.sourceNowMs < 0) {
+      throw new TypeError("the editor view performance clock returned an invalid current time");
+    }
     const style = documentRoot.style;
     const hadProperty = Array.from({ length: style.length }, (_, index) => style.item(index)).includes("--card");
     previousCard = { hadProperty, value: style.getPropertyValue("--card"), priority: style.getPropertyPriority("--card") };
@@ -126,7 +134,7 @@ export function createViewFrameMeasurement({ document, runtime, readHistoryEntri
       });
       if (typeof stop !== "function") throw new TypeError("the shared view frame observer must return its stop function");
       stopObserver = stop;
-      return read();
+      return { ...read(), sourceClock };
     } catch (error) {
       const stop = stopObserver;
       active = false;
