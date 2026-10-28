@@ -21,6 +21,7 @@ function replay(testCase) {
     let throws = null;
     if (step.load) {
       ({ window } = createWindow(`soksak://${step.load.host}/`));
+      Object.defineProperty(window.performance, "timeOrigin", { value: 1700000000000.5 });
       window.webkit = { messageHandlers: { "sok-view": handler } };
       installViewWire(window, { host: step.load.host, document: step.load.document });
     } else if (step.attach) {
@@ -41,6 +42,7 @@ function replay(testCase) {
       throw new Error(`the replay has no step for ${JSON.stringify(step)}`);
     }
     const seen = { posted: posted.slice(mark), throws };
+    if (step.load) seen.state = { sokView: { page: window.sokView.page } };
     if (step.output.deliveredCount !== undefined) seen.deliveredCount = delivered.length - deliveredMark;
     else seen.delivered = delivered.slice(deliveredMark);
     outputs.push(seen);

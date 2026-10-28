@@ -212,7 +212,7 @@ for (const testCase of cases) {
 }
 
 test("the bridge conformance replays every case of its contracts", () => {
-  assert.equal(cases.length, 15);
+  assert.equal(cases.length, 14);
 });
 
 // F238-c-13.4: a sidecar call names its sidecar, and the bridge refuses a call that names none (core

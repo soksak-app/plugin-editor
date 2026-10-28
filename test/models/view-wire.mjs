@@ -13,6 +13,7 @@ export function installViewWire(window, { host, document } = {}) {
   const handler = window.webkit.messageHandlers["sok-view"];
   const posted = (message) => handler.postMessage(message);
   const refuse = (reason) => posted({ event: "view.error", plugin: host, reason });
+  const page = String(window.performance.timeOrigin);
   const queue = [];
   let listener = null;
 
@@ -38,6 +39,7 @@ export function installViewWire(window, { host, document } = {}) {
   });
 
   window.sokView = Object.freeze({
+    page,
     attach(fn) {
       if (typeof fn !== "function") throw new Error("attach requires a listener function");
       if (listener !== null) throw new Error(`view channel for ${host} already has a message listener`);
@@ -46,5 +48,7 @@ export function installViewWire(window, { host, document } = {}) {
     },
   });
 
-  posted(document === undefined ? { event: "view.ready", plugin: host } : { event: "view.ready", plugin: host, document });
+  posted(document === undefined
+    ? { event: "view.ready", plugin: host, page }
+    : { event: "view.ready", plugin: host, document, page });
 }

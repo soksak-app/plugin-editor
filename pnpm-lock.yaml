@@ -63,8 +63,8 @@ importers:
         specifier: 1.0.4
         version: 1.0.4
       '@soksak/plugin-api':
-        specifier: git+https://github.com/soksak-app/core.git#v0.0.20&path:/packages/plugin-api
-        version: https://codeload.github.com/soksak-app/core/tar.gz/10d1438f9e7e4f0b7e53772ff48d9e3166649719#path:/packages/plugin-api
+        specifier: git+https://github.com/soksak-app/core.git#4f82fb9c3307e3f4e6e834c3d336629275e45cac&path:/packages/plugin-api
+        version: https://codeload.github.com/soksak-app/core/tar.gz/4f82fb9c3307e3f4e6e834c3d336629275e45cac#path:/packages/plugin-api
       acorn:
         specifier: 8.19.0
         version: 8.19.0
@@ -401,9 +401,9 @@ packages:
   '@marijn/find-cluster-break@1.0.4':
     resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
 
-  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/10d1438f9e7e4f0b7e53772ff48d9e3166649719#path:/packages/plugin-api':
-    resolution: {gitHosted: true, path: /packages/plugin-api, tarball: https://codeload.github.com/soksak-app/core/tar.gz/10d1438f9e7e4f0b7e53772ff48d9e3166649719}
-    version: 0.0.20
+  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/4f82fb9c3307e3f4e6e834c3d336629275e45cac#path:/packages/plugin-api':
+    resolution: {gitHosted: true, path: /packages/plugin-api, tarball: https://codeload.github.com/soksak-app/core/tar.gz/4f82fb9c3307e3f4e6e834c3d336629275e45cac}
+    version: 0.0.21
     hasBin: true
 
   acorn@8.19.0:
@@ -434,6 +434,9 @@ packages:
   entities@8.1.0:
     resolution: {integrity: sha512-kxL7msIffSuh9aaFAMD7rxAIuTRMAHMeBtgHW2yUdWw732ZNh4MehkF2gdjvtdmikkaIP9bFDDJOPlsvm7avrA==}
     engines: {node: '>=20.19.0'}
+
+  es-module-lexer@3.0.4:
+    resolution: {integrity: sha512-BldNY5mwkVu+cQ5Ymn3e6hB9Sx8XHx4ZevWbiUyZbfKxJxYO27Hf0wfzkxIaD5CAJMaGl3YspKELj0ff/7nCMA==}
 
   esbuild@0.28.2:
     resolution: {integrity: sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==}
@@ -867,7 +870,10 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.4': {}
 
-  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/10d1438f9e7e4f0b7e53772ff48d9e3166649719#path:/packages/plugin-api': {}
+  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/4f82fb9c3307e3f4e6e834c3d336629275e45cac#path:/packages/plugin-api':
+    dependencies:
+      ajv: 8.20.0
+      es-module-lexer: 3.0.4
 
   acorn@8.19.0: {}
 
@@ -899,6 +905,8 @@ snapshots:
   decimal.js@10.6.0: {}
 
   entities@8.1.0: {}
+
+  es-module-lexer@3.0.4: {}
 
   esbuild@0.28.2:
     optionalDependencies:

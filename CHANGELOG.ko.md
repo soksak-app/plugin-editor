@@ -4,6 +4,8 @@
 
 ## 미배포
 
+- E40: `@soksak/plugin-api`를 API 0.0.21의 public core commit에 고정하고 pnpm으로 lockfile을 갱신한다. 두 copied view contract와 선언된 page clock에 맞춰 view-wire replay model을 정렬한다. Current-SDK 검사는 10개 contract copy와 SDK 검사를 통과하고, bridge 및 wire model은 17/17과 9/9, Editor view owner는 16/16 통과한다. Engines range, plugin version과 public release는 유지한다.
+
 - E39: Editor view의 event record를 SDK bridge logger와 error reporter로 전달한다. 단일 record `runtime.log` 직접 sender와 중복 refusal handler를 제거한다. Consumer fake-bridge Red는 view context가 bridge logger 대신 `undefined`를 제공함을 보였다. Refused-record error routing을 포함한 view owner 16/16과 86개 파일 record check가 통과한다.
 
 - E38: Specification의 checklist ID를 제거하고 implementation/validation/release status field를 추가하며, 영어와 한국어 changelog의 identifier와 code span을 맞춰 Editor 문서 contract를 복구한다. 과거 model skip과 완료된 F252 후속 항목의 사실을 보존한다.
