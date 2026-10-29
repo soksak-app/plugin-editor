@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- F274-editor: The pre-push hook checks only the commit messages that a push publishes; CI runs the tests and checks.
 - E41: Follow the view-wire contract whose page identity is a UUID: the view-wire replay model takes the page identity from `window.crypto.randomUUID()` and posts the time origin as `time_origin`, and the copied contract matches core. The Red replay failed 8 of 8 cases; the Editor tests pass 155/155 and the current-SDK check passes.
 
 - E40: Pin `@soksak/plugin-api` to the public core commit for API 0.0.21 and regenerate the lockfile with pnpm. Align the two copied view contracts and the view-wire replay model with the declared page clock. The current-SDK check passes all 10 contract copies and SDK checks; focused bridge and wire models pass 17/17 and 9/9, and the Editor view owner passes 16/16. Keep the engines range, plugin version and public release unchanged.

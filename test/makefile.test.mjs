@@ -58,10 +58,10 @@ test("make check keeps installed SDK CLIs when no override is declared", { timeo
   }
 });
 
-test("make push-check runs make test, make check and the commit message check of the pushed range (F238-c-25)", () => {
+// A published commit message is kept, so the push checks it; CI runs the tests and checks on the pushed commits.
+test("make push-check runs only the commit message check of the pushed range (F274-editor)", () => {
   const header = makefile.split("\n").find((line) => line.startsWith("push-check:")) ?? "";
-  assert.match(header, /\btest\b/, header);
-  assert.match(header, /\bcheck\b/, header);
+  assert.equal(header, "push-check:", header);
   assert.match(recipe("push-check"), /pnpm exec soksak-commits "\$\(or \$\(RANGE\),origin\/main\.\.HEAD\)"/);
 });
 

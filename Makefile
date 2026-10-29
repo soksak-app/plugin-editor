@@ -30,9 +30,10 @@ pack:
 	@test -n "$(OUT)" || { echo "make pack OUT=<folder>" >&2; exit 2; }
 	$(SOK) plugin pack . $(OUT) $(PACK_FLAGS)
 
-# The checks of the ci workflow that a push needs: make test, make check, and the commit messages of the pushed range.
+# The check that a push needs: the commit messages of the pushed range, because a published commit message is kept; CI runs
+# the tests and checks on the pushed commits.
 # RANGE holds the commits of the pushed refs; the pre-push hook sets it, and it defaults to origin/main..HEAD.
-push-check: test check
+push-check:
 	pnpm exec soksak-commits "$(or $(RANGE),origin/main..HEAD)"
 
 # Sets this repository to use .githooks, which checks commit messages and records at commit time.
