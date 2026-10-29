@@ -22,8 +22,10 @@ function replay(testCase) {
     if (step.load) {
       ({ window } = createWindow(`soksak://${step.load.host}/`));
       Object.defineProperty(window.performance, "timeOrigin", { value: 1700000000000.5 });
+      // The case states the page identity that the load produces, so the replay gives it as the UUID of window.crypto.
+      Object.defineProperty(window, "crypto", { value: { randomUUID: () => step.load.document } });
       window.webkit = { messageHandlers: { "sok-view": handler } };
-      installViewWire(window, { host: step.load.host, document: step.load.document });
+      installViewWire(window, { host: step.load.host });
     } else if (step.attach) {
       const listener = step.attach.listener === "record" ? (data) => delivered.push(data) : 42;
       try {

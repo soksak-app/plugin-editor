@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- E41: Follow the view-wire contract whose page identity is a UUID: the view-wire replay model takes the page identity from `window.crypto.randomUUID()` and posts the time origin as `time_origin`, and the copied contract matches core. The Red replay failed 8 of 8 cases; the Editor tests pass 155/155 and the current-SDK check passes.
+
 - E40: Pin `@soksak/plugin-api` to the public core commit for API 0.0.21 and regenerate the lockfile with pnpm. Align the two copied view contracts and the view-wire replay model with the declared page clock. The current-SDK check passes all 10 contract copies and SDK checks; focused bridge and wire models pass 17/17 and 9/9, and the Editor view owner passes 16/16. Keep the engines range, plugin version and public release unchanged.
 
 - E39: Route Editor view event records through the SDK bridge logger and its error reporter. Remove the direct single-record `runtime.log` sender and duplicate refusal handler. The consumer fake-bridge Red showed that the view context exposed `undefined` instead of the bridge logger; the view owner now passes 16/16, including refused-record error routing, and the record check passes 86 files.
