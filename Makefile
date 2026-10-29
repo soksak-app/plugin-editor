@@ -1,16 +1,16 @@
 # Tests, checks and packs the editor plugin (docs/features.md). pack uses the sok of core.
-.PHONY: test check pack push-check hooks
+.PHONY: install test check pack push-check hooks
 
 SOK ?= sok
 # DIAGNOSTICS=1 packs a diagnostics package that holds diagnostics.json.
 PACK_FLAGS = $(if $(DIAGNOSTICS),--diagnostics,)
 
 # The tests use no SDK package: pnpm test builds the test tree (scripts/build-test.mjs) and runs the plugin tests.
-node_modules: package.json
-	pnpm install
-	touch node_modules
+# The installation stage (core docs/spec/plugins.md#repositories): it installs the locked dependencies; the tests, checks and packs consume them without installing.
+install:
+	pnpm install --frozen-lockfile
 
-test: node_modules
+test:
 	pnpm test
 
 # check runs the SDK checks against the @soksak/plugin-api that package.json names. CORE_PLUGIN_API_DIR selects its source
@@ -19,7 +19,7 @@ SDK_EXPOSURE = $(if $(CORE_PLUGIN_API_DIR),node "$(CORE_PLUGIN_API_DIR)/exposure
 SDK_ENGINES = $(if $(CORE_PLUGIN_API_DIR),node "$(CORE_PLUGIN_API_DIR)/engines-check.js",pnpm exec soksak-engines)
 SDK_EVENTS = $(if $(CORE_PLUGIN_API_DIR),node "$(CORE_PLUGIN_API_DIR)/events-check.js",pnpm exec soksak-events)
 SDK_RECORDS = $(if $(CORE_PLUGIN_API_DIR),node "$(CORE_PLUGIN_API_DIR)/records-check.js",pnpm exec soksak-records)
-check: node_modules
+check:
 	CORE_PLUGIN_API_DIR="$(CORE_PLUGIN_API_DIR)" node scripts/check-plugin.mjs
 	$(SDK_EXPOSURE)
 	$(SDK_ENGINES)

@@ -19,6 +19,8 @@ jobs:
         with:
           node-version-file: .node-version
       - uses: pnpm/action-setup@v4
+      - name: Install
+        run: make install
       - name: Test
         run: make test
       - name: Check
