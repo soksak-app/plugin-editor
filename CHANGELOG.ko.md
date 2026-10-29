@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- E42: `@soksak/plugin-api`를 복사한 case와 같은 계약을 공개하는 core commit에 pin한다.
 - F274-editor: pre-push hook은 push가 게시하는 commit message만 검사한다. 시험과 검사는 CI가 실행한다.
 - E41: page 신원이 UUID인 view-wire contract를 따른다. View-wire replay model은 page 신원을 `window.crypto.randomUUID()`에서 얻고 time origin을 `time_origin`으로 보내며, copied contract는 core와 같다. Red replay는 8개 case 중 8개가 실패했고 Editor test는 155/155, current-SDK 검사는 통과한다.
 
