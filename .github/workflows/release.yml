@@ -17,7 +17,7 @@ concurrency:
 # Core release and host whose application zip holds the sok that packs the plugin. They are unrelated to the version this
 # repository releases.
 env:
-  CORE_RELEASE: v0.0.23
+  CORE_RELEASE: v0.0.24
   CORE_HOST: tauriv2
 
 jobs:
