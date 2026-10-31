@@ -14,9 +14,11 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-# Core release whose sok packs the plugin. It is unrelated to the version this repository releases.
+# Core release and host whose application zip holds the sok that packs the plugin. They are unrelated to the version this
+# repository releases.
 env:
-  CORE_RELEASE: v0.0.21
+  CORE_RELEASE: v0.0.23
+  CORE_HOST: tauriv2
 
 jobs:
   checks:
@@ -56,13 +58,12 @@ jobs:
           head="$(git ls-remote origin refs/heads/main | cut -f1)"
           test "$head" = "$GITHUB_SHA" || { echo "main is at $head, not at $GITHUB_SHA" >&2; exit 1; }
           test -z "$(git ls-remote --tags origin "refs/tags/v$VERSION")" || { echo "the tag v$VERSION exists" >&2; exit 1; }
-      - name: Download sok
+      - name: Download the core application
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download "$CORE_RELEASE" --repo soksak-app/core --pattern 'sok-*-darwin-arm64' --dir "$RUNNER_TEMP"
-          mv "$RUNNER_TEMP"/sok-*-darwin-arm64 "$RUNNER_TEMP/sok"
-          chmod +x "$RUNNER_TEMP/sok"
+          gh release download "$CORE_RELEASE" --repo soksak-app/core --pattern "soksak-${CORE_RELEASE#v}-darwin-arm64-$CORE_HOST.zip" --dir "$RUNNER_TEMP"
+          ditto -x -k "$RUNNER_TEMP/soksak-${CORE_RELEASE#v}-darwin-arm64-$CORE_HOST.zip" "$RUNNER_TEMP/core"
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
@@ -70,7 +71,7 @@ jobs:
       - name: Install
         run: make install
       - name: Pack
-        run: make pack SOK="$RUNNER_TEMP/sok" OUT=dist
+        run: make pack SOK="$RUNNER_TEMP/core/soksak.app/Contents/MacOS/sok" OUT=dist
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.gate.outputs.version }}

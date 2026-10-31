@@ -31,7 +31,7 @@ test("release.yml runs make pack", () => {
   assert.ok(targets.includes("pack"), `release.yml runs make pack (targets: ${targets.join(", ") || "none"})`);
 });
 
-// The release starts on a push to main, runs ci.yml and the release gate, and downloads the sok of the declared core release;
+// The release starts on a push to main, runs ci.yml and the release gate, and packs with the sok inside the application zip of the declared core release and host;
 // no workflow checks out another repository, and the dependency on core is the packed release file of that core release
 // (core docs/spec/plugins.md). The test finds that dependency by its address, so no test source names an SDK package.
 const RELEASE_TEXT = readFileSync(path.join(ROOT, ".github", "workflows", "release.yml"), "utf8");
@@ -54,10 +54,14 @@ test("the release starts on a push to main and runs ci.yml and the release gate"
   assert.match(RELEASE_TEXT, /git ls-remote --tags origin "refs\/tags\/v\$VERSION"/, "the release must require the tag to be absent");
 });
 
-test("the release downloads the sok of the declared core release", { timeout: 1000 }, () => {
+test("the release packs with the sok inside the application zip of the declared core release and host", { timeout: 1000 }, () => {
   const tag = coreRelease();
-  assert.match(RELEASE_TEXT, /gh release download "\$CORE_RELEASE" --repo soksak-app\/core --pattern 'sok-\*-darwin-arm64'/,
-    `release.yml must download the sok of ${tag}`);
+  const host = /^\s*CORE_HOST:\s*(\S+)\s*$/m.exec(RELEASE_TEXT)?.[1];
+  assert.match(host ?? "", /^(tauriv2|wailsv3)$/, `CORE_HOST must name a core host, found ${JSON.stringify(host)}`);
+  assert.match(RELEASE_TEXT, /gh release download "\$CORE_RELEASE" --repo soksak-app\/core --pattern "soksak-\$\{CORE_RELEASE#v\}-darwin-arm64-\$CORE_HOST\.zip"/,
+    `release.yml must download the application zip of ${tag} for ${host}`);
+  assert.match(RELEASE_TEXT, /make pack SOK="\$RUNNER_TEMP\/core\/soksak\.app\/Contents\/MacOS\/sok"/, "release.yml must pack with the sok of the bundle");
+  assert.doesNotMatch(RELEASE_TEXT, /'sok-\*-darwin-arm64'/, "release.yml must not download a separate sok");
   assert.doesNotMatch(RELEASE_TEXT, /go build/, "release.yml must not build sok from source");
 });
 

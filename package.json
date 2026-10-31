@@ -1,6 +1,6 @@
 {
   "name": "@soksak/plugin-editor",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.24.0",
@@ -11,7 +11,7 @@
     "url": "git+https://github.com/soksak-app/plugin-editor.git"
   },
   "engines": {
-    "soksak": "^0.0.21"
+    "soksak": "^0.0.23"
   },
   "files": [
     "plugin.json",
@@ -52,7 +52,7 @@
     "@lezer/highlight": "1.2.5",
     "@lezer/lr": "1.4.11",
     "@marijn/find-cluster-break": "1.0.4",
-    "@soksak/plugin-api": "https://github.com/soksak-app/core/releases/download/v0.0.21/soksak-plugin-api-0.0.21.tgz",
+    "@soksak/plugin-api": "https://github.com/soksak-app/core/releases/download/v0.0.23/soksak-plugin-api-0.0.23.tgz",
     "acorn": "8.19.0",
     "ajv": "^8.20.0",
     "crelt": "1.0.7",

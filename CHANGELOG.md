@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- F324-editor: Version 0.0.8 requires core `^0.0.23`, uses the plugin API release file of core `v0.0.23`, and packs its release with the `sok` inside the core `v0.0.23` application zip of the Tauri host.
 - F272-editor: A push to `main` releases the declared version through `soksak-release-gate` when its tag is absent, with the `sok` of the core release `v0.0.21`, and the dependency on `@soksak/plugin-api` is the packed release file of that release; no workflow checks out core.
 - F275-editor: `make install` installs the locked dependencies; the tests, checks and builds no longer install.
 - E42: `@soksak/plugin-api` is pinned to the core commit whose published contracts the copied cases match.
