@@ -30,7 +30,7 @@ test("the view page refuses to mount without the declarations of the start value
   const host = createViewPage(t, "no-declarations");
   host.window.sokSurface = Object.freeze({ surface: "editor-1", params: null, origin: null, project: null });
   await assert.rejects(import("../build/test/ui/view.js?case=no-declarations"),
-    /window\.sokSurface \{surface, params, origin, project, declarations\}/);
+    /window\.sokSurface \{surface, params, origin, project, declarations, diagnostics\}/);
 });
 
 test("the view page registers its exposure from the declarations of the start values", async (t) => {
@@ -86,8 +86,8 @@ test("the view page resolves extension points through the view bridge", { timeou
   const host = createViewPage(t, "view-contributions");
   await import("../build/test/ui/view.js?case=view-contributions");
   assert.deepEqual(host.reports.contributions, ["extension", "formatter"]);
-  assert.deepEqual(host.fetches, ["soksak://editor/diagnostics.json"],
-    `the view fetched ${host.fetches.join(", ")}; it reads only its diagnostic declaration, not the global plugin list`);
+  assert.deepEqual(host.fetches, [],
+    `the view fetched ${host.fetches.join(", ")}; its start values carry its diagnostic declaration, and it reads no plugin list`);
 });
 
 test("the view page answers a forwarded exposure request from its own values", async (t) => {

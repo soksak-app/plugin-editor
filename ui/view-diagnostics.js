@@ -1,13 +1,9 @@
-// Loads the diagnostic declaration from the installed editor package. A release build stages no declaration or module.
-export async function loadDiagnostics(pageHref = window.location.href) {
-  let response;
-  try {
-    response = await fetch(new URL("../diagnostics.json", pageHref).href);
-  } catch (error) {
-    throw new Error(`the diagnostics declaration of the editor view cannot be read: ${error?.message ?? error}`);
+// Loads the diagnostic declaration from the start values of the editor view (core docs/spec/plugins.md#diagnostic-declarations).
+// A release build has no declaration, so its start values carry null, and the view requests no file.
+export async function loadDiagnostics(start) {
+  if (!Object.hasOwn(start, "diagnostics")) {
+    throw new Error("the start values of the editor view have no diagnostics: window.sokSurface {surface, params, origin, project, declarations, diagnostics} carries it");
   }
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`the diagnostics declaration of the editor view answered ${response.status}`);
-  const declaration = await response.json();
-  return { declaration, attach: (await import("./editor-diagnostics.js")).attach };
+  if (start.diagnostics === null) return null;
+  return { declaration: start.diagnostics, attach: (await import("./editor-diagnostics.js")).attach };
 }

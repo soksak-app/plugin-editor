@@ -40,25 +40,22 @@ test("the diagnostic module owns an explicit content-frame measurement lifecycle
   assert.equal(typeof editorDiagnostics.createViewFrameMeasurement, "function");
 });
 
-test("a release editor view loads without a diagnostic declaration", async (t) => {
+test("a release editor view has no diagnostic declaration in its start values and requests no file", async (t) => {
+  const fetches = [];
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => ({ ok: false, status: 404 });
+  globalThis.fetch = async (url) => { fetches.push(String(url)); return { ok: false, status: 404 }; };
   t.after(() => { globalThis.fetch = originalFetch; });
-  assert.equal(await loadDiagnostics("soksak://editor/ui/index.html"), null);
+  assert.equal(await loadDiagnostics({ surface: "editor-1", diagnostics: null }), null);
+  assert.deepEqual(fetches, []);
 });
 
-test("an installed diagnostic editor view loads its declaration and attach function", async (t) => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => declaration });
-  t.after(() => { globalThis.fetch = originalFetch; });
-  const diagnostics = await loadDiagnostics("soksak://editor/ui/index.html");
+test("a diagnostic editor view loads the declaration of its start values and its attach function", async () => {
+  const diagnostics = await loadDiagnostics({ surface: "editor-1", diagnostics: declaration });
   assert.deepEqual(diagnostics.declaration, declaration);
   assert.equal(typeof diagnostics.attach, "function");
 });
 
-test("an unreadable diagnostic declaration fails with its response status", async (t) => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => ({ ok: false, status: 503 });
-  t.after(() => { globalThis.fetch = originalFetch; });
-  await assert.rejects(loadDiagnostics("soksak://editor/ui/index.html"), /answered 503/);
+test("start values without a diagnostic declaration are refused with an error that names them", async () => {
+  await assert.rejects(loadDiagnostics({ surface: "editor-1" }),
+    /^Error: the start values of the editor view have no diagnostics: window\.sokSurface \{surface, params, origin, project, declarations, diagnostics\} carries it$/);
 });

@@ -150,7 +150,7 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
 
   // The start values as the host injects them: declarations are the exposes of the plugin (core docs/spec/native-surfaces.md#view-surfaces).
   window.sokSurface = Object.freeze({ surface: "editor-1", params, origin: Object.freeze({ directory: null }),
-    project: Object.freeze({ root: "/project" }), declarations: MANIFEST.exposes });
+    project: Object.freeze({ root: "/project" }), declarations: MANIFEST.exposes, diagnostics: null });
   // The view script of the host runs before the page: it posts the ready message and queues the host messages until the
   // page attaches its listener.
   installViewWire(window, { host: "editor" });

@@ -21,7 +21,7 @@ export function startValues(windowRef = window) {
   const start = windowRef.sokSurface;
   if (start === null || typeof start !== "object" || typeof start.surface !== "string" || start.surface === ""
     || start.declarations === null || typeof start.declarations !== "object") {
-    throw new Error(`the view of ${windowRef.location.host} has no start values: the host provides window.sokSurface {surface, params, origin, project, declarations} before the page runs`);
+    throw new Error(`the view of ${windowRef.location.host} has no start values: the host provides window.sokSurface {surface, params, origin, project, declarations, diagnostics} before the page runs`);
   }
   return start;
 }
@@ -153,7 +153,7 @@ for (const event of losses.splice(0)) reportLoss(event);
 installPageErrors(report);
 if (window.sokTheme) applyTheme(window.sokTheme);
 bridge.runtime.theme(applyTheme);
-const diagnostics = await loadDiagnostics();
+const diagnostics = await loadDiagnostics(start);
 const { context } = createViewContext({ bridge, start, diagnostics, report: (text) => report("context", text) });
 const host = document.body.appendChild(document.createElement("div"));
 host.style.cssText = "height:100%";
