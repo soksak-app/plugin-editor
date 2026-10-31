@@ -61,7 +61,7 @@
     "ink": "--fg"
   },
   "dependencies": {
-    "@soksak/sidecar-files": ">=0.0.8"
+    "@soksak/sidecar-files": ">=0.0.9"
   },
   "extends": {
     "extension": {
