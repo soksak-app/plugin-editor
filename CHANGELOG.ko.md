@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- F272-editor: `main`에 push하면 tag가 없을 때 `soksak-release-gate`로 선언된 version을 core release `v0.0.21`의 `sok`와 함께 release한다. `@soksak/plugin-api`에 대한 의존은 그 release의 pack 파일이다. 어떤 workflow도 core를 checkout하지 않는다.
 - F275-editor: `make install`이 고정된 의존성을 설치한다. 시험, 검사, build는 더 이상 설치하지 않는다.
 - E42: `@soksak/plugin-api`를 복사한 case와 같은 계약을 공개하는 core commit에 pin한다.
 - F274-editor: pre-push hook은 push가 게시하는 commit message만 검사한다. 시험과 검사는 CI가 실행한다.

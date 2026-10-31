@@ -63,8 +63,8 @@ importers:
         specifier: 1.0.4
         version: 1.0.4
       '@soksak/plugin-api':
-        specifier: git+https://github.com/soksak-app/core.git#22d7c2429556bb4af0f742e34fb1949a0c6ba265&path:/packages/plugin-api
-        version: https://codeload.github.com/soksak-app/core/tar.gz/22d7c2429556bb4af0f742e34fb1949a0c6ba265#path:/packages/plugin-api
+        specifier: https://github.com/soksak-app/core/releases/download/v0.0.21/soksak-plugin-api-0.0.21.tgz
+        version: https://github.com/soksak-app/core/releases/download/v0.0.21/soksak-plugin-api-0.0.21.tgz
       acorn:
         specifier: 8.19.0
         version: 8.19.0
@@ -401,8 +401,8 @@ packages:
   '@marijn/find-cluster-break@1.0.4':
     resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
 
-  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/22d7c2429556bb4af0f742e34fb1949a0c6ba265#path:/packages/plugin-api':
-    resolution: {gitHosted: true, integrity: sha512-y0HkBcu2+9GsrjWNZI++pRA6iGp105V8vuWodW0OLUN5F2s1hE3RUFGlVo5Q9RO0UvGdHa+HvtZ70j8fp8KBFA==, path: /packages/plugin-api, tarball: https://codeload.github.com/soksak-app/core/tar.gz/22d7c2429556bb4af0f742e34fb1949a0c6ba265}
+  '@soksak/plugin-api@https://github.com/soksak-app/core/releases/download/v0.0.21/soksak-plugin-api-0.0.21.tgz':
+    resolution: {integrity: sha512-OfeTSUeN1Cnmwl9221XHr1wSOM8/0Im3ZMllETp0zplape2y2QT+mozrcKNPLVqOs8bPJxr5j3SW6u+DL5YMwg==, tarball: https://github.com/soksak-app/core/releases/download/v0.0.21/soksak-plugin-api-0.0.21.tgz}
     version: 0.0.21
     hasBin: true
 
@@ -870,7 +870,7 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.4': {}
 
-  '@soksak/plugin-api@https://codeload.github.com/soksak-app/core/tar.gz/22d7c2429556bb4af0f742e34fb1949a0c6ba265#path:/packages/plugin-api':
+  '@soksak/plugin-api@https://github.com/soksak-app/core/releases/download/v0.0.21/soksak-plugin-api-0.0.21.tgz':
     dependencies:
       ajv: 8.20.0
       es-module-lexer: 3.0.4

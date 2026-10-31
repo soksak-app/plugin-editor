@@ -3,6 +3,24 @@
 // runs the commands registered through command(). The conformance test replays test/fixtures/contract/expose.json.
 import { createBinder } from "./binder.mjs";
 
+/**
+ * The effective CSS zoom of the element, as elementRect of the plugin API reads it: the product of the computed zoom of the
+ * element and of each ancestor of the flat tree (a slotted element continues at its slot, a shadow root at its host).
+ */
+function effectiveZoom(element) {
+  const view = element.ownerDocument.defaultView;
+  let zoom = 1;
+  // default: each step takes the next flat-tree parent: the slot of a slotted element, else the parent element, else the host
+  // of a shadow root; the document element has none of them, so null ends the walk at the root of the flat tree.
+  for (let node = element; node; node = node.assignedSlot ?? node.parentElement ?? node.getRootNode().host ?? null) {
+    const computed = view.getComputedStyle(node).zoom;
+    const value = Number(computed);
+    if (!Number.isFinite(value) || value <= 0) throw new Error(`computed zoom ${computed} is not a positive number`);
+    zoom *= value;
+  }
+  return zoom;
+}
+
 const UNKNOWN_STATUS = 1001;
 const UNKNOWN_TARGET = 1002;
 const INVALID_PARAMS = -32602;
@@ -63,7 +81,7 @@ export function createExpose(port, declarations) {
         throw new ReplyError(UNKNOWN_TARGET, `dom ${params.name} has no element at index ${params.index}`);
       }
       const box = dom.element.getBoundingClientRect();
-      return { result: { x: box.left, y: box.top, width: box.width, height: box.height } };
+      return { result: { x: box.left, y: box.top, width: box.width, height: box.height, zoom: effectiveZoom(dom.element) } };
     }
     if (method === "dom.act") {
       if (params.address !== undefined) throw new ReplyError(INVALID_PARAMS, `dom ${params.name} takes no address`);
