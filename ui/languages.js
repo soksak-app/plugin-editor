@@ -10,6 +10,9 @@ const LANGUAGES = {
   sh: "shell", bash: "shell", zsh: "shell",
 };
 
+/** The extensions that the editor declares in surface.opens of plugin.json: those of its languages and plain text. */
+export const EXTENSIONS = [...Object.keys(LANGUAGES), "txt"];
+
 const SUPPORT = {
   javascript: () => javascript(),
   jsx: () => javascript({ jsx: true }),

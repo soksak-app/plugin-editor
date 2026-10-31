@@ -30,7 +30,29 @@
     },
     "opens": {
       "extensions": [
-        "*"
+        "js",
+        "mjs",
+        "cjs",
+        "jsx",
+        "ts",
+        "mts",
+        "cts",
+        "tsx",
+        "json",
+        "css",
+        "html",
+        "htm",
+        "svelte",
+        "vue",
+        "md",
+        "markdown",
+        "py",
+        "rs",
+        "go",
+        "sh",
+        "bash",
+        "zsh",
+        "txt"
       ]
     },
     "save": "editor.save"
