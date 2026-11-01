@@ -6,6 +6,7 @@
 - F355-4-editor: `make pack OUT=<folder>`는 `pnpm pack`으로 release를 쓰고, release.yml은 더 이상 core release를 내려받지 않는다. core 0.0.25는 plugin의 `pnpm pack` 파일을 설치하고 `sok plugin pack`이 없기 때문이다. release는 진단 build만 읽는 `diagnostics.json`과 그 module을 담고, `@soksak/plugin-api`는 core release `v0.0.25`에 pin된다.
 ## 미배포
 
+- E43: 줄바꿈이 섞인 파일은 편집할 수 있게 열리고, 읽은 그대로의 줄바꿈으로 저장된다. Red: page가 읽기 전용으로 열고 줄을 line feed로 이었다. Green: 텍스트를 그대로 유지한다.
 - F360-editor: `engines.soksak`는 `^0.0.27`이므로 core 0.0.27이 plugin을 설치하며, version은 0.0.12다. Red: `the editor package requires only core 0.0.27`가 `^0.0.26`에서 실패했다. Green: 통과한다.
 - F355-3-4-editor: 검사는 core의 plugin API 대신 records kit과 events kit release에서 온다. Manifest, exposure, engines, view page, case 사본 검사와 `CORE_PLUGIN_API_DIR`은 제거했다. Application이 설치할 때 manifest를 검증하고 registry 검사가 노출 이름을 목록에 있는 각 core와 비교하기 때문이다. Red: `the checks come from the kit releases, and no check reads the plugin API of core` test가 실패했다. Green: 통과하고, `make test`와 `make check`가 통과한다.
 - F342-editor: view page가 감시 중인 status의 값을 `changed` 호출로 main page에 보낸다. core `createExpose`가 F342-1부터 이를 요구하며, 그 전에는 core window check에서 모든 editor view가 실패했다. exposure model과 복사된 `expose.json`은 `status.next`를 event 형태로 바꿨다. Red: 감시 중인 status view test가 changed 호출 0개를 찾았고 1개를 기대했다. Green: `pnpm test`가 161/161 통과하고, `make check`가 core plugin API 소스에 대해 통과한다. F342-1을 담은 core release가 나올 때까지 미배포다.

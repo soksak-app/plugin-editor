@@ -282,6 +282,15 @@ test("a change on disk replaces an unmodified text and is ignored when it is the
   assert.equal(status("editor.document").disk, "same");
 });
 
+test("a file with mixed line breaks opens editable and saves its text unchanged", async (t) => {
+  const { run, files, reports } = await setup(t, { path: "a.txt", files: new Map([["a.txt", "one\r\ntwo\nthree\rfour"]]) });
+  assert.equal(run("editor.read"), "one\r\ntwo\nthree\rfour");
+  run("editor.edit", { changes: [{ from: 3, to: 3, insert: "!" }] });
+  await run("editor.save");
+  assert.equal(files.get("a.txt"), "one!\r\ntwo\nthree\rfour");
+  assert.deepEqual(reports.error.filter((text) => text !== null), []);
+});
+
 test("a file with CRLF line breaks keeps them when it is saved", async (t) => {
   const { run, files } = await setup(t, { path: "a.txt", files: new Map([["a.txt", "one\r\ntwo\r\n"]]) });
   assert.equal(run("editor.read"), "one\r\ntwo\r\n");
@@ -388,7 +397,7 @@ test("the open records the file, its size and the watch with their results", asy
   const [open] = eventsOf(logs, "open");
   assert.equal(open.level, "info");
   assert.deepEqual({ ...open.fields, micros: isMicros(open.fields.micros) }, { path: "src/main.js", bytes: 22, lines: 3, newline: "lf",
-    read_only: false, micros: true, ok: true });
+    micros: true, ok: true });
   const [watch] = eventsOf(logs, "watch.start");
   assert.deepEqual({ ...watch.fields, micros: isMicros(watch.fields.micros) }, { path: "src/main.js", micros: true, ok: true });
   assert.deepEqual(eventsOf(logs, "request").map((entry) => [entry.level, entry.fields.operation, entry.fields.ok]),
@@ -793,11 +802,6 @@ test("relative Markdown image paths cannot escape the project root", async (t) =
   assert.equal(sidecar.sent.some((body) => body.operation === "readBytes"), false);
 });
 
-test("a refused save of a read-only file shows the refusal as the tab error", async (t) => {
-  const { run, reports } = await setup(t, { files: new Map([["src/main.js", "a\r\nb\nc"]]) });
-  await assert.rejects(run("editor.save"), /read-only/);
-  assert.match(reports.error.at(-1), /^저장하지 못했습니다 · .*read-only/);
-});
 
 test("a format without a connected formatter shows the refusal as the tab error", async (t) => {
   const { run, reports } = await setup(t);

@@ -150,15 +150,6 @@
             "bom": {
               "type": "boolean"
             },
-            "readOnly": {
-              "type": "boolean"
-            },
-            "reason": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
             "disk": {
               "type": "string",
               "enum": [

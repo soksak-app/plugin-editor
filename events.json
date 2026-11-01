@@ -30,9 +30,6 @@
               "null"
             ]
           },
-          "read_only": {
-            "type": "boolean"
-          },
           "micros": {
             "type": "number"
           },
@@ -48,7 +45,6 @@
           "bytes",
           "lines",
           "newline",
-          "read_only",
           "micros",
           "ok"
         ]

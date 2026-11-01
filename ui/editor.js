@@ -2,7 +2,7 @@
 // in place, and follows changes on disk. A tab without a path opens a blank document, whose first save asks for its file
 // through core.file.place. The contributions to editor.extension add CodeMirror extensions and the
 // contributions to editor.formatter format the text (docs/features.md).
-import { Compartment, EditorState, StateEffect, StateField } from "@soksak/shared/editor.extension/@codemirror/state.js";
+import { Compartment, EditorState, StateEffect, StateField, Text } from "@soksak/shared/editor.extension/@codemirror/state.js";
 import {
   Decoration, EditorView, drawSelection, highlightActiveLine, highlightActiveLineGutter, highlightSpecialChars, keymap,
   lineNumbers,
@@ -63,7 +63,8 @@ const HTML = `<style>${css}</style><div id="frame" data-expose="editor.frame">
 </div>
 <div id="view" data-expose="editor.view"></div></div>`;
 
-const LINE_SEPARATORS = { lf: "\n", crlf: "\r\n", cr: "\r" };
+// A file with mixed line breaks splits only at line feeds, so each carriage return stays in its line and the text is saved unchanged.
+const LINE_SEPARATORS = { lf: "\n", crlf: "\r\n", cr: "\r", mixed: "\n" };
 /** The tab title of a blank document and the file name that its first save proposes. */
 const NEW_TITLE = "새 문서";
 const NEW_NAME = "새 문서.txt";
@@ -216,7 +217,7 @@ export async function mount(root, context) {
   // The document as the editor read or last wrote it, and the state of the file on disk.
   let saved = null;
   let fileState = { path, version: null, modified: false, length: 0, lines: 0, language, newline: null, bom: false,
-    readOnly: false, reason: null, disk: "same", selection: { anchor: 0, head: 0 } };
+    disk: "same", selection: { anchor: 0, head: 0 } };
   let diskVersion = null;
   const fileListeners = new Set();
   let find = { open: false, replace: false, query: "", replacement: "", caseSensitive: false, regexp: false,
@@ -266,7 +267,6 @@ export async function mount(root, context) {
   let contributions = await loadContributions(context, file, emitEvent);
   const languageSlot = new Compartment();
   const contributed = new Compartment();
-  const editable = new Compartment();
   const separator = new Compartment();
   const scheme = new Compartment();
   const label = new Compartment();
@@ -346,20 +346,17 @@ export async function mount(root, context) {
   // Applies a read of the file: its text becomes the document and the saved state.
   const load = (body) => {
     if (!view) throw new Error("the editor view is not ready");
-    const readOnly = body.newline === "mixed";
+    // The changes of a transaction split their text by the separator of the state before it, so the text is split here.
+    const lineBreak = LINE_SEPARATORS[body.newline];
     view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: body.text },
-      effects: [
-        separator.reconfigure(readOnly || body.newline === "none" ? [] : EditorState.lineSeparator.of(LINE_SEPARATORS[body.newline])),
-        editable.reconfigure([EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]),
-      ],
+      changes: { from: 0, to: view.state.doc.length, insert: lineBreak ? Text.of(body.text.split(lineBreak)) : body.text },
+      effects: separator.reconfigure(lineBreak ? EditorState.lineSeparator.of(lineBreak) : []),
       selection: { anchor: Math.min(view.state.selection.main.anchor, body.text.length) },
     });
     saved = view.state.doc;
     diskVersion = body.version;
-    fileState = { ...fileState, version: body.version, newline: body.newline, bom: body.bom, readOnly, disk: "same",
-      reason: readOnly ? "줄바꿈이 섞여 있어 읽기 전용으로 엽니다" : null };
-    showBanner(fileState.reason);
+    fileState = { ...fileState, version: body.version, newline: body.newline, bom: body.bom, disk: "same" };
+    showBanner(null);
     describe();
     context.tab.modified(fileState.modified);
     publishFile();
@@ -420,7 +417,6 @@ export async function mount(root, context) {
 
   const save = async ({ overwrite = false } = {}) => {
     if (typeof overwrite !== "boolean") throw new TypeError("editor.save requires overwrite as true or false");
-    if (fileState.readOnly) throw refused(`저장하지 못했습니다 · ${path} is open read-only: ${fileState.reason}`);
     if (path === null) return saveNew();
     const start = performance.now();
     const text = view.state.sliceDoc();
@@ -432,7 +428,7 @@ export async function mount(root, context) {
       diskVersion = reply.version;
       fileState = { ...fileState, version: reply.version, disk: "same" };
       describe();
-      showBanner(fileState.reason);
+      showBanner(null);
       context.tab.modified(fileState.modified);
       context.tab.error(null);
       publishFile();
@@ -653,7 +649,6 @@ export async function mount(root, context) {
       || typeof change.insert !== "string")) {
       throw new TypeError("editor.edit requires changes as a list of {from, to, insert}");
     }
-    if (fileState.readOnly) throw new Error(`${path} is open read-only: ${fileState.reason}`);
     view.dispatch({ changes, userEvent: "input" });
     return { length: view.state.doc.length };
   };
@@ -690,8 +685,7 @@ export async function mount(root, context) {
       indentOnInput(), bracketMatching(), highlightActiveLine(), syntaxHighlighting(classHighlighter), todoMarks, found,
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       languageSlot.of(languageSupport(fileState.language)), contributed.of(contributions.extensions), markdownView,
-      editable.of(fileState.readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []),
-      separator.of(fileState.readOnly || fileState.newline === "none" || fileState.newline === null
+      separator.of(fileState.newline === "none" || fileState.newline === null
         ? [] : EditorState.lineSeparator.of(LINE_SEPARATORS[fileState.newline])),
       frameTheme, scheme.of(EditorView.darkTheme.of(frame.dataset.scheme !== "light")),
       EditorView.contentAttributes.of(contentAttributes),
@@ -810,13 +804,13 @@ export async function mount(root, context) {
     try {
       opened = await read();
     } catch (error) {
-      emitEvent("warn", "plugin.editor.open", { path, bytes: 0, lines: 0, newline: null, read_only: false, micros: microsSince(openStart),
+      emitEvent("warn", "plugin.editor.open", { path, bytes: 0, lines: 0, newline: null, micros: microsSince(openStart),
         ok: false, error: failure(error, "-32603") });
       throw error;
     }
     load(opened);
     emitEvent("info", "plugin.editor.open", { path, bytes: bytesOf(opened.text), lines: view.state.doc.lines, newline: opened.newline,
-      read_only: fileState.readOnly, micros: microsSince(openStart), ok: true });
+      micros: microsSince(openStart), ok: true });
     await startWatch();
   }
   if (stored !== null) {
