@@ -15,6 +15,8 @@
   },
   "files": [
     "plugin.json",
+    "diagnostics.json",
+    "ui/editor-diagnostics.js",
     "events.json",
     "ui/index.html",
     "ui/view.js",
@@ -52,7 +54,7 @@
     "@lezer/highlight": "1.2.5",
     "@lezer/lr": "1.4.11",
     "@marijn/find-cluster-break": "1.0.4",
-    "@soksak/plugin-api": "https://github.com/soksak-app/core/releases/download/v0.0.24/soksak-plugin-api-0.0.24.tgz",
+    "@soksak/plugin-api": "https://github.com/soksak-app/core/releases/download/v0.0.25/soksak-plugin-api-0.0.25.tgz",
     "acorn": "8.19.0",
     "ajv": "^8.20.0",
     "crelt": "1.0.7",

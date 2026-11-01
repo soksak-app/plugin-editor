@@ -1,6 +1,7 @@
 // The workflows run make check after make test (F238-c-24): ci.yml runs make test first, then make check, and release.yml runs
 // ci.yml as its checks before it runs make pack.
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -31,17 +32,12 @@ test("release.yml runs make pack", () => {
   assert.ok(targets.includes("pack"), `release.yml runs make pack (targets: ${targets.join(", ") || "none"})`);
 });
 
-// The release starts on a push to main, runs ci.yml and the release gate, and packs with the sok inside the application zip of the declared core release and host;
-// no workflow checks out another repository, and the dependency on core is the packed release file of that core release
-// (core docs/spec/plugins.md). The test finds that dependency by its address, so no test source names an SDK package.
+// The release starts on a push to main, runs ci.yml and the release gate, and writes the release with pnpm pack; it downloads
+// no core release, no workflow checks out another repository, and the dependency on core is the packed release file of a core
+// release that package.json pins (core docs/spec/plugins.md). No test names an SDK package, so the dependency is found by its
+// source.
 const RELEASE_TEXT = readFileSync(path.join(ROOT, ".github", "workflows", "release.yml"), "utf8");
-
-/** The core release that release.yml declares in CORE_RELEASE. */
-function coreRelease() {
-  const value = /^\s*CORE_RELEASE:\s*(\S+)\s*$/m.exec(RELEASE_TEXT)?.[1];
-  assert.match(value ?? "", /^v\d+\.\d+\.\d+$/, `CORE_RELEASE must name a core release tag, found ${JSON.stringify(value)}`);
-  return value;
-}
+const PACKAGE = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"));
 
 test("the release starts on a push to main and runs ci.yml and the release gate", { timeout: 1000 }, () => {
   assert.match(RELEASE_TEXT, /^on:\n {2}push:\n {4}branches: \[main\]\n/m, "release.yml must start on a push to main");
@@ -54,15 +50,27 @@ test("the release starts on a push to main and runs ci.yml and the release gate"
   assert.match(RELEASE_TEXT, /git ls-remote --tags origin "refs\/tags\/v\$VERSION"/, "the release must require the tag to be absent");
 });
 
-test("the release packs with the sok inside the application zip of the declared core release and host", { timeout: 1000 }, () => {
-  const tag = coreRelease();
-  const host = /^\s*CORE_HOST:\s*(\S+)\s*$/m.exec(RELEASE_TEXT)?.[1];
-  assert.match(host ?? "", /^(tauriv2|wailsv3)$/, `CORE_HOST must name a core host, found ${JSON.stringify(host)}`);
-  assert.match(RELEASE_TEXT, /gh release download "\$CORE_RELEASE" --repo soksak-app\/core --pattern "soksak-\$\{CORE_RELEASE#v\}-darwin-arm64-\$CORE_HOST\.zip"/,
-    `release.yml must download the application zip of ${tag} for ${host}`);
-  assert.match(RELEASE_TEXT, /make pack SOK="\$RUNNER_TEMP\/core\/soksak\.app\/Contents\/MacOS\/sok"/, "release.yml must pack with the sok of the bundle");
-  assert.doesNotMatch(RELEASE_TEXT, /'sok-\*-darwin-arm64'/, "release.yml must not download a separate sok");
-  assert.doesNotMatch(RELEASE_TEXT, /go build/, "release.yml must not build sok from source");
+test("the release writes the pnpm pack file of the plugin and downloads no core release", { timeout: 1000 }, () => {
+  assert.match(RELEASE_TEXT, /^\s*run: make pack OUT=dist$/m, "release.yml must run make pack OUT=dist");
+  for (const [pattern, what] of [[/gh release download/, "a release download"], [/CORE_RELEASE|CORE_HOST/, "a core release variable"],
+    [/SOK=/, "a sok path"], [/go build|cargo build/, "a build of sok"]]) {
+    assert.doesNotMatch(RELEASE_TEXT, pattern, `release.yml must not hold ${what}`);
+  }
+});
+
+test("make pack writes the release with pnpm pack into the folder that OUT names", { timeout: 5000 }, () => {
+  const result = spawnSync("make", ["-n", "pack", "OUT=/releases"], { cwd: ROOT, encoding: "utf8", timeout: 4000 });
+  assert.equal(result.status, 0, result.stderr);
+  const commands = result.stdout.trim().split("\n");
+  assert.equal(commands.at(-1), "pnpm pack --pack-destination /releases", `make pack runs ${JSON.stringify(commands)}`);
+  assert.doesNotMatch(readFileSync(path.join(ROOT, "Makefile"), "utf8"), /\bSOK\b|PACK_FLAGS/, "the Makefile must not name a sok");
+});
+
+test("the release holds diagnostics.json and its module, which the hosts of a diagnostic build read", { timeout: 1000 }, () => {
+  const { module } = JSON.parse(readFileSync(path.join(ROOT, "diagnostics.json"), "utf8"));
+  for (const file of ["diagnostics.json", module]) {
+    assert.ok(PACKAGE.files.some((entry) => file === entry || file.startsWith(`${entry}/`)), `package.json files must list ${file}: ${JSON.stringify(PACKAGE.files)}`);
+  }
 });
 
 test("no workflow checks out another repository", { timeout: 1000 }, () => {
@@ -72,10 +80,7 @@ test("no workflow checks out another repository", { timeout: 1000 }, () => {
   }
 });
 
-test("the dependency on core is the packed release file of the declared core release", { timeout: 1000 }, () => {
-  const tag = coreRelease();
-  const manifest = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"));
-  const core = Object.values({ ...manifest.dependencies, ...manifest.devDependencies })
-    .filter((source) => source.includes("soksak-app/core"));
-  assert.deepEqual(core, [`https://github.com/soksak-app/core/releases/download/${tag}/soksak-plugin-api-${tag.slice(1)}.tgz`]);
+test("the dependency on core is the packed release file of the core release that package.json pins", { timeout: 1000 }, () => {
+  const core = Object.values({ ...PACKAGE.dependencies, ...PACKAGE.devDependencies }).filter((source) => source.includes("soksak-app/core"));
+  assert.deepEqual(core, ["https://github.com/soksak-app/core/releases/download/v0.0.25/soksak-plugin-api-0.0.25.tgz"]);
 });

@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- F355-4-editor: `make pack OUT=<folder>` writes the release with `pnpm pack`, and release.yml no longer downloads a core release, because core 0.0.25 installs the `pnpm pack` file of a plugin and has no `sok plugin pack`. The release holds `diagnostics.json` and its module, which only a diagnostic build reads, and `@soksak/plugin-api` is pinned to the core release `v0.0.25`.
 ## Unreleased
 
 - F342-editor: The view page sends the values of a watched status to the main page as `changed` calls, which core `createExpose` requires since F342-1; before, every editor view failed in a core window check. The exposure model and the copied `expose.json` replace `status.next` with the event form. Red: the watched-status view test found 0 changed calls, expected 1. Green: `pnpm test` passes 161/161 and `make check` passes against the core plugin API source. Unreleased until a core release carries F342-1.

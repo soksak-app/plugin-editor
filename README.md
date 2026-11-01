@@ -6,7 +6,7 @@ Editor plugin: opens text files of the project in CodeMirror and saves them thro
 
 ```sh
 make test                                   # tests
-make pack OUT=<folder> SOK=<core>/target/debug/sok   # the plugin release
+make pack OUT=<folder> # the plugin release
 make hooks                                  # once after cloning: check commit messages and records at commit time
 ```
 

@@ -1,9 +1,5 @@
-# Tests, checks and packs the editor plugin (docs/features.md). pack uses the sok of core.
+# Tests, checks and packs the editor plugin (docs/features.md). pack writes the release with pnpm pack.
 .PHONY: install test check pack push-check hooks
-
-SOK ?= sok
-# DIAGNOSTICS=1 packs a diagnostics package that holds diagnostics.json.
-PACK_FLAGS = $(if $(DIAGNOSTICS),--diagnostics,)
 
 # The tests use no SDK package: pnpm test builds the test tree (scripts/build-test.mjs) and runs the plugin tests.
 # The installation stage (core docs/spec/plugins.md#repositories): it installs the locked dependencies; the tests, checks and packs consume them without installing.
@@ -28,7 +24,7 @@ check:
 
 pack:
 	@test -n "$(OUT)" || { echo "make pack OUT=<folder>" >&2; exit 2; }
-	$(SOK) plugin pack . $(OUT) $(PACK_FLAGS)
+	pnpm pack --pack-destination $(OUT)
 
 # The check that a push needs: the commit messages of the pushed range, because a published commit message is kept; CI runs
 # the tests and checks on the pushed commits.

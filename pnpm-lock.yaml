@@ -63,8 +63,8 @@ importers:
         specifier: 1.0.4
         version: 1.0.4
       '@soksak/plugin-api':
-        specifier: https://github.com/soksak-app/core/releases/download/v0.0.24/soksak-plugin-api-0.0.24.tgz
-        version: https://github.com/soksak-app/core/releases/download/v0.0.24/soksak-plugin-api-0.0.24.tgz
+        specifier: https://github.com/soksak-app/core/releases/download/v0.0.25/soksak-plugin-api-0.0.25.tgz
+        version: https://github.com/soksak-app/core/releases/download/v0.0.25/soksak-plugin-api-0.0.25.tgz
       acorn:
         specifier: 8.19.0
         version: 8.19.0
@@ -401,9 +401,9 @@ packages:
   '@marijn/find-cluster-break@1.0.4':
     resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
 
-  '@soksak/plugin-api@https://github.com/soksak-app/core/releases/download/v0.0.24/soksak-plugin-api-0.0.24.tgz':
-    resolution: {integrity: sha512-xjNmBO+Ahjfj4XrwRUY4Fu80lMNYdS1aUNG5wia2OexZpiRpUnc7FMJ17GWhcCy7eoQYbQNWZNLIrVaKAlyqSw==, tarball: https://github.com/soksak-app/core/releases/download/v0.0.24/soksak-plugin-api-0.0.24.tgz}
-    version: 0.0.24
+  '@soksak/plugin-api@https://github.com/soksak-app/core/releases/download/v0.0.25/soksak-plugin-api-0.0.25.tgz':
+    resolution: {integrity: sha512-ZiiRNnfTWlteEW1J4Q6tET40SvkNR800UvNyVo25042eCKII/HCncgOqz9iEX0JWGzQbH9oYMILl9/AAqRckEg==, tarball: https://github.com/soksak-app/core/releases/download/v0.0.25/soksak-plugin-api-0.0.25.tgz}
+    version: 0.0.25
     hasBin: true
 
   acorn@8.19.0:
@@ -870,7 +870,7 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.4': {}
 
-  '@soksak/plugin-api@https://github.com/soksak-app/core/releases/download/v0.0.24/soksak-plugin-api-0.0.24.tgz':
+  '@soksak/plugin-api@https://github.com/soksak-app/core/releases/download/v0.0.25/soksak-plugin-api-0.0.25.tgz':
     dependencies:
       ajv: 8.20.0
       es-module-lexer: 3.0.4

@@ -6,7 +6,7 @@
 
 ```sh
 make test                                   # test
-make pack OUT=<folder> SOK=<core>/target/debug/sok   # plugin release
+make pack OUT=<folder> # plugin release
 make hooks                                  # clone 후 한 번: commit 때 commit message와 record를 검사
 ```
 

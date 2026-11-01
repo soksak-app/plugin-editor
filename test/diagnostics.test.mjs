@@ -8,10 +8,11 @@ const declaration = JSON.parse(readFileSync(new URL("../diagnostics.json", impor
 const packageManifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const events = JSON.parse(readFileSync(new URL("../events.json", import.meta.url), "utf8"));
 
-test("diagnostic declaration and module stay out of the published editor package", { timeout: 5000 }, () => {
+// Every release holds the diagnostic declaration and its module, and only a diagnostic build reads them (core docs/spec/plugins.md).
+test("the published editor package holds the diagnostic declaration and module", { timeout: 5000 }, () => {
   assert.ok(packageManifest.files.includes("ui/view-diagnostics.js"));
-  assert.ok(!packageManifest.files.includes("diagnostics.json"));
-  assert.ok(!packageManifest.files.includes(declaration.module));
+  assert.ok(packageManifest.files.includes("diagnostics.json"));
+  assert.ok(packageManifest.files.includes(declaration.module));
   assert.equal(declaration.exposes.commands[0].name, "editor.memory.hidden");
   assert.deepEqual(declaration.exposes.commands[0].params.properties.action.enum, ["read", "remove"]);
   assert.equal(declaration.exposes.commands[0].result.properties.historyEntries.type, "integer");

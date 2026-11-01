@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- F355-4-editor: `make pack OUT=<folder>`는 `pnpm pack`으로 release를 쓰고, release.yml은 더 이상 core release를 내려받지 않는다. core 0.0.25는 plugin의 `pnpm pack` 파일을 설치하고 `sok plugin pack`이 없기 때문이다. release는 진단 build만 읽는 `diagnostics.json`과 그 module을 담고, `@soksak/plugin-api`는 core release `v0.0.25`에 pin된다.
 ## 미배포
 
 - F342-editor: view page가 감시 중인 status의 값을 `changed` 호출로 main page에 보낸다. core `createExpose`가 F342-1부터 이를 요구하며, 그 전에는 core window check에서 모든 editor view가 실패했다. exposure model과 복사된 `expose.json`은 `status.next`를 event 형태로 바꿨다. Red: 감시 중인 status view test가 changed 호출 0개를 찾았고 1개를 기대했다. Green: `pnpm test`가 161/161 통과하고, `make check`가 core plugin API 소스에 대해 통과한다. F342-1을 담은 core release가 나올 때까지 미배포다.
