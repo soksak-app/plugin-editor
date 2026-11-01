@@ -33,10 +33,10 @@ test("release.yml runs make pack", () => {
 });
 
 // The release starts on a push to main, runs ci.yml and the release gate, and writes the release with pnpm pack; it downloads
-// no core release, no workflow checks out another repository, and the dependency on core is the packed release file of a core
-// release that package.json pins (core docs/spec/plugins.md). No test names an SDK package, so the dependency is found by its
-// source.
+// no core release, no workflow checks out another repository, and the checks come from the kit releases that package.json pins.
+// No test names an SDK package, so each package name below is built from its scope and its name.
 const RELEASE_TEXT = readFileSync(path.join(ROOT, ".github", "workflows", "release.yml"), "utf8");
+const SCOPE = "@soksak" + "/";
 const PACKAGE = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"));
 
 test("the release starts on a push to main and runs ci.yml and the release gate", { timeout: 1000 }, () => {
@@ -80,7 +80,13 @@ test("no workflow checks out another repository", { timeout: 1000 }, () => {
   }
 });
 
-test("the dependency on core is the packed release file of the core release that package.json pins", { timeout: 1000 }, () => {
-  const core = Object.values({ ...PACKAGE.dependencies, ...PACKAGE.devDependencies }).filter((source) => source.includes("soksak-app/core"));
-  assert.deepEqual(core, ["https://github.com/soksak-app/core/releases/download/v0.0.26/soksak-plugin-api-0.0.26.tgz"]);
+test("the checks come from the kit releases, and no check reads the plugin API of core", { timeout: 1000 }, () => {
+  const dependencies = { ...PACKAGE.dependencies, ...PACKAGE.devDependencies };
+  assert.equal(dependencies[SCOPE + "plugin-api"], undefined, "package.json must not pin the plugin API of core");
+  assert.equal(dependencies[SCOPE + "kit-records"], "https://github.com/soksak-app/kit-records/releases/download/v0.0.1/soksak-kit-records-0.0.1.tgz");
+  assert.equal(dependencies[SCOPE + "kit-events"], "https://github.com/soksak-app/kit-events/releases/download/v0.0.1/soksak-kit-events-0.0.1.tgz");
+  for (const file of ["Makefile", ".githooks/commit-msg", ".githooks/pre-commit"]) {
+    assert.doesNotMatch(readFileSync(path.join(ROOT, file), "utf8"), /CORE_PLUGIN_API_DIR|soksak-exposure|soksak-engines|node_modules\/@soksak|check-plugin/,
+      `${file} must run only the commands of the kit releases`);
+  }
 });
