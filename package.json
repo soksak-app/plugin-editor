@@ -1,6 +1,6 @@
 {
   "name": "@soksak/plugin-editor",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.24.0",
@@ -11,7 +11,7 @@
     "url": "git+https://github.com/soksak-app/plugin-editor.git"
   },
   "engines": {
-    "soksak": "^0.0.28"
+    "soksak": "^0.0.29"
   },
   "files": [
     "plugin.json",
