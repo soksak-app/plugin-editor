@@ -1,5 +1,6 @@
 # 기능
 
+- [~] F355-7-editor — P0, core F355-7 연결: 0.0.11판은 core 0.0.26이 필요하다. 입력: 0.0.10판은 `pnpm pack` 형태이고 `engines.soksak` `^0.0.25`를 선언하는데, 게시된 core release `v0.0.25`는 core F355-2 이전에 build되어 그 형태를 설치하지 못한다. 기대: 0.0.11판은 `engines.soksak` `^0.0.26`을 선언하고, `@soksak/plugin-api`를 core release `v0.0.26`에 pin한다. 결과: version test는 이전 값으로 실패했고(Red) 통과한다(Green). 남은 것: release workflow의 0.0.11 release.
 - [o] F355-4-editor — P0, core F355-4 연결: release는 plugin의 `pnpm pack` 파일이고 저장소는 core의 sok를 쓰지 않는다. 입력: `make pack`이 `$(SOK) plugin pack`을 실행했고, release.yml은 sok를 얻으려고 core release의 application zip을 내려받았는데 core 0.0.25에는 그 명령이 없다. 기대: `make pack OUT=<folder>`는 `pnpm pack --pack-destination <folder>`를 실행하고, release.yml은 core release를 내려받지 않으며, package.json의 `files`는 `diagnostics.json`과 그 module을 적고, `@soksak/plugin-api`는 core release `v0.0.25`에 pin된다. 결과: `test/workflows.test.mjs`의 새 test는 이전 파일에서 실패했고(Red) 통과하며(Green), `make test`와 `make check`가 통과한다.
 [English](features.md)
 

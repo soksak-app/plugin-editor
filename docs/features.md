@@ -1,5 +1,6 @@
 # Features
 
+- [~] F355-7-editor — P0, linked to core F355-7: Version 0.0.11 requires core 0.0.26. Input: version 0.0.10 has the `pnpm pack` form and declares `engines.soksak` `^0.0.25`, and the published core release `v0.0.25` was built before core F355-2, so it does not install that form. Expected: version 0.0.11 declares `engines.soksak` `^0.0.26` and pins `@soksak/plugin-api` to the core release `v0.0.26`. Result: the version tests failed with the earlier values (Red) and pass (Green). Remains: the release of 0.0.11 by the release workflow.
 - [o] F355-4-editor — P0, linked to core F355-4: The release is the `pnpm pack` file of the plugin, and the repository uses no sok of core. Input: `make pack` ran `$(SOK) plugin pack`, and release.yml downloaded the application zip of a core release for its sok, which core 0.0.25 no longer has. Expected: `make pack OUT=<folder>` runs `pnpm pack --pack-destination <folder>`, release.yml downloads no core release, `files` of package.json lists `diagnostics.json` and its module, and `@soksak/plugin-api` is pinned to the core release `v0.0.25`. Result: the new tests of `test/workflows.test.mjs` failed on the earlier files (Red) and pass (Green), and `make test` and `make check` pass.
 [한국어](features.ko.md)
 

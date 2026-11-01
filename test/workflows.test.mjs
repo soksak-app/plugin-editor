@@ -82,5 +82,5 @@ test("no workflow checks out another repository", { timeout: 1000 }, () => {
 
 test("the dependency on core is the packed release file of the core release that package.json pins", { timeout: 1000 }, () => {
   const core = Object.values({ ...PACKAGE.dependencies, ...PACKAGE.devDependencies }).filter((source) => source.includes("soksak-app/core"));
-  assert.deepEqual(core, ["https://github.com/soksak-app/core/releases/download/v0.0.25/soksak-plugin-api-0.0.25.tgz"]);
+  assert.deepEqual(core, ["https://github.com/soksak-app/core/releases/download/v0.0.26/soksak-plugin-api-0.0.26.tgz"]);
 });
