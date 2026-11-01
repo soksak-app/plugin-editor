@@ -6,6 +6,7 @@
 - F355-4-editor: `make pack OUT=<folder>` writes the release with `pnpm pack`, and release.yml no longer downloads a core release, because core 0.0.25 installs the `pnpm pack` file of a plugin and has no `sok plugin pack`. The release holds `diagnostics.json` and its module, which only a diagnostic build reads, and `@soksak/plugin-api` is pinned to the core release `v0.0.25`.
 ## Unreleased
 
+- F364-editor: `engines.soksak` is `^0.0.28`, and the version is 0.0.14. Red: the core version test failed on `^0.0.27`. Green: it passes.
 - E44: The version is 0.0.13.
 - E43: A file with mixed line breaks opens editable and is saved with each line break as it was read. Red: the page opened it read-only and joined its lines with line feeds. Green: the text is kept as it is.
 - F360-editor: `engines.soksak` is `^0.0.27`, so core 0.0.27 installs the plugin, and the version is 0.0.12. Red: `the editor package requires only core 0.0.27` failed on `^0.0.26`. Green: it passes.
