@@ -161,6 +161,7 @@ export function createViewBridge({ handler, report = () => {} }) {
   const exposure = {
     register: (kind, name) => request("runtime.native.call", { name: "registered", payload: { kind, name } }),
     reply: (id, payload) => request("runtime.native.call", { name: "exposureReply", payload: { id, ...payload } }),
+    changed: (name, value, version) => request("runtime.native.call", { name: "changed", payload: { name, value, version } }),
   };
 
   const contributions = (point) => request("runtime.contributions", { point }).then((items) => items.map((entry) => ({

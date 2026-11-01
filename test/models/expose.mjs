@@ -1,6 +1,7 @@
 // Behavior model of createExpose for the tests of the view page: the statuses and dom names that the page registers,
-// the requests that the host forwards (status.*, dom.*), and the replies that the page sends. The binder of the model
-// runs the commands registered through command(). The conformance test replays test/fixtures/contract/expose.json.
+// the requests that the host forwards (status.*, dom.*), the replies that the page sends, and the changed calls of watched
+// statuses. The binder of the model runs the commands registered through command(). The conformance test replays
+// test/fixtures/contract/expose.json.
 import { createBinder } from "./binder.mjs";
 
 /**
@@ -35,13 +36,15 @@ class ReplyError extends Error {
 }
 
 /**
- * Creates the exposure of one page. port is {register(kind, name), onRequest(answer), reply(id, payload), report(text)} and
- * may hold unregister(), which a port that publishes removal provides. declarations() returns the declared {status, dom, commands}
- * entries of the plugin. After dispose, the page refuses each registration with "exposure is disposed", answers no request, and
- * ends its bindings. The view port holds no unregister: the view channel publishes no removal of a registration while the view
- * is open (core expose.json, expose.dispose.*), so dispose ends the local listeners only.
+ * Creates the exposure of one page. port is {register(kind, name), onRequest(answer), reply(id, payload), changed(name, value, version),
+ * report(text)} and may hold unregister(), which a port that publishes removal provides. changed is required: a watched status
+ * sends its value through it. declarations() returns the declared {status, dom, commands} entries of the plugin. After dispose,
+ * the page refuses each registration with "exposure is disposed", answers no request, and ends its bindings. The view port holds
+ * no unregister: the view channel publishes no removal of a registration while the view is open (core expose.json, expose.dispose.*),
+ * so dispose ends the local listeners only.
  */
 export function createExpose(port, declarations) {
+  if (typeof port.changed !== "function") throw new TypeError("createExpose requires the port changed function");
   const declared = (kind, name) => (declarations()[kind] ?? []).some((entry) => entry.name === name);
   const statuses = new Map();
   const DISPOSED = "exposure is disposed";
@@ -57,18 +60,37 @@ export function createExpose(port, declarations) {
     check: (name) => { if (!declared("commands", name)) throw new Error(`command ${name} is not declared`); },
   });
 
-  /** A status request answered from the current value, its version and the waiting requests of the status. */
-  const answerStatus = (method, params, id) => {
+  /** Sends a value of a watched status through changed with its next version, when the value differs from the last one sent. */
+  const update = (status, value) => {
+    if (!status.watching) return;
+    const text = JSON.stringify(value);
+    if (text === status.text) return;
+    status.text = text;
+    status.value = value;
+    status.version += 1;
+    port.changed(status.name, value, status.version);
+  };
+
+  /** A status request answered from the current value; a watch sends the current value through changed. */
+  const answerStatus = (method, params) => {
     const status = statuses.get(params?.name);
     if (!status) throw new ReplyError(UNKNOWN_STATUS, `unknown status ${params?.name}`);
     if (method === "status.get") return { result: status.read() };
-    if (method === "status.watch") { status.watching = true; return { result: null }; }
-    if (method === "status.unwatch") { status.watching = false; return { result: null }; }
-    if (method === "status.next") {
-      if (!status.watching) return { result: { closed: true } };
-      if (params.version < status.version) return { result: { version: status.version, value: status.read() } };
-      status.waiting.push(id);
-      return null;
+    if (method === "status.watch") {
+      // A repeated watch sends the last value again with its version, so a new subscriber of the watch receives it.
+      if (status.watching) {
+        if (status.version > 0) port.changed(status.name, status.value, status.version);
+        return { result: null };
+      }
+      status.watching = true;
+      update(status, status.read());
+      return { result: null };
+    }
+    if (method === "status.unwatch") {
+      status.watching = false;
+      // The next watch sends the value it reads, also when that value equals the last value of the earlier watch.
+      status.text = undefined;
+      return { result: null };
     }
     throw new ReplyError(UNKNOWN_METHOD, `unknown method ${method}`);
   };
@@ -102,7 +124,7 @@ export function createExpose(port, declarations) {
     if (disposed) return;
     let payload;
     try {
-      if (method.startsWith("status.")) payload = answerStatus(method, params, id);
+      if (method.startsWith("status.")) payload = answerStatus(method, params);
       else if (method.startsWith("dom.")) payload = answerDom(method, params);
       else throw new ReplyError(UNKNOWN_METHOD, `unknown method ${method}`);
     } catch (error) {
@@ -113,7 +135,7 @@ export function createExpose(port, declarations) {
   port.onRequest(answer);
 
   return {
-    /** Registers a status: read() returns its value and subscribe(changed) calls changed() when the value changes. */
+    /** Registers a status: read() returns its value and subscribe(fn) calls fn(value) when the value changes. */
     async status(name, read, subscribe) {
       if (disposed) throw new Error(DISPOSED);
       if (!declared("status", name)) throw new Error(`status ${name} is not declared`);
@@ -121,13 +143,9 @@ export function createExpose(port, declarations) {
       // The declarations load asynchronously, so a dispose during the load ends the registration.
       await Promise.resolve();
       if (disposed) throw new Error(DISPOSED);
-      const status = { read, version: 1, watching: false, waiting: [] };
+      const status = { name, read, watching: false, text: undefined, value: null, version: 0 };
       statuses.set(name, status);
-      subscribe(() => {
-        status.version += 1;
-        const value = status.read();
-        for (const id of status.waiting.splice(0)) port.reply(id, { result: { version: status.version, value } });
-      });
+      subscribe((value) => update(status, value));
       await port.register("status", name);
       return null;
     },

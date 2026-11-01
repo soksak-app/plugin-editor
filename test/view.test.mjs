@@ -51,7 +51,7 @@ test("the view context uses the logger supplied by its SDK bridge", async (t) =>
     calls: { request: () => { throw new Error("view context made a raw log call"); } },
     commands: { register: async () => {} },
     contributions: () => [],
-    exposure: { register: async () => {}, reply: () => {} },
+    exposure: { register: async () => {}, reply: () => {}, changed: () => {} },
     runtime: {
       error: async () => {},
       log: bridgeLog,
@@ -99,6 +99,19 @@ test("the view page answers a forwarded exposure request from its own values", a
   const replies = reports.native.filter(([name, payload]) => name === "exposureReply" && payload.id === id);
   assert.equal(replies.length, 1, `the page answered the exposure request ${id} once`);
   assert.equal(replies[0][1].result.path, "src/main.js");
+});
+
+test("a watched status sends its value to the main page as a changed call", async (t) => {
+  const { reports, expose, settle } = createViewPage(t, "watch-changed");
+  await import("../build/test/ui/view.js?case=watch-changed");
+  await settle();
+  expose("status.watch", { name: "editor.document" });
+  await settle();
+  const changes = reports.native.filter(([name]) => name === "changed").map(([, payload]) => payload);
+  assert.equal(changes.length, 1, `the page sent ${changes.length} changed calls for the watch, expected 1`);
+  assert.deepEqual(Object.keys(changes[0]).toSorted(), ["name", "value", "version"]);
+  assert.deepEqual({ name: changes[0].name, version: changes[0].version }, { name: "editor.document", version: 1 });
+  assert.equal(changes[0].value.path, "src/main.js");
 });
 
 test("an uncaught error of the view page is an error event of the plugin", async (t) => {

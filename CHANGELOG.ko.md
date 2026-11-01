@@ -4,6 +4,7 @@
 
 ## 미배포
 
+- F342-editor: view page가 감시 중인 status의 값을 `changed` 호출로 main page에 보낸다. core `createExpose`가 F342-1부터 이를 요구하며, 그 전에는 core window check에서 모든 editor view가 실패했다. exposure model과 복사된 `expose.json`은 `status.next`를 event 형태로 바꿨다. Red: 감시 중인 status view test가 changed 호출 0개를 찾았고 1개를 기대했다. Green: `pnpm test`가 161/161 통과하고, `make check`가 core plugin API 소스에 대해 통과한다. F342-1을 담은 core release가 나올 때까지 미배포다.
 - F336-editor: 0.0.10판은 core 0.0.25와 files sidecar 0.0.9가 필요하다.
 - F326-editor: version 0.0.9은 core `^0.0.24`를 요구하고 core `v0.0.24`의 plugin API release file과 `sok`를 쓴다.
 - F324-editor: version 0.0.8은 core `^0.0.23`을 요구하고, core `v0.0.23`의 plugin API release file을 쓰며, core `v0.0.23` Tauri host application zip 안의 `sok`로 release를 pack한다.

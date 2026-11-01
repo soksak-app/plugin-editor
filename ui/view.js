@@ -67,6 +67,8 @@ export function createViewContext({ bridge, start, report, diagnostics = null })
       answer({ id, method, params });
     }),
     reply: relay.reply,
+    // Each value of a watched status goes to the main page as a changed call (core docs/spec/exposure.md#relay).
+    changed: relay.changed,
     report,
   }, () => start.declarations);
   return {

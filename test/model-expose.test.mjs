@@ -14,15 +14,17 @@ async function replay(testCase) {
   const { document } = window;
   const registered = [];
   const replies = [];
+  const changes = [];
   const effects = [];
   let answer = null;
-  let changed = null;
+  let notify = null;
   let current = testCase.initial ?? null;
   const port = {
     register: async (kind, name) => { registered.push({ kind, name }); },
     unregister: async () => { registered.push({ kind: "unregister" }); },
     onRequest: (fn) => { answer = fn; },
     reply: (id, payload) => { replies.push({ id, payload }); },
+    changed: (name, value, version) => { changes.push({ name, value, version }); },
     report: () => {},
   };
   const exposure = createExpose(port, () => testCase.declarations ?? {});
@@ -44,12 +46,13 @@ async function replay(testCase) {
   for (const step of testCase.steps) {
     registered.length = 0;
     replies.length = 0;
+    changes.length = 0;
     effects.length = 0;
     let result = null;
     let throws = null;
     try {
       if (step.status) {
-        result = await exposure.status(step.status.name, () => current, (notify) => { changed = notify; });
+        result = await exposure.status(step.status.name, () => current, (fn) => { notify = fn; });
       } else if (step.dispose) {
         result = await exposure.dispose();
       } else if (step.command) {
@@ -80,7 +83,7 @@ async function replay(testCase) {
         }
       } else if (step.set !== undefined) {
         current = step.set;
-        changed();
+        notify(current);
       } else if (step.request) {
         answer(step.request);
       } else if (step.dom) {
@@ -92,7 +95,7 @@ async function replay(testCase) {
     } catch (error) {
       throws = error.message;
     }
-    outputs.push({ registered: [...registered], replies: [...replies], effects: [...effects], result, throws });
+    outputs.push({ registered: [...registered], replies: [...replies], changed: [...changes], effects: [...effects], result, throws });
   }
   return outputs;
 }

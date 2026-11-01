@@ -102,7 +102,7 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
             reports.native.push(["registered", payload]);
             return null;
           }
-          if (name === "exposureReply") {
+          if (name === "exposureReply" || name === "changed") {
             reports.native.push([name, payload]);
             return null;
           }
