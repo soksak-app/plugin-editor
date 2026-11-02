@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- F389-editor: `engines.soksak`은 `^0.0.32`이고, version은 0.0.18다. Red: core version test가 `^0.0.31`에서 실패했다. Green: 통과한다.
 - F387-editor: `engines.soksak`은 `^0.0.31`이고, version은 0.0.17다. Red: core version test가 `^0.0.30`에서 실패했다. Green: 통과한다.
 - F379-editor: `engines.soksak`은 `^0.0.30`이고, version은 0.0.16다. Red: core version test가 `^0.0.29`에서 실패했다. Green: 통과한다.
 - F355-7-editor: 0.0.11판은 plugin release의 `pnpm pack` 형태를 설치하는 첫 core release인 core `^0.0.26`을 요구한다.
