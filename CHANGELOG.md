@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E26-1: The held release item is closed, because version 0.0.18 contains its correction.
 - F389-editor: `engines.soksak` is `^0.0.32`, and the version is 0.0.18. Red: the core version test failed on `^0.0.31`. Green: it passes.
 - F387-editor: `engines.soksak` is `^0.0.31`, and the version is 0.0.17. Red: the core version test failed on `^0.0.30`. Green: it passes.
 - F379-editor: `engines.soksak` is `^0.0.30`, and the version is 0.0.16. Red: the core version test failed on `^0.0.29`. Green: it passes.
