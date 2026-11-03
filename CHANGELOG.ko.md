@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- E46: 이 저장소는 records kit 0.0.6을 쓰며, 그 release gate는 `Closed:` 사유가 있는 닫힌 항목을 받아들인다.
 - E26-1: version 0.0.18이 수정을 담으므로 hold된 release 항목을 닫았다.
 - F389-editor: `engines.soksak`은 `^0.0.32`이고, version은 0.0.18다. Red: core version test가 `^0.0.31`에서 실패했다. Green: 통과한다.
 - F387-editor: `engines.soksak`은 `^0.0.31`이고, version은 0.0.17다. Red: core version test가 `^0.0.30`에서 실패했다. Green: 통과한다.

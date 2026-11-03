@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E46: The repository uses the records kit 0.0.6, whose release gate accepts a closed item with a `Closed:` reason.
 - E26-1: The held release item is closed, because version 0.0.18 contains its correction.
 - F389-editor: `engines.soksak` is `^0.0.32`, and the version is 0.0.18. Red: the core version test failed on `^0.0.31`. Green: it passes.
 - F387-editor: `engines.soksak` is `^0.0.31`, and the version is 0.0.17. Red: the core version test failed on `^0.0.30`. Green: it passes.
