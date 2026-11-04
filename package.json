@@ -15,6 +15,7 @@
   },
   "files": [
     "plugin.json",
+    "contract-copies.json",
     "diagnostics.json",
     "ui/editor-diagnostics.js",
     "events.json",
