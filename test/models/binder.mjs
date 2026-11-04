@@ -81,14 +81,15 @@ export function createBinder(run, { check = () => {}, notify = () => {} } = {}) 
     },
 
     /**
-     * The operable elements of root that lack a command or a dom name, as {tag, expose, command, text}. The text is the
-     * aria-label, else the title, else the text content, trimmed and cut to 40 characters.
+     * The operable elements of root that lack a command or an element name, as {role, expose, command, text}. The role is the
+     * ARIA role of the element (roleOf). The text is the aria-label, else the title, else the text content, trimmed and cut to
+     * 40 characters.
      */
     audit(root) {
       return [...root.querySelectorAll(INTERACTIVE)]
         .filter((element) => !(element.hasAttribute("data-command") && element.hasAttribute("data-expose")))
         .map((element) => ({
-          tag: element.localName,
+          role: roleOf(element),
           expose: element.getAttribute("data-expose"),
           command: element.getAttribute("data-command"),
           text: (element.getAttribute("aria-label") ?? element.getAttribute("title") ?? element.textContent).trim().slice(0, TEXT_LIMIT),
@@ -113,3 +114,30 @@ export function createBinder(run, { check = () => {}, notify = () => {} } = {}) 
 /** The selector of the operable elements that the audit examines (core binder.js#INTERACTIVE). */
 export const INTERACTIVE = 'button, input, select, textarea, [role="button"], [contenteditable]:not([contenteditable="false"])';
 const TEXT_LIMIT = 40;
+
+// The implicit ARIA role of an input of each type (HTML-AAM); a type that HTML-AAM maps to no role has none.
+const INPUT_ROLES = {
+  button: "button", image: "button", reset: "button", submit: "button", checkbox: "checkbox", radio: "radio", range: "slider",
+  number: "spinbutton", search: "searchbox", email: "textbox", tel: "textbox", text: "textbox", url: "textbox",
+};
+// The input types whose implicit role is combobox when the input names a list of suggestions (HTML-AAM).
+const LIST_INPUTS = new Set(["email", "search", "tel", "text", "url"]);
+
+/**
+ * The ARIA role of an operable element, as the audit rows of core's interactive contract report it: the first token of its
+ * role attribute, else the implicit role of its tag and input type, else textbox for an editable element, else null.
+ */
+function roleOf(element) {
+  const explicit = element.getAttribute("role")?.trim().split(/\s+/)[0];
+  if (explicit) return explicit;
+  const tag = element.localName;
+  if (tag === "button") return "button";
+  if (tag === "textarea") return "textbox";
+  if (tag === "select") return element.multiple || element.size > 1 ? "listbox" : "combobox";
+  if (tag === "input") {
+    if (element.hasAttribute("list") && LIST_INPUTS.has(element.type)) return "combobox";
+    return Object.hasOwn(INPUT_ROLES, element.type) ? INPUT_ROLES[element.type] : null;
+  }
+  if (element.matches('[contenteditable]:not([contenteditable="false"])')) return "textbox";
+  return null;
+}

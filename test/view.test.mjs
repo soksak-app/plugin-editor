@@ -70,10 +70,10 @@ test("the view page opens the file of its tab through the view channel", async (
   assert.deepEqual(sidecar.sent.map((body) => body.operation), ["read", "watch"]);
   assert.equal(await run("editor.read"), "let a = 1;\n// TODO: b\n");
   // Every declared command of the plugin is registered through the channel, and the registrations of the statuses and
-  // the dom names are the native calls of the surface.
+  // the element names are the native calls of the surface.
   assert.deepEqual(reports.registered.toSorted(), manifest.exposes.commands.map((entry) => entry.name).toSorted());
   const kinds = reports.native.filter(([name]) => name === "registered").map(([, payload]) => payload.kind);
-  assert.deepEqual([...new Set(kinds)].toSorted(), ["dom", "status"]);
+  assert.deepEqual([...new Set(kinds)].toSorted(), ["element", "status"]);
   assert.deepEqual(reports.title, ["main.js"]);
   const open = logs.find((entry) => entry.event === "open");
   assert.equal(open.level, "info");

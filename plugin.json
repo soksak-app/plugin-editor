@@ -493,7 +493,7 @@
         }
       }
     ],
-    "dom": [
+    "element": [
       {
         "name": "editor.frame",
         "description": "The editor surface."

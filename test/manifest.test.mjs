@@ -14,6 +14,11 @@ test("plugin.json is a valid manifest that opens the files of its language table
   assert.ok(manifest.exposes.commands.some((entry) => entry.name === manifest.surface.save));
 });
 
+test("plugin.json declares the exposed elements as element entries", () => {
+  assert.ok(Array.isArray(manifest.exposes.element) && manifest.exposes.element.length > 0, "plugin.json declares exposes.element");
+  assert.equal(Object.hasOwn(manifest.exposes, "dom"), false, "plugin.json declares no exposes.dom");
+});
+
 test("plugin.json names the event catalog of the plugin", () => {
   assert.equal(manifest.events, "events.json");
 });

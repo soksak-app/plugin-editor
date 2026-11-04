@@ -1,5 +1,5 @@
-// Behavior model of createExpose for the tests of the view page: the statuses and dom names that the page registers,
-// the requests that the host forwards (status.*, dom.*), the replies that the page sends, and the changed calls of watched
+// Behavior model of createExpose for the tests of the view page: the statuses and element names that the page registers,
+// the requests that the host forwards (status.*, element.*), the replies that the page sends, and the changed calls of watched
 // statuses. The binder of the model runs the commands registered through command(). The conformance test replays
 // test/fixtures/contract/expose.json.
 import { createBinder } from "./binder.mjs";
@@ -38,7 +38,7 @@ class ReplyError extends Error {
 /**
  * Creates the exposure of one page. port is {register(kind, name), onRequest(answer), reply(id, payload), changed(name, value, version),
  * report(text)} and may hold unregister(), which a port that publishes removal provides. changed is required: a watched status
- * sends its value through it. declarations() returns the declared {status, dom, commands} entries of the plugin. After dispose,
+ * sends its value through it. declarations() returns the declared {status, element, commands} entries of the plugin. After dispose,
  * the page refuses each registration with "exposure is disposed", answers no request, and ends its bindings. The view port holds
  * no unregister: the view channel publishes no removal of a registration while the view is open (core expose.json, expose.dispose.*),
  * so dispose ends the local listeners only.
@@ -49,7 +49,7 @@ export function createExpose(port, declarations) {
   const statuses = new Map();
   const DISPOSED = "exposure is disposed";
   const commands = new Map();
-  const doms = new Map();
+  const elements = new Map();
   let disposed = false;
 
   const binder = createBinder((name, params, element) => {
@@ -95,26 +95,26 @@ export function createExpose(port, declarations) {
     throw new ReplyError(UNKNOWN_METHOD, `unknown method ${method}`);
   };
 
-  const answerDom = (method, params) => {
-    const dom = doms.get(params?.name);
-    if (!dom) throw new ReplyError(UNKNOWN_TARGET, `unknown dom ${params?.name}`);
-    if (method === "dom.rect") {
+  const answerElement = (method, params) => {
+    const entry = elements.get(params?.name);
+    if (!entry) throw new ReplyError(UNKNOWN_TARGET, `unknown element ${params?.name}`);
+    if (method === "element.rect") {
       if (params.index !== undefined && params.index !== 0) {
-        throw new ReplyError(UNKNOWN_TARGET, `dom ${params.name} has no element at index ${params.index}`);
+        throw new ReplyError(UNKNOWN_TARGET, `element ${params.name} has no element at index ${params.index}`);
       }
-      const box = dom.element.getBoundingClientRect();
-      return { result: { x: box.left, y: box.top, width: box.width, height: box.height, zoom: effectiveZoom(dom.element) } };
+      const box = entry.element.getBoundingClientRect();
+      return { result: { x: box.left, y: box.top, width: box.width, height: box.height, zoom: effectiveZoom(entry.element) } };
     }
-    if (method === "dom.act") {
-      if (params.address !== undefined) throw new ReplyError(INVALID_PARAMS, `dom ${params.name} takes no address`);
+    if (method === "element.act") {
+      if (params.address !== undefined) throw new ReplyError(INVALID_PARAMS, `element ${params.name} takes no address`);
       if (params.action !== "click") throw new ReplyError(INVALID_PARAMS, `unknown action ${params.action}`);
       if (params.index !== undefined && (!Number.isInteger(params.index) || params.index < 0)) {
         throw new ReplyError(INVALID_PARAMS, "index must be a non-negative integer");
       }
       if (params.index !== undefined && params.index !== 0) {
-        throw new ReplyError(UNKNOWN_TARGET, `dom ${params.name} has no element at index ${params.index}`);
+        throw new ReplyError(UNKNOWN_TARGET, `element ${params.name} has no element at index ${params.index}`);
       }
-      dom.element.click();
+      entry.element.click();
       return { result: null };
     }
     throw new ReplyError(UNKNOWN_METHOD, `unknown method ${method}`);
@@ -125,7 +125,7 @@ export function createExpose(port, declarations) {
     let payload;
     try {
       if (method.startsWith("status.")) payload = answerStatus(method, params);
-      else if (method.startsWith("dom.")) payload = answerDom(method, params);
+      else if (method.startsWith("element.")) payload = answerElement(method, params);
       else throw new ReplyError(UNKNOWN_METHOD, `unknown method ${method}`);
     } catch (error) {
       payload = { error: { code: error.code ?? -32000, message: error.message } };
@@ -158,13 +158,13 @@ export function createExpose(port, declarations) {
       return null;
     },
 
-    /** Registers a dom name for the element it names; the element is the one that the requests act on. */
-    async dom(name, element) {
+    /** Registers an element name for the element it names; the element is the one that the requests act on. */
+    async element(name, element) {
       if (disposed) throw new Error(DISPOSED);
-      if (!declared("dom", name)) throw new Error(`dom ${name} is not declared`);
-      if (doms.has(name)) throw new Error(`dom ${name} is already registered`);
-      doms.set(name, { element });
-      await port.register("dom", name);
+      if (!declared("element", name)) throw new Error(`element ${name} is not declared`);
+      if (elements.has(name)) throw new Error(`element ${name} is already registered`);
+      elements.set(name, { element });
+      await port.register("element", name);
       return null;
     },
 

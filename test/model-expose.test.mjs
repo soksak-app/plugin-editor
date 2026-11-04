@@ -86,9 +86,9 @@ async function replay(testCase) {
         notify(current);
       } else if (step.request) {
         answer(step.request);
-      } else if (step.dom) {
+      } else if (step.element) {
         ensureMarkup();
-        result = await exposure.dom(step.dom.name, markup.querySelector(step.dom.selector));
+        result = await exposure.element(step.element.name, markup.querySelector(step.element.selector));
       } else {
         throw new Error(`the replay has no step for ${JSON.stringify(step)}`);
       }

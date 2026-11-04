@@ -107,7 +107,7 @@ export function createViewContext({ bridge, start, report, diagnostics = null })
       exposure: {
         status: (name, read, subscribe) => exposure.status(name, read, subscribe),
         command: (name, run) => Promise.all([exposure.command(name, run), commands.register(name, run)]).then(() => undefined),
-        dom: (name, element) => exposure.dom(name, element),
+        element: (name, element) => exposure.element(name, element),
         bind: exposure.bind,
         delegate: exposure.delegate,
         audit: exposure.audit,

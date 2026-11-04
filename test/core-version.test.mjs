@@ -4,8 +4,8 @@ import test from "node:test";
 
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
-test("the editor package requires only core 0.0.34", { timeout: 1000 }, () => {
-  assert.equal(pkg.engines.soksak, "^0.0.34");
+test("the editor package requires only core 0.0.35", { timeout: 1000 }, () => {
+  assert.equal(pkg.engines.soksak, "^0.0.35");
 });
 
 test("the core compatibility documents state the engines.soksak that the package declares", { timeout: 1000 }, () => {

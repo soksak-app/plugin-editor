@@ -52,7 +52,7 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
           `undeclared command ${name}`);
         commands.set(name, run);
       },
-      dom(name) { assert.ok(declared("dom", name), `undeclared dom ${name}`); },
+      element(name) { assert.ok(declared("element", name), `undeclared element ${name}`); },
       bind: binder.bind, delegate: binder.delegate, dispose: binder.dispose,
     },
   });
@@ -318,7 +318,7 @@ test("find selects matches, replaces them, and reports an invalid regular expres
   assert.equal(run("editor.read"), "dog dog Cow\n");
 });
 
-test("every interactive element of the editor is bound to a declared command and has a dom name", async (t) => {
+test("every interactive element of the editor is bound to a declared command and has an element name", async (t) => {
   const { root, run, binder } = await setup(t);
   run("editor.find.open", { replace: true });
   assert.deepEqual(binder.audit(root), []);

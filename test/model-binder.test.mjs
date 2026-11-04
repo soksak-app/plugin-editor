@@ -141,7 +141,7 @@ for (const testCase of interactive) {
 
 test("the binder conformance lists every case of the contract", () => {
   assert.equal(cases.length, COVERED.size + Object.keys(UNCOVERED).length);
-  assert.equal(interactive.length, 2);
+  assert.equal(interactive.length, 3);
 });
 
 test("the audit examines the operable elements that the interactive contract selects", () => {

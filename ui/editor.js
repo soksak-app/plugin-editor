@@ -756,9 +756,9 @@ export async function mount(root, context) {
     if (typeof disposeDiagnostics !== "function") throw new TypeError("the editor diagnostics attach function must return its disposer");
   }
   for (const element of root.querySelectorAll("[data-expose]")) {
-    if (element !== content) expose.dom(element.dataset.expose, element);
+    if (element !== content) expose.element(element.dataset.expose, element);
   }
-  expose.dom("editor.content", content);
+  expose.element("editor.content", content);
   await expose.delegate(frame);
   await expose.bind(content, "editor.focus", {}, { event: "focus" });
   await expose.bind(frame, "editor.find.open", (event) => ({ replace: event.altKey }), {
