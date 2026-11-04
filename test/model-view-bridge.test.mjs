@@ -1,13 +1,12 @@
 // Conformance of the view bridge model: the cases of view-bridge.json, view-native.json and view-commands.json are replayed
 // step by step over the view wire model. A case the model does not cover is listed by name as a skipped test.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createWindow, useWindow } from "./dom.mjs";
 import { installViewWire } from "./models/view-wire.mjs";
 import { createViewBridge } from "./models/view-bridge.mjs";
+import { casesOf } from "./sdk-cases.mjs";
 
-const load = (name) => JSON.parse(readFileSync(new URL(`./fixtures/contract/${name}`, import.meta.url), "utf8"));
 const settle = async () => {
   for (let i = 0; i < 4; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
 };
@@ -185,7 +184,7 @@ async function replay(testCase) {
   return outputs;
 }
 
-const cases = [...load("view-bridge.json").cases, ...load("view-native.json").cases, ...load("view-commands.json").cases];
+const cases = casesOf("createViewBridge");
 /** The steps whose case output is the message that the page posts, compared whole. */
 const MESSAGE_ACTIONS = new Set(["request", "host-malformed", "sidecar-send", "sidecar-subscribe"]);
 

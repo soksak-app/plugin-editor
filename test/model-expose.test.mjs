@@ -1,12 +1,12 @@
 // Conformance of the exposure model: each case of expose.json is replayed step by step against the model, and each step
 // compares its registrations, replies, effects, result and error with the case.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createWindow } from "./dom.mjs";
 import { createExpose } from "./models/expose.mjs";
+import { casesOf } from "./sdk-cases.mjs";
 
-const contract = JSON.parse(readFileSync(new URL("./fixtures/contract/expose.json", import.meta.url), "utf8"));
+const cases = casesOf("createExpose");
 
 /** Replays one case and returns the observed output of each step, in the shape of the case. */
 async function replay(testCase) {
@@ -100,7 +100,7 @@ async function replay(testCase) {
   return outputs;
 }
 
-for (const testCase of contract.cases) {
+for (const testCase of cases) {
   test(testCase.id, async () => {
     const actual = await replay(testCase);
     testCase.steps.forEach((step, index) => {
@@ -110,5 +110,5 @@ for (const testCase of contract.cases) {
 }
 
 test("the exposure conformance covers every case of the contract", () => {
-  assert.equal(contract.cases.length, 8);
+  assert.equal(cases.length, 8);
 });

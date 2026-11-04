@@ -1,7 +1,8 @@
 // Builds the test tree build/test/: a copy of ui/ whose SDK imports point to the test models of test/models/, whose
 // shared extension imports point to the bundles that plugin.json declares, and whose vendored bundles import each other
-// by the same relative paths. The table scripts/test-sdk.json lists each SDK export the UI imports and the model or value
-// that stands in for it. Test sources may import only build/test/, never ui/ and never an SDK name.
+// by the same relative paths. The table scripts/test-sdk.json lists each SDK export that the UI imports or a model replays,
+// the model or value that stands in for it, and the copied core contract cases that its model replays, which the replay
+// tests read through test/sdk-cases.mjs. Test sources may import only build/test/, never ui/ and never an SDK name.
 import fs from "node:fs";
 import path from "node:path";
 import { builtinModules } from "node:module";

@@ -13,6 +13,12 @@
             "contributions.json"
           ]
         },
+        "INTERACTIVE": {
+          "model": "test/models/binder.mjs",
+          "cases": [
+            "interactive.json"
+          ]
+        },
         "createBinder": {
           "model": "test/models/binder.mjs",
           "cases": [
@@ -45,7 +51,7 @@
       "exports": {
         "observeViewDocumentFrames": {
           "model": "test/models/diagnostic-view-frames.mjs",
-          "cases": ["diagnostics.json"]
+          "cases": []
         }
       }
     }

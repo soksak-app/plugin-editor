@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- E49: `scripts/test-sdk.json`의 case 목록을 읽는다. test는 나열된 각 사본이 있고, 그 surface가 그 export를 가리키며, replay test가 나열된 file을 table을 거쳐 정확히 재생하는지 확인한다. `observeViewDocumentFrames`는 case file을 나열하지 않고, 쓰이지 않는 사본 `diagnostics.json`은 제거된다. Red: surface test가 surface가 `validateDiagnostics`인 `diagnostics.json`에서 실패했다. Green: 통과한다.
 - F432-editor: `engines.soksak`은 `^0.0.34`이고, version은 0.0.20이다. Red: core version test가 `^0.0.33`에서 실패했다. Green: 통과한다.
 - E45: 측정은 release의 benchmark 단계까지 보류된다.
 - F402-editor: `engines.soksak`은 `^0.0.33`이고 version은 0.0.19이다. Red: core version test가 `^0.0.32`에서 실패했다. Green: 통과한다.

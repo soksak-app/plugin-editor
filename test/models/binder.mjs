@@ -85,7 +85,7 @@ export function createBinder(run, { check = () => {}, notify = () => {} } = {}) 
      * aria-label, else the title, else the text content, trimmed and cut to 40 characters.
      */
     audit(root) {
-      return [...root.querySelectorAll(OPERABLE)]
+      return [...root.querySelectorAll(INTERACTIVE)]
         .filter((element) => !(element.hasAttribute("data-command") && element.hasAttribute("data-expose")))
         .map((element) => ({
           tag: element.localName,
@@ -110,6 +110,6 @@ export function createBinder(run, { check = () => {}, notify = () => {} } = {}) 
   };
 }
 
-// The operable elements that the audit examines (the selector of core's interactive contract).
-const OPERABLE = 'button, input, select, textarea, [role="button"], [contenteditable]:not([contenteditable="false"])';
+/** The selector of the operable elements that the audit examines (core binder.js#INTERACTIVE). */
+export const INTERACTIVE = 'button, input, select, textarea, [role="button"], [contenteditable]:not([contenteditable="false"])';
 const TEXT_LIMIT = 40;

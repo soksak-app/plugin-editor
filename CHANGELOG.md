@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E49: The case lists of `scripts/test-sdk.json` are read: a test checks that each listed copy exists, that its surface names the export, and that the replay tests replay exactly the listed files through the table. `observeViewDocumentFrames` lists no case file, and the unused copy `diagnostics.json` is removed. Red: the surface test failed on `diagnostics.json`, whose surface is `validateDiagnostics`. Green: it passes.
 - F432-editor: `engines.soksak` is `^0.0.34`, and the version is 0.0.20. Red: the core version test failed on `^0.0.33`. Green: it passes.
 - E45: The measurement is held until the benchmark phase of the release.
 - F402-editor: `engines.soksak` is `^0.0.33`, and the version is 0.0.19. Red: the core version test failed on `^0.0.32`. Green: it passes.

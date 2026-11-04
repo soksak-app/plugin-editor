@@ -1,12 +1,12 @@
 // Conformance of the binder model: each copied case of create-binder.json that the model covers is replayed step by
 // step, and each case it does not cover is listed by name as a skipped test with its reason.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createWindow } from "./dom.mjs";
-import { createBinder } from "./models/binder.mjs";
+import { INTERACTIVE, createBinder } from "./models/binder.mjs";
+import { casesOf, contractsOf } from "./sdk-cases.mjs";
 
-const contract = JSON.parse(readFileSync(new URL("./fixtures/contract/create-binder.json", import.meta.url), "utf8"));
+const cases = casesOf("createBinder");
 const DECLARED = new Set(["fixture.save", "fixture.set"]);
 
 const COVERED = new Set([
@@ -108,7 +108,7 @@ async function replay(testCase) {
   return outputs;
 }
 
-for (const testCase of contract.cases) {
+for (const testCase of cases) {
   if (UNCOVERED[testCase.id]) {
     test(testCase.id, { skip: `not covered by the binder model: ${UNCOVERED[testCase.id]}` }, () => {});
     continue;
@@ -128,8 +128,8 @@ for (const testCase of contract.cases) {
 }
 
 // The audit rows of the operable elements (core interactive contract): each case marks up a root and lists its rows.
-const interactive = JSON.parse(readFileSync(new URL("./fixtures/contract/interactive.json", import.meta.url), "utf8"));
-for (const testCase of interactive.cases) {
+const interactive = casesOf("INTERACTIVE");
+for (const testCase of interactive) {
   test(testCase.id, () => {
     const { window } = createWindow("https://fixture.test/");
     const root = window.document.createElement("div");
@@ -140,6 +140,11 @@ for (const testCase of interactive.cases) {
 }
 
 test("the binder conformance lists every case of the contract", () => {
-  assert.equal(contract.cases.length, COVERED.size + Object.keys(UNCOVERED).length);
-  assert.equal(interactive.cases.length, 2);
+  assert.equal(cases.length, COVERED.size + Object.keys(UNCOVERED).length);
+  assert.equal(interactive.length, 2);
+});
+
+test("the audit examines the operable elements that the interactive contract selects", () => {
+  const [{ selector }] = contractsOf("INTERACTIVE");
+  assert.equal(INTERACTIVE, selector);
 });
