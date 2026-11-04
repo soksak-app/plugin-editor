@@ -1,5 +1,6 @@
 # 기능
 
+- [~] F432-editor — P0, core F432와 연결: plugin이 `engines.soksak` `^0.0.34`를 선언해 core release 0.0.34가 설치하고, version은 0.0.20이다. Red: `test/core-version.test.mjs`가 `^0.0.33`에서 실패했다. Green: 통과한다. 진행 중: release run이 이 version을 게시한 뒤 registry가 이를 올린다.
 - [o] F402-editor — P0, core F402와 연결: plugin이 `engines.soksak` `^0.0.33`을 선언해 core release 0.0.33이 설치하고, version은 0.0.19이다. 입력: `engines.soksak`이 core 0.0.32만 허용하는 `^0.0.32`였다. 기대: `engines.soksak`이 `^0.0.33`이고 release run이 `v0.0.19`를 publish한다. 결과: core version test가 `^0.0.32`에서 실패했고(Red), test가 통과한다(Green).
 - [o] E46 — P0: release gate는 `Closed:` 사유가 있는 닫힌 항목을 받아들인다. 입력: 닫힌 항목 E26-1. 동작: records kit 0.0.1의 gate는 `Not reproduced:`나 `Platform excluded:` 기록이 없는 닫힌 항목을 거부한다. 기대: 그 사유를 받아들이는 gate가 있는 kit 0.0.6. Red: `soksak-release-gate`가 `closed checklist item E26-1 requires either a nonempty Not reproduced record or a complete Platform excluded record`로 실패했다. Green: kit 0.0.6에서 같은 명령이 통과한다.
 - [o] F389-editor — P0, core F389 연결: plugin은 `engines.soksak` `^0.0.32`를 선언하므로 core release 0.0.32가 그것을 설치하며, version은 0.0.18다. 입력: `engines.soksak`은 core 0.0.31만 허용하는 `^0.0.31`이었다. 기대: `engines.soksak`은 `^0.0.32`이고 release run이 `v0.0.18`을 게시한다. 결과: core version test가 `^0.0.31`에서 실패했고(Red) test가 통과하며(Green), `make test`와 `make check`가 통과한다.
