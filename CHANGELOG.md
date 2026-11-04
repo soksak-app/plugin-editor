@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E45: The measurement is held until the benchmark phase of the release.
 - F402-editor: `engines.soksak` is `^0.0.33`, and the version is 0.0.19. Red: the core version test failed on `^0.0.32`. Green: it passes.
 - E46: The repository uses the records kit 0.0.6, whose release gate accepts a closed item with a `Closed:` reason.
 - E26-1: The held release item is closed, because version 0.0.18 contains its correction.
