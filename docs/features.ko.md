@@ -1,5 +1,6 @@
 # 기능
 
+- [o] F467-editor — P1, core F467과 연결: 저장소가 workspace의 유일한 kit인 `@soksak/kit`을 pin한다. 입력: `@soksak/kit-checks`를 pin했다. 결과: `make test`가 통과한다.
 - [o] F463-editor — P0, core F463과 연결: 저장소가 checks kit을 쓴다. 입력: records kit과 events kit을 pin하고 그 command를 실행했다. 기대: `package.json`이 `@soksak/kit-checks`를 pin하고 hook, target, workflow가 `soksak-check`를 실행하며, test는 `package.json`의 kit release를 반복하지 않는다. Red: workflow test가 이전 command를 읽었다. Green: `make test`가 통과한다.
 - [o] F462-editor — P0, core F462와 연결: plugin이 `engines.soksak` `^0.0.35`를 선언해 core release 0.0.35가 설치하고, version은 0.0.21이다. Red: `test/core-version.test.mjs`가 `^0.0.34`에서 실패했다. Green: 통과한다. 결과: release run이 v0.0.21를 publish했고 registry가 이를 나열한다.
 - [o] F432-editor — P0, core F432와 연결: plugin이 `engines.soksak` `^0.0.34`를 선언해 core release 0.0.34가 설치하고, version은 0.0.20이다. Red: `test/core-version.test.mjs`가 `^0.0.33`에서 실패했다. Green: 통과한다. 결과: release run이 v0.0.20을 게시했고 registry가 이를 올렸다.

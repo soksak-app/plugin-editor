@@ -27,7 +27,7 @@ test("make test runs the plugin tests and no kit tool (F238-c-23)", () => {
   assert.match(body, /pnpm test/);
 });
 
-test("make check runs the census check of the checks kit and the record check of the checks kit", () => {
+test("make check runs the census check of the kit and the record check of the kit", () => {
   assert.equal(recipe("check"), [
     "\tpnpm exec soksak-check census --config census.json --catalog events.json",
     "\tpnpm exec soksak-check records",
