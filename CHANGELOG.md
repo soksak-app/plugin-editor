@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- F474-editor: `engines.soksak` is `^0.0.36`, and the version is 0.0.22. Red: the core version test failed on `^0.0.35`. Green: it passes.
 - F432-editor: `engines.soksak` is `^0.0.34`, and the version is 0.0.20. Red: the core version test failed on `^0.0.33`. Green: it passes.
 - E45: The measurement is held until the benchmark phase of the release.
 - F402-editor: `engines.soksak` is `^0.0.33`, and the version is 0.0.19. Red: the core version test failed on `^0.0.32`. Green: it passes.
