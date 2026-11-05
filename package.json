@@ -54,7 +54,7 @@
     "@lezer/highlight": "1.2.5",
     "@lezer/lr": "1.4.11",
     "@marijn/find-cluster-break": "1.0.4",
-    "@soksak/kit": "https://github.com/soksak-app/kit/releases/download/v0.0.11/soksak-kit-0.0.11.tgz",
+    "@soksak/kit": "https://github.com/soksak-app/kit/releases/download/v0.0.12/soksak-kit-0.0.12.tgz",
     "acorn": "8.19.0",
     "ajv": "^8.20.0",
     "crelt": "1.0.7",

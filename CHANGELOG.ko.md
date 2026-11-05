@@ -14,6 +14,7 @@
 - F355-4-editor: `make pack OUT=<folder>`는 `pnpm pack`으로 release를 쓰고, release.yml은 더 이상 core release를 내려받지 않는다. core 0.0.25는 plugin의 `pnpm pack` 파일을 설치하고 `sok plugin pack`이 없기 때문이다. release는 진단 build만 읽는 `diagnostics.json`과 그 module을 담고, `@soksak/plugin-api`는 core release `v0.0.25`에 pin된다.
 ## 미배포
 
+- F468-editor: 저장소가 `event-sources.json`과 함께 kit의 `soksak-check docs`와 `soksak-check events`를 실행한다.
 - F466-editor: 저장소가 local build log와 임시 log의 인용을 보고하는 kit release를 pin한다.
 - F467-editor: 저장소가 `@soksak/kit`을 pin한다.
 - F463-editor: 저장소가 checks kit과 실행 파일 하나 `soksak-check`를 쓴다.
