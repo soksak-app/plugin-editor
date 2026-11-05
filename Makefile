@@ -9,12 +9,12 @@ install:
 test:
 	pnpm test
 
-# check runs the checks of the kit releases that package.json pins: soksak-check census counts the records missing from the sources
-# and matches events.json with the emit sites, and soksak-check records checks the records. The application validates plugin.json
+# check runs the checks of the kit releases that package.json pins: soksak-check events counts the records missing from the sources
+# and matches events.json with the emit sites, and soksak-check docs checks the records. The application validates plugin.json
 # when it installs the release, and the registry check compares the exposed names of the release with each listed core.
 check:
-	pnpm exec soksak-check census --config census.json --catalog events.json
-	pnpm exec soksak-check records
+	pnpm exec soksak-check events --config event-sources.json --catalog events.json
+	pnpm exec soksak-check docs
 
 pack:
 	@test -n "$(OUT)" || { echo "make pack OUT=<folder>" >&2; exit 2; }
