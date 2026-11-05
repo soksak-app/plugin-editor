@@ -27,10 +27,10 @@ test("make test runs the plugin tests and no kit tool (F238-c-23)", () => {
   assert.match(body, /pnpm test/);
 });
 
-test("make check runs the census check of the events kit and the record check of the records kit", () => {
+test("make check runs the census check of the checks kit and the record check of the checks kit", () => {
   assert.equal(recipe("check"), [
-    "\tpnpm exec soksak-events --census census.json --catalog events.json",
-    "\tpnpm exec soksak-records",
+    "\tpnpm exec soksak-check census --config census.json --catalog events.json",
+    "\tpnpm exec soksak-check records",
   ].join("\n"));
 });
 
@@ -38,7 +38,7 @@ test("make check runs the census check of the events kit and the record check of
 test("make push-check runs only the commit message check of the pushed range (F274-editor)", () => {
   const header = makefile.split("\n").find((line) => line.startsWith("push-check:")) ?? "";
   assert.equal(header, "push-check:", header);
-  assert.match(recipe("push-check"), /pnpm exec soksak-commits "\$\(or \$\(RANGE\),origin\/main\.\.HEAD\)"/);
+  assert.match(recipe("push-check"), /pnpm exec soksak-check commits "\$\(or \$\(RANGE\),origin\/main\.\.HEAD\)"/);
 });
 
 test("the pre-push hook runs make push-check on the pushed range (F238-c-25)", () => {

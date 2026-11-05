@@ -14,6 +14,7 @@
 - F355-4-editor: `make pack OUT=<folder>` writes the release with `pnpm pack`, and release.yml no longer downloads a core release, because core 0.0.25 installs the `pnpm pack` file of a plugin and has no `sok plugin pack`. The release holds `diagnostics.json` and its module, which only a diagnostic build reads, and `@soksak/plugin-api` is pinned to the core release `v0.0.25`.
 ## Unreleased
 
+- F463-editor: The repository uses the checks kit and its one executable `soksak-check`.
 - F462-editor: `engines.soksak` is `^0.0.35`, and the version is 0.0.21. Red: the core version test failed on `^0.0.34`. Green: it passes.
 - F367-editor: `engines.soksak` is `^0.0.29`, and the version is 0.0.15. Red: the core version test failed on `^0.0.28`. Green: it passes.
 - F364-editor: `engines.soksak` is `^0.0.28`, and the version is 0.0.14. Red: the core version test failed on `^0.0.27`. Green: it passes.

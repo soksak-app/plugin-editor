@@ -14,6 +14,7 @@
 - F355-4-editor: `make pack OUT=<folder>`는 `pnpm pack`으로 release를 쓰고, release.yml은 더 이상 core release를 내려받지 않는다. core 0.0.25는 plugin의 `pnpm pack` 파일을 설치하고 `sok plugin pack`이 없기 때문이다. release는 진단 build만 읽는 `diagnostics.json`과 그 module을 담고, `@soksak/plugin-api`는 core release `v0.0.25`에 pin된다.
 ## 미배포
 
+- F463-editor: 저장소가 checks kit과 실행 파일 하나 `soksak-check`를 쓴다.
 - F462-editor: `engines.soksak`은 `^0.0.35`이고, version은 0.0.21이다. Red: core version test가 `^0.0.34`에서 실패했다. Green: 통과한다.
 - F367-editor: `engines.soksak`은 `^0.0.29`이고, version은 0.0.15다. Red: core version test가 `^0.0.28`에서 실패했다. Green: 통과한다.
 - F364-editor: `engines.soksak`은 `^0.0.28`이고, version은 0.0.14다. Red: core version test가 `^0.0.27`에서 실패했다. Green: 통과한다.

@@ -45,7 +45,7 @@ test("the release starts on a push to main and runs ci.yml and the release gate"
   assert.match(RELEASE_TEXT, /^\s*uses: \.\/\.github\/workflows\/ci\.yml$/m, "release.yml must run ci.yml as its checks");
   const ci = readFileSync(path.join(ROOT, ".github", "workflows", "ci.yml"), "utf8");
   assert.match(ci, /^on:\n(?: {2}.+\n)* {2}workflow_call:/m, "ci.yml must be callable by release.yml");
-  assert.match(RELEASE_TEXT, /soksak-release-gate package\.json docs\/features\.md/, "release.yml must run the release gate");
+  assert.match(RELEASE_TEXT, /soksak-check release package\.json docs\/features\.md/, "release.yml must run the release gate");
   assert.match(RELEASE_TEXT, /git ls-remote origin refs\/heads\/main/, "the release must require the run commit to be the head of main");
   assert.match(RELEASE_TEXT, /git ls-remote --tags origin "refs\/tags\/v\$VERSION"/, "the release must require the tag to be absent");
 });
@@ -83,8 +83,6 @@ test("no workflow checks out another repository", { timeout: 1000 }, () => {
 test("the checks come from the kit releases, and no check reads the plugin API of core", { timeout: 1000 }, () => {
   const dependencies = { ...PACKAGE.dependencies, ...PACKAGE.devDependencies };
   assert.equal(dependencies[SCOPE + "plugin-api"], undefined, "package.json must not pin the plugin API of core");
-  assert.equal(dependencies[SCOPE + "kit-records"], "https://github.com/soksak-app/kit-records/releases/download/v0.0.6/soksak-kit-records-0.0.6.tgz");
-  assert.equal(dependencies[SCOPE + "kit-events"], "https://github.com/soksak-app/kit-events/releases/download/v0.0.1/soksak-kit-events-0.0.1.tgz");
   for (const file of ["Makefile", ".githooks/commit-msg", ".githooks/pre-commit"]) {
     assert.doesNotMatch(readFileSync(path.join(ROOT, file), "utf8"), /CORE_PLUGIN_API_DIR|soksak-exposure|soksak-engines|node_modules\/@soksak|check-plugin/,
       `${file} must run only the commands of the kit releases`);
