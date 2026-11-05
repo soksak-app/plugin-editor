@@ -1,5 +1,6 @@
 # Features
 
+- [o] F476-editor — P2, linked to core F476: A test does not repeat a declared version. Input: the tests held the assertions of its own declared version and ranges, so each release changed them without a change of behavior. Result: they are removed, and `make test` passes.
 - [o] F474-editor — P0, linked to core F474: The plugin declares `engines.soksak` `^0.0.36`, so the core release 0.0.36 installs it, and its version is 0.0.22. Red: `test/core-version.test.mjs` failed on `^0.0.35`. Green: it passes. Result: the release run published v0.0.22, the registry lists it, and `sok plugin install` of the published core 0.0.36 selects it.
 - [o] F472-editor — P2, linked to core F472: The names of the commands of the repository state what they do, and `make check` runs `sok-check commands`. Result: `make test` passes.
 - [o] F468-editor — P2, linked to core F468: The repository runs `soksak-check docs` and `soksak-check events` of the kit, and `event-sources.json` declares its event sources. Result: `make test` passes.

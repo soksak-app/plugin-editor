@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- F476-editor: test가 선언된 version을 되풀이하지 않는다.
 - F474-editor: release run이 v0.0.22을 게시했고 registry가 이를 올린다.
 - F474-editor: `engines.soksak`은 `^0.0.36`이고, version은 0.0.22이다. Red: core version test가 `^0.0.35`에서 실패했다. Green: 통과한다.
 - F432-editor: `engines.soksak`은 `^0.0.34`이고, version은 0.0.20이다. Red: core version test가 `^0.0.33`에서 실패했다. Green: 통과한다.
