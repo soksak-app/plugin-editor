@@ -1,6 +1,6 @@
 # 기능
 
-- [~] F474-editor — P0, core F474와 연결: plugin이 `engines.soksak` `^0.0.36`를 선언해 core release 0.0.36이 설치하고, version은 0.0.22이다. Red: `test/core-version.test.mjs`가 `^0.0.35`에서 실패했다. Green: 통과한다. 진행 중: release run이 이 version을 게시한 뒤 registry가 이를 올린다.
+- [o] F474-editor — P0, core F474와 연결: plugin이 `engines.soksak` `^0.0.36`를 선언해 core release 0.0.36이 설치하고, version은 0.0.22이다. Red: `test/core-version.test.mjs`가 `^0.0.35`에서 실패했다. Green: 통과한다. 결과: release run이 v0.0.22을 게시했고 registry가 이를 올리며, 게시된 core 0.0.36의 `sok plugin install`이 이를 선택한다.
 - [o] F472-editor — P2, core F472와 연결: 저장소의 명령 이름이 하는 일을 말하고, `make check`가 `sok-check commands`를 실행한다. 결과: `make test`가 통과한다.
 - [o] F468-editor — P2, core F468과 연결: 저장소가 kit의 `soksak-check docs`와 `soksak-check events`를 실행하고, `event-sources.json`이 event source를 선언한다. 결과: `make test`가 통과한다.
 - [o] F466-editor — P2, core F466과 연결: 저장소가 local build log와 임시 log의 인용을 보고하는 kit release를 pin하고, 기록에 그런 인용이 없다. 결과: `make test`가 통과한다.
