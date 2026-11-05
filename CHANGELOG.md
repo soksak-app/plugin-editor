@@ -2,7 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
-- E47: `plugin.json` declares `exposes.element`, the page calls `expose.element`, `engines.soksak` is `^0.0.35`, and the copies of the plugin API cases are the files of core F502-13. Its release waits for the core release of F502-13 and the records kit release of KR9. Red: on the sources before the change, 54 of the 100 changed tests failed, 44 of them with `expose.dom is not a function`. Green: they pass.
+- E47: `plugin.json` declares `exposes.element`, the page calls `expose.element`, `engines.soksak` is `^0.0.35`, and the copies of the plugin API cases are the files of core F502-13. Its release waits for the core release of F502-13 and the records kit release of KR19. Red: on the sources before the change, 54 of the 100 changed tests failed, 44 of them with `expose.dom is not a function`. Green: they pass.
 - E51: `contract-copies.json` declares the nine contract copies with their SHA-256, the release holds it, and a test checks it against the copies. Red: the test failed without the declaration. Green: it passes.
 - E50: The core compatibility document states `^0.0.34`, the range that the package declares, and a test compares both documents with `engines.soksak`. Red: the test failed with `^0.0.24` against `^0.0.34`. Green: it passes.
 - E49: The case lists of `scripts/test-sdk.json` are read: a test checks that each listed copy exists, that its surface names the export, and that the replay tests replay exactly the listed files through the table. `observeViewDocumentFrames` lists no case file, and the unused copy `diagnostics.json` is removed. Red: the surface test failed on `diagnostics.json`, whose surface is `validateDiagnostics`. Green: it passes.
