@@ -29,19 +29,20 @@ test("make test runs the plugin tests and no kit tool (F238-c-23)", () => {
 
 test("make check runs the event source check of the kit and the document check of the kit", () => {
   assert.equal(recipe("check"), [
-    "\tpnpm exec soksak-check events --config event-sources.json --catalog events.json",
-    "\tpnpm exec soksak-check docs",
+    "\tpnpm exec sok-check events --config event-sources.json --catalog events.json",
+    "\tpnpm exec sok-check docs",
+    "\tpnpm exec sok-check commands",
   ].join("\n"));
 });
 
 // A published commit message is kept, so the push checks it; CI runs the tests and checks on the pushed commits.
-test("make push-check runs only the commit message check of the pushed range (F274-editor)", () => {
-  const header = makefile.split("\n").find((line) => line.startsWith("push-check:")) ?? "";
-  assert.equal(header, "push-check:", header);
-  assert.match(recipe("push-check"), /pnpm exec soksak-check commits "\$\(or \$\(RANGE\),origin\/main\.\.HEAD\)"/);
+test("make check-push runs only the commit message check of the pushed range (F274-editor)", () => {
+  const header = makefile.split("\n").find((line) => line.startsWith("check-push:")) ?? "";
+  assert.equal(header, "check-push:", header);
+  assert.match(recipe("check-push"), /pnpm exec sok-check commits "\$\(or \$\(RANGE\),origin\/main\.\.HEAD\)"/);
 });
 
-test("the pre-push hook runs make push-check on the pushed range (F238-c-25)", () => {
+test("the pre-push hook runs make check-push on the pushed range (F238-c-25)", () => {
   const hook = readFileSync(path.join(ROOT, ".githooks", "pre-push"), "utf8");
-  assert.match(hook, /make -C "\$root" push-check RANGE="\$base\.\.\$local_sha"/);
+  assert.match(hook, /make -C "\$root" check-push RANGE="\$base\.\.\$local_sha"/);
 });

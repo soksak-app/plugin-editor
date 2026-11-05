@@ -63,8 +63,8 @@ importers:
         specifier: 1.0.4
         version: 1.0.4
       '@soksak/kit':
-        specifier: https://github.com/soksak-app/kit/releases/download/v0.0.12/soksak-kit-0.0.12.tgz
-        version: https://github.com/soksak-app/kit/releases/download/v0.0.12/soksak-kit-0.0.12.tgz
+        specifier: https://github.com/soksak-app/kit/releases/download/v0.0.13/soksak-kit-0.0.13.tgz
+        version: https://github.com/soksak-app/kit/releases/download/v0.0.13/soksak-kit-0.0.13.tgz
       acorn:
         specifier: 8.19.0
         version: 8.19.0
@@ -401,9 +401,9 @@ packages:
   '@marijn/find-cluster-break@1.0.4':
     resolution: {integrity: sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ==}
 
-  '@soksak/kit@https://github.com/soksak-app/kit/releases/download/v0.0.12/soksak-kit-0.0.12.tgz':
-    resolution: {integrity: sha512-mfjE4MirRq5ktVXVrdSgWK+ttqouX0XxSoS/Bh2Ufsbc5JirHSxic9XTTTYb+6BPgSezIE8tRYazidSXutd2Jw==, tarball: https://github.com/soksak-app/kit/releases/download/v0.0.12/soksak-kit-0.0.12.tgz}
-    version: 0.0.12
+  '@soksak/kit@https://github.com/soksak-app/kit/releases/download/v0.0.13/soksak-kit-0.0.13.tgz':
+    resolution: {integrity: sha512-nBzwE16HUz3Ft7zz1RNaaQgsXbV+HjHrcJMu5s0cwVlPQrqOh891AHKREytzl7/BZhI0xqWZ41oA/wJyEfdEfw==, tarball: https://github.com/soksak-app/kit/releases/download/v0.0.13/soksak-kit-0.0.13.tgz}
+    version: 0.0.13
     hasBin: true
 
   acorn@8.19.0:
@@ -491,6 +491,10 @@ packages:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
     hasBin: true
+
+  smol-toml@1.9.1:
+    resolution: {integrity: sha512-j7WyPdf0CJoutMzMoPLF/bVXHtKZIT9Rb4eGeEbWw8X2t5oirjPgpL+OpaENZrILYaXqYwnVH+qgUwVbl+pUJQ==}
+    engines: {node: '>= 18'}
 
   source-map-js@1.2.2:
     resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
@@ -867,9 +871,10 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.4': {}
 
-  '@soksak/kit@https://github.com/soksak-app/kit/releases/download/v0.0.12/soksak-kit-0.0.12.tgz':
+  '@soksak/kit@https://github.com/soksak-app/kit/releases/download/v0.0.13/soksak-kit-0.0.13.tgz':
     dependencies:
       ajv: 8.20.0
+      smol-toml: 1.9.1
 
   acorn@8.19.0: {}
 
@@ -987,6 +992,8 @@ snapshots:
       xmlchars: 2.2.0
 
   semver@7.8.5: {}
+
+  smol-toml@1.9.1: {}
 
   source-map-js@1.2.2: {}
 
