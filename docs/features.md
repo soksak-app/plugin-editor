@@ -1,5 +1,6 @@
 # Features
 
+- [o] F472-editor — P2, linked to core F472: The names of the commands of the repository state what they do, and `make check` runs `sok-check commands`. Result: `make test` passes.
 - [o] F468-editor — P2, linked to core F468: The repository runs `soksak-check docs` and `soksak-check events` of the kit, and `event-sources.json` declares its event sources. Result: `make test` passes.
 - [o] F466-editor — P2, linked to core F466: The repository pins the kit release whose record check reports a citation of a local build log or a temporary log, and its records hold no such citation. Result: `make test` passes.
 - [o] F467-editor — P1, linked to core F467: The repository pins `@soksak/kit`, the one kit of the workspace. Input: it pinned `@soksak/kit-checks`. Result: `make test` passes.

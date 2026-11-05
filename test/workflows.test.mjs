@@ -45,7 +45,7 @@ test("the release starts on a push to main and runs ci.yml and the release gate"
   assert.match(RELEASE_TEXT, /^\s*uses: \.\/\.github\/workflows\/ci\.yml$/m, "release.yml must run ci.yml as its checks");
   const ci = readFileSync(path.join(ROOT, ".github", "workflows", "ci.yml"), "utf8");
   assert.match(ci, /^on:\n(?: {2}.+\n)* {2}workflow_call:/m, "ci.yml must be callable by release.yml");
-  assert.match(RELEASE_TEXT, /soksak-check release package\.json docs\/features\.md/, "release.yml must run the release gate");
+  assert.match(RELEASE_TEXT, /sok-check release package\.json docs\/features\.md/, "release.yml must run the release gate");
   assert.match(RELEASE_TEXT, /git ls-remote origin refs\/heads\/main/, "the release must require the run commit to be the head of main");
   assert.match(RELEASE_TEXT, /git ls-remote --tags origin "refs\/tags\/v\$VERSION"/, "the release must require the tag to be absent");
 });
