@@ -1,5 +1,6 @@
 # Features
 
+- [o] F466-editor — P2, linked to core F466: The repository pins the kit release whose record check reports a citation of a local build log or a temporary log, and its records hold no such citation. Result: `make test` passes.
 - [o] F467-editor — P1, linked to core F467: The repository pins `@soksak/kit`, the one kit of the workspace. Input: it pinned `@soksak/kit-checks`. Result: `make test` passes.
 - [o] F463-editor — P0, linked to core F463: The repository uses the checks kit. Input: it pinned the records kit and the events kit and ran their commands. Expected: `package.json` pins `@soksak/kit-checks`, and its hooks, targets and workflows run `soksak-check`; the tests do not repeat the kit release of `package.json`. Red: its workflow tests read the earlier commands. Green: `make test` passes.
 - [o] F462-editor — P0, linked to core F462: The plugin declares `engines.soksak` `^0.0.35`, so the core release 0.0.35 installs it, and its version is 0.0.21. Red: `test/core-version.test.mjs` failed on `^0.0.34`. Green: it passes. Result: the release run published v0.0.21, and the registry lists it.
