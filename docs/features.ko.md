@@ -1,6 +1,6 @@
 # 기능
 
-- [~] F462-editor — P0, core F462와 연결: plugin이 `engines.soksak` `^0.0.35`를 선언해 core release 0.0.35가 설치하고, version은 0.0.21이다. Red: `test/core-version.test.mjs`가 `^0.0.34`에서 실패했다. Green: 통과한다. 진행 중: release run이 이 version을 publish하고 registry가 이를 나열한다.
+- [o] F462-editor — P0, core F462와 연결: plugin이 `engines.soksak` `^0.0.35`를 선언해 core release 0.0.35가 설치하고, version은 0.0.21이다. Red: `test/core-version.test.mjs`가 `^0.0.34`에서 실패했다. Green: 통과한다. 결과: release run이 v0.0.21를 publish했고 registry가 이를 나열한다.
 - [o] F432-editor — P0, core F432와 연결: plugin이 `engines.soksak` `^0.0.34`를 선언해 core release 0.0.34가 설치하고, version은 0.0.20이다. Red: `test/core-version.test.mjs`가 `^0.0.33`에서 실패했다. Green: 통과한다. 결과: release run이 v0.0.20을 게시했고 registry가 이를 올렸다.
 - [o] F402-editor — P0, core F402와 연결: plugin이 `engines.soksak` `^0.0.33`을 선언해 core release 0.0.33이 설치하고, version은 0.0.19이다. 입력: `engines.soksak`이 core 0.0.32만 허용하는 `^0.0.32`였다. 기대: `engines.soksak`이 `^0.0.33`이고 release run이 `v0.0.19`를 publish한다. 결과: core version test가 `^0.0.32`에서 실패했고(Red), test가 통과한다(Green).
 - [o] E46 — P0: release gate는 `Closed:` 사유가 있는 닫힌 항목을 받아들인다. 입력: 닫힌 항목 E26-1. 동작: records kit 0.0.1의 gate는 `Not reproduced:`나 `Platform excluded:` 기록이 없는 닫힌 항목을 거부한다. 기대: 그 사유를 받아들이는 gate가 있는 kit 0.0.6. Red: `soksak-release-gate`가 `closed checklist item E26-1 requires either a nonempty Not reproduced record or a complete Platform excluded record`로 실패했다. Green: kit 0.0.6에서 같은 명령이 통과한다.
