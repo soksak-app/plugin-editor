@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- F494-editor: `engines.soksak`은 `^0.0.38`이고, version은 0.0.24이다.
 - F479-editor: release run이 v0.0.23을 게시했고 registry가 이를 올린다.
 - F479-editor: `engines.soksak`은 `^0.0.37`이고, version은 0.0.23이다.
 - F476-editor: test가 선언된 version을 되풀이하지 않는다.
