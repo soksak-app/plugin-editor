@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E48: Ignore superseded watch and save replies, refresh reads that overlap a save, preserve newer disk conflicts, and stop late tab updates or writes after disposal. Red: 26 controlled cases exposed reply-order and disposal failures, including pending-watch and initialization regressions found during the correction. Green: those cases and 13 existing save, watch, cleanup and line-break cases pass. Adversarial review added reload, overlapping first-save, naming and initialization coverage; native concurrency was not exercised.
 - E47: A save remembers the document it wrote, so edits during either an existing-file or first save remain modified at the tab boundary. Red: both controlled delayed-reply cases reported false instead of true. Green: both pass, together with nine existing save, conflict, watch and line-break cases.
 - F497-editor: `engines.soksak` is `^0.0.39`, and the version is 0.0.25.
 - F494-editor: `engines.soksak` is `^0.0.38`, and the version is 0.0.24.

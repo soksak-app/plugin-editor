@@ -12,6 +12,7 @@ function fakeFiles(files) {
   const reply = (body) => queueMicrotask(() => { for (const fn of listeners) fn(body); });
   const port = {
     sent,
+    listenerCount: () => listeners.size,
     // Hold one reply after its operation has taken effect; received and release control the ordering without a timer.
     holdReply(operation) {
       const { promise: received, resolve } = Promise.withResolvers();

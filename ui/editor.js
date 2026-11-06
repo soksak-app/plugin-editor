@@ -219,6 +219,15 @@ export async function mount(root, context) {
   let fileState = { path, version: null, modified: false, length: 0, lines: 0, language, newline: null, bom: false,
     disk: "same", selection: { anchor: 0, head: 0 } };
   let diskVersion = null;
+  let diskRevision = 0;
+  let loadRevision = 0;
+  let watchGeneration = 0;
+  let pendingWatches = 0;
+  let nextSave = 0;
+  let completedSave = 0;
+  let disposed = false;
+  let diskReady = false;
+  let diskRefreshPending = false;
   const fileListeners = new Set();
   let find = { open: false, replace: false, query: "", replacement: "", caseSensitive: false, regexp: false,
     matches: 0, current: null, error: null };
@@ -235,9 +244,11 @@ export async function mount(root, context) {
   };
 
   const files = await connect(context.runtime.sidecar(), context.surfaceId, (body) => {
+    if (disposed) return;
     if (body.changed !== undefined) {
       emitEvent("debug", "plugin.editor.watch.change", { path: body.changed });
-      diskChanged().catch((error) => context.tab.error(`다시 읽지 못했습니다 · ${errorText(error)}`));
+      if (diskReady) refreshDisk();
+      else diskRefreshPending = true;
       return;
     }
     emitEvent("error", "plugin.editor.watch.error", { path, error: String(body.error) });
@@ -274,7 +285,9 @@ export async function mount(root, context) {
   let view = null;
   let markdownImageUrls = new Map();
   let markdownImageGeneration = 0;
-  let disposed = false;
+  const requireOpen = () => {
+    if (disposed) throw new Error("the editor closed before the operation completed");
+  };
   const resetMarkdownPreview = () => {
     markdownImageGeneration += 1;
     markdownRendered = false;
@@ -355,6 +368,9 @@ export async function mount(root, context) {
     });
     saved = view.state.doc;
     diskVersion = body.version;
+    diskRevision += 1;
+    loadRevision += 1;
+    watchGeneration += 1;
     fileState = { ...fileState, version: body.version, newline: body.newline, bom: body.bom, disk: "same" };
     showBanner(null);
     describe();
@@ -363,10 +379,32 @@ export async function mount(root, context) {
     refreshFind();
   };
 
+  const refreshDisk = () => diskChanged().catch((error) => {
+    if (!disposed) context.tab.error(`다시 읽지 못했습니다 · ${errorText(error)}`);
+  });
   async function diskChanged() {
-    const body = await readAgain("watch");
+    const generation = ++watchGeneration;
+    pendingWatches += 1;
+    let body;
+    try {
+      body = await readAgain("watch");
+    } catch (error) {
+      // readAgain records every failure; only the current read may change the tab's error display.
+      if (!disposed && generation === watchGeneration) throw error;
+      return;
+    } finally {
+      pendingWatches -= 1;
+    }
+    if (disposed || generation !== watchGeneration) return;
+    diskVersion = body.version;
+    diskRevision += 1;
     if (body.version === fileState.version) {
       emitEvent("info", "plugin.editor.disk.decision", { path, decision: "same", modified: modified() });
+      if (fileState.disk !== "same") {
+        fileState = { ...fileState, disk: "same" };
+        showBanner(null);
+        publishFile();
+      }
       return;
     }
     if (!modified()) {
@@ -382,14 +420,14 @@ export async function mount(root, context) {
   }
 
   // Asks for the file of a blank document through core.file.place; null when the person cancelled the save panel.
-  const place = async () => {
+  const place = async (sequence) => {
     const start = performance.now();
     let chosen;
     try {
       ({ path: chosen } = await context.runtime.command("core.file.place", { name: NEW_NAME }));
     } catch (error) {
       emitEvent("warn", "plugin.editor.place", { name: NEW_NAME, path: null, micros: microsSince(start), ok: false, error: failure(error, "-32603") });
-      context.tab.error(`저장하지 못했습니다 · ${errorText(error)}`);
+      if (!disposed && sequence >= completedSave) context.tab.error(`저장하지 못했습니다 · ${errorText(error)}`);
       throw error;
     }
     emitEvent("info", "plugin.editor.place", { name: NEW_NAME, path: chosen, micros: microsSince(start), ok: true });
@@ -402,7 +440,11 @@ export async function mount(root, context) {
     language = languageOf(path);
     extension = extensionOf(path);
     file = Object.freeze({ path, extension, language });
-    contributions = await loadContributions(context, file, emitEvent);
+    const namedFile = file;
+    const nextContributions = await loadContributions(context, namedFile, emitEvent);
+    requireOpen();
+    if (file !== namedFile) return;
+    contributions = nextContributions;
     if (markdownRendered || markdownImageUrls.size > 0) resetMarkdownPreview();
     markdownToolbar.hidden = language !== "markdown";
     markdownButton.setAttribute("aria-pressed", "false");
@@ -417,55 +459,85 @@ export async function mount(root, context) {
 
   const save = async ({ overwrite = false } = {}) => {
     if (typeof overwrite !== "boolean") throw new TypeError("editor.save requires overwrite as true or false");
-    if (path === null) return saveNew();
+    requireOpen();
+    const sequence = ++nextSave;
+    if (path === null) return saveNew(sequence);
     const start = performance.now();
     const document = view.state.doc;
     const text = view.state.sliceDoc();
+    const observedDisk = diskRevision;
+    const loaded = loadRevision;
+    const refreshAfterSave = pendingWatches > 0;
+    watchGeneration += 1;
     try {
       const reply = await files.request({ operation: "write", path, text,
         expect: overwrite ? diskVersion : fileState.version, bom: fileState.bom });
+      requireOpen();
       emitEvent("info", "plugin.editor.save", { path, bytes: bytesOf(text), overwrite, micros: microsSince(start), ok: true });
-      saved = document;
-      diskVersion = reply.version;
-      fileState = { ...fileState, version: reply.version, disk: "same" };
-      describe();
-      showBanner(null);
-      context.tab.modified(fileState.modified);
-      context.tab.error(null);
-      publishFile();
+      if (sequence < completedSave) return { version: reply.version };
+      completedSave = sequence;
+      watchGeneration += 1;
+      // A watch may have observed or loaded a later write while this reply was in flight.
+      if (loaded === loadRevision) {
+        saved = document;
+        if (observedDisk === diskRevision) diskVersion = reply.version;
+        fileState = { ...fileState, version: reply.version, disk: diskVersion === reply.version ? "same" : "changed" };
+        describe();
+        showBanner(fileState.disk === "same" ? null : "디스크의 파일이 바뀌었습니다", { reload: true, overwrite: true });
+        context.tab.modified(fileState.modified);
+        context.tab.error(null);
+        publishFile();
+      }
+      // An overlapping read may have captured the file before the write; refresh it instead of applying that snapshot.
+      if (refreshAfterSave || pendingWatches > 0) refreshDisk();
       return { version: reply.version };
     } catch (error) {
       emitEvent("warn", "plugin.editor.save", { path, bytes: bytesOf(text), overwrite, micros: microsSince(start), ok: false,
         error: failure(error, "-32603") });
-      context.tab.error(`저장하지 못했습니다 · ${errorText(error)}`);
+      if (!disposed && sequence >= completedSave) {
+        context.tab.error(`저장하지 못했습니다 · ${errorText(error)}`);
+        if (refreshAfterSave || pendingWatches > 0) refreshDisk();
+      }
       throw error;
     }
   };
 
   // The first save of a blank document: the file that core.file.place answers is created; a file that exists there is
   // written over, because the save panel asked the person to replace it.
-  const saveNew = async () => {
-    const chosen = await place();
+  const saveNew = async (sequence) => {
+    const requireCurrent = () => {
+      requireOpen();
+      if (sequence < completedSave) throw new Error("a newer save superseded the first save");
+    };
+    const chosen = await place(sequence);
+    requireCurrent();
     if (chosen === null) return { version: null };
     const start = performance.now();
     const document = view.state.doc;
     const text = view.state.sliceDoc();
-    const write = (expect) => files.request({ operation: "write", path: chosen, text, expect, bom: false });
+    const write = (expect) => {
+      requireCurrent();
+      return files.request({ operation: "write", path: chosen, text, expect, bom: false });
+    };
     let reply;
     try {
       try {
         reply = await write(null);
       } catch (error) {
         if (!errorText(error).startsWith("exists")) throw error;
+        requireCurrent();
         reply = await write((await files.request({ operation: "readBytes", path: chosen })).version);
       }
+      requireOpen();
     } catch (error) {
       emitEvent("warn", "plugin.editor.save", { path: chosen, bytes: bytesOf(text), overwrite: false, micros: microsSince(start), ok: false,
         error: failure(error, "-32603") });
-      context.tab.error(`저장하지 못했습니다 · ${errorText(error)}`);
+      if (!disposed && sequence >= completedSave) context.tab.error(`저장하지 못했습니다 · ${errorText(error)}`);
       throw error;
     }
     emitEvent("info", "plugin.editor.save", { path: chosen, bytes: bytesOf(text), overwrite: false, micros: microsSince(start), ok: true });
+    if (sequence < completedSave) return { version: reply.version };
+    completedSave = sequence;
     saved = document;
     diskVersion = reply.version;
     fileState = { ...fileState, version: reply.version, disk: "same" };
@@ -478,12 +550,16 @@ export async function mount(root, context) {
   };
 
   const reload = async () => {
+    requireOpen();
     if (path === null) throw new Error("a blank document has no file to read");
+    const generation = ++watchGeneration;
     let body;
     try {
       body = await readAgain("reload");
+      requireOpen();
+      if (generation !== watchGeneration) throw new Error("a newer file operation superseded the reload");
     } catch (error) {
-      context.tab.error(`다시 읽지 못했습니다 · ${errorText(error)}`);
+      if (!disposed && generation === watchGeneration) context.tab.error(`다시 읽지 못했습니다 · ${errorText(error)}`);
       throw error;
     }
     const previousDocument = view.state.doc;
@@ -822,6 +898,8 @@ export async function mount(root, context) {
     view.scrollDOM.scrollTop = stored.scroll.top;
     view.scrollDOM.scrollLeft = stored.scroll.left;
   }
+  diskReady = true;
+  if (diskRefreshPending) refreshDisk();
   return {
     focus: () => view.focus(),
     async dispose() {
