@@ -6,6 +6,7 @@
 - E51: `contract-copies.json` declares the nine contract copies with their SHA-256, the release holds it, and a test checks it against the copies. Red: the test failed without the declaration. Green: it passes.
 - E50: The core compatibility document states `^0.0.34`, the range that the package declares, and a test compares both documents with `engines.soksak`. Red: the test failed with `^0.0.24` against `^0.0.34`. Green: it passes.
 - E49: The case lists of `scripts/test-sdk.json` are read: a test checks that each listed copy exists, that its surface names the export, and that the replay tests replay exactly the listed files through the table. `observeViewDocumentFrames` lists no case file, and the unused copy `diagnostics.json` is removed. Red: the surface test failed on `diagnostics.json`, whose surface is `validateDiagnostics`. Green: it passes.
+- F494-editor: `engines.soksak` is `^0.0.38`, and the version is 0.0.24.
 - F479-editor: The release run published v0.0.23, and the registry lists it.
 - F479-editor: `engines.soksak` is `^0.0.37`, and the version is 0.0.23.
 - F476-editor: The tests repeat no declared version.

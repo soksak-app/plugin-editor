@@ -6,6 +6,7 @@
 - E51: `contract-copies.json`이 contract 사본 아홉 개를 SHA-256과 함께 선언하고, release가 이를 담으며, test가 사본과 비교한다. Red: 선언이 없어 test가 실패했다. Green: 통과한다.
 - E50: core 호환성 문서는 package가 선언한 범위 `^0.0.34`를 적고, test가 두 문서를 `engines.soksak`과 비교한다. Red: test가 `^0.0.34`에 대한 `^0.0.24`로 실패했다. Green: 통과한다.
 - E49: `scripts/test-sdk.json`의 case 목록을 읽는다. test는 나열된 각 사본이 있고, 그 surface가 그 export를 가리키며, replay test가 나열된 file을 table을 거쳐 정확히 재생하는지 확인한다. `observeViewDocumentFrames`는 case file을 나열하지 않고, 쓰이지 않는 사본 `diagnostics.json`은 제거된다. Red: surface test가 surface가 `validateDiagnostics`인 `diagnostics.json`에서 실패했다. Green: 통과한다.
+- F494-editor: `engines.soksak`은 `^0.0.38`이고, version은 0.0.24이다.
 - F479-editor: release run이 v0.0.23을 게시했고 registry가 이를 올린다.
 - F479-editor: `engines.soksak`은 `^0.0.37`이고, version은 0.0.23이다.
 - F476-editor: test가 선언된 version을 되풀이하지 않는다.
