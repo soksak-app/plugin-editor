@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E49: Remove only the duplicate SDK-name source test. Six fixtures now execute the real test builder and import the valid emitted module; four independent source checks remain. Verification: 10/10 focused tests pass. Disabling the build SDK guard in a temporary copy makes all four prohibited-import tests fail while the two controls pass. The unchanged build already rejected these inputs, so this is a test consolidation, not a new runtime defect correction. Final verification after E47–E49: `pnpm test` passes 193/193 with zero skips, and `make check` passes.
 - E48: Ignore superseded watch and save replies, refresh reads that overlap a save, preserve newer disk conflicts, and stop late tab updates or writes after disposal. Red: 26 controlled cases exposed reply-order and disposal failures, including pending-watch and initialization regressions found during the correction. Green: those cases and 13 existing save, watch, cleanup and line-break cases pass. Adversarial review added reload, overlapping first-save, naming and initialization coverage; native concurrency was not exercised.
 - E47: A save remembers the document it wrote, so edits during either an existing-file or first save remain modified at the tab boundary. Red: both controlled delayed-reply cases reported false instead of true. Green: both pass, together with nine existing save, conflict, watch and line-break cases.
 - F497-editor: `engines.soksak` is `^0.0.39`, and the version is 0.0.25.
