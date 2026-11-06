@@ -1,5 +1,6 @@
 # 기능
 
+- [o] P21 — P1: core 호환 문서가 package가 선언한 범위를 적는다. 입력: `engines.soksak: "^0.0.39"`을 선언한 `package.json`. 동작: core 0.0.37부터 0.0.39까지 범위를 올린 commit이 문서를 그대로 두어서 `docs/spec/core-compatibility.md`와 `.ko.md`는 `^0.0.36`을 적었고, `test/core-version.test.mjs`가 실패했다. 기대: 두 문서가 `^0.0.39`와 그 범위가 허용하는 core release를 적고, test가 통과한다.
 - [o] F497-editor — P0, core F497와 연결: plugin이 `engines.soksak` `^0.0.39`을 선언해 core release 0.0.39가 설치하고, version은 0.0.25이다. 결과: release run이 v0.0.25을 게시했고 registry가 이를 올린다.
 - [o] F494-editor — P0, core F494와 연결: plugin이 `engines.soksak` `^0.0.38`을 선언해 core release 0.0.38이 설치하고, version은 0.0.24이다. 결과: release run이 v0.0.24을 게시했고 registry가 이를 올린다.
 - [o] F479-editor — P0, core F479와 연결: plugin이 `engines.soksak` `^0.0.37`을 선언해 core release 0.0.37이 설치하고, version은 0.0.23이다. 결과: release run이 v0.0.23을 게시했고 registry가 이를 올린다.

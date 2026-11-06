@@ -2,7 +2,7 @@
 
 [한국어](core-compatibility.ko.md)
 
-The editor package declares `engines.soksak: "^0.0.36"`, which admits core release `0.0.36` under the core version-range rules and does not claim compatibility with earlier versions or later unverified versions. 0.0.35 is the version of the core release of F502-13, the first core release that accepts `exposes.element`, which `plugin.json` declares; core 0.0.34 refuses it. Its `plugin.json` also declares a view composition without `surface.module`, which core releases from `0.0.24` accept.
+The editor package declares `engines.soksak: "^0.0.39"`, which admits core release `0.0.39` under the core version-range rules and does not claim compatibility with earlier versions or later unverified versions. 0.0.35 is the version of the core release of F502-13, the first core release that accepts `exposes.element`, which `plugin.json` declares; core 0.0.34 refuses it. Its `plugin.json` also declares a view composition without `surface.module`, which core releases from `0.0.24` accept.
 
 The diagnostic `plugin.editor.view.content_frame` event records one sample for each animation frame scheduled by the shared view-document observer. If multiple root ResizeObserver deliveries arrive before that frame, the sample reports the first delivery as `firstResizeAtMs`, the latest as `resizeAtMs`, and their number as `resizeCount`. Require `firstResizeAtMs <= resizeAtMs <= frameTimeMs`; a count of one requires equal first and latest timestamps, while coarser clocks may make a multi-delivery interval equal too. The plugin validates and forwards all these source fields unchanged; the event is a size observation, not proof of physical presentation.
 

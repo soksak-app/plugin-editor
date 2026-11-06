@@ -1,5 +1,6 @@
 # Features
 
+- [o] P21 — P1: The core compatibility documents state the range that the package declares. Input: `package.json` that declares `engines.soksak: "^0.0.39"`. Behavior: `docs/spec/core-compatibility.md` and `.ko.md` stated `^0.0.36`, because the commits that raised the range for core 0.0.37 to 0.0.39 left the documents, and `test/core-version.test.mjs` failed. Expected: both documents state `^0.0.39` and the core release that it admits, and the test passes.
 - [o] F497-editor — P0, linked to core F497: The plugin declares `engines.soksak` `^0.0.39`, so the core release 0.0.39 installs it, and its version is 0.0.25. Result: the release run published v0.0.25, and the registry lists it.
 - [o] F494-editor — P0, linked to core F494: The plugin declares `engines.soksak` `^0.0.38`, so the core release 0.0.38 installs it, and its version is 0.0.24. Result: the release run published v0.0.24, and the registry lists it.
 - [o] F479-editor — P0, linked to core F479: The plugin declares `engines.soksak` `^0.0.37`, so the core release 0.0.37 installs it, and its version is 0.0.23. Result: the release run published v0.0.23, and the registry lists it.
