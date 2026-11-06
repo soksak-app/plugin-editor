@@ -1,6 +1,6 @@
 # 기능
 
-- [~] F497-editor — P0, core F497와 연결: plugin이 `engines.soksak` `^0.0.39`을 선언해 core release 0.0.39가 설치하고, version은 0.0.25이다. 진행 중: release run이 이 version을 게시한 뒤 registry가 이를 올린다.
+- [o] F497-editor — P0, core F497와 연결: plugin이 `engines.soksak` `^0.0.39`을 선언해 core release 0.0.39가 설치하고, version은 0.0.25이다. 결과: release run이 v0.0.25을 게시했고 registry가 이를 올린다.
 - [o] F494-editor — P0, core F494와 연결: plugin이 `engines.soksak` `^0.0.38`을 선언해 core release 0.0.38이 설치하고, version은 0.0.24이다. 결과: release run이 v0.0.24을 게시했고 registry가 이를 올린다.
 - [o] F479-editor — P0, core F479와 연결: plugin이 `engines.soksak` `^0.0.37`을 선언해 core release 0.0.37이 설치하고, version은 0.0.23이다. 결과: release run이 v0.0.23을 게시했고 registry가 이를 올린다.
 - [o] F476-editor — P2, core F476과 연결: test는 선언된 version을 되풀이하지 않는다. 입력: test가 자기가 선언한 version과 범위의 assertion을 가져, 동작 변경 없이 release마다 바뀌었다. 결과: 이를 지웠고 `make test`가 통과한다.
