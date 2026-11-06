@@ -2,7 +2,9 @@
 // compares its registrations, replies, effects, result and error with the case.
 import assert from "node:assert/strict";
 import test from "node:test";
+import { JSDOM } from "jsdom";
 import { createWindow } from "./dom.mjs";
+import { roleOf } from "./models/binder.mjs";
 import { createExpose } from "./models/expose.mjs";
 import { casesOf } from "./sdk-cases.mjs";
 
@@ -111,4 +113,13 @@ for (const testCase of cases) {
 
 test("the exposure conformance covers every case of the contract", () => {
   assert.equal(cases.length, 8);
+});
+
+// element.rect reports the ARIA role of the element by the rule of core's roleOf (expose.json): the first token of the role
+// attribute, else the implicit role of the tag, and null for a group and for an element that only holds text.
+test("the role of element.rect follows the role attribute and the tag, and a group or a plain element has none (E53)", () => {
+  const { document } = new JSDOM("<div role='tab selected'></div><button></button><div></div><div role='group'><input></div>"
+    + "<ul><li></li></ul><a href='#'></a><a></a><h2></h2><span contenteditable></span>").window;
+  const roles = [...document.body.querySelectorAll("*")].map((element) => roleOf(element));
+  assert.deepEqual(roles, ["tab", "button", null, null, "textbox", "list", "listitem", "link", null, "heading", "textbox"]);
 });

@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E53: The copy of `expose.json` and its digest are the file of core main, and the exposure model answers the role of the element in `element.rect` by the rule of core. Red: the replay of `expose.element.act-rect-and-refusals` failed without `role`, and the role test failed on the earlier rule. Green: they pass.
 - E52: The push check and CI run the checklist history check of the kit: `package.json` pins kit 0.0.14, which holds KR14 and KR15, `make check-push` runs `sok-check docs --range` on the pushed range, and CI runs `make check-push` on the range of its event. Red: the tests of the push check failed on the Makefile and `ci.yml` before the change. Green: they pass.
 - P21: The core compatibility documents state `^0.0.39`, the range that `package.json` declares.
 - E47: `plugin.json` declares `exposes.element`, the page calls `expose.element`, `engines.soksak` is `^0.0.35`, and the copies of the plugin API cases are the files of core F502-13. Its release waits for the core release of F502-13 and the records kit release of KR19. Red: on the sources before the change, 54 of the 100 changed tests failed, 44 of them with `expose.dom is not a function`. Green: they pass.

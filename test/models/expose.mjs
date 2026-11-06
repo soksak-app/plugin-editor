@@ -2,7 +2,7 @@
 // the requests that the host forwards (status.*, element.*), the replies that the page sends, and the changed calls of watched
 // statuses. The binder of the model runs the commands registered through command(). The conformance test replays
 // test/fixtures/contract/expose.json.
-import { createBinder } from "./binder.mjs";
+import { createBinder, roleOf } from "./binder.mjs";
 
 /**
  * The effective CSS zoom of the element, as elementRect of the plugin API reads it: the product of the computed zoom of the
@@ -103,7 +103,7 @@ export function createExpose(port, declarations) {
         throw new ReplyError(UNKNOWN_TARGET, `element ${params.name} has no element at index ${params.index}`);
       }
       const box = entry.element.getBoundingClientRect();
-      return { result: { x: box.left, y: box.top, width: box.width, height: box.height, zoom: effectiveZoom(entry.element) } };
+      return { result: { x: box.left, y: box.top, width: box.width, height: box.height, zoom: effectiveZoom(entry.element), role: roleOf(entry.element) } };
     }
     if (method === "element.act") {
       if (params.address !== undefined) throw new ReplyError(INVALID_PARAMS, `element ${params.name} takes no address`);
