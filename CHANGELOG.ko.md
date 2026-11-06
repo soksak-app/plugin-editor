@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- E47: core 0.0.35부터 0.0.39까지는 F502-13 없이 release되어 `exposes.element`를 거부하므로, `engines.soksak`은 F502-13의 core release인 `^0.0.40`이다. Red: version test가 `^0.0.39`에서 실패했다. Green: 통과한다.
 - E53: `expose.json` 사본과 digest는 core main의 파일이고, exposure model은 `element.rect`에서 core의 규칙으로 element의 role을 답한다. Red: `expose.element.act-rect-and-refusals` replay가 `role` 없이 실패했고, role test가 이전 규칙에서 실패했다. Green: 통과한다.
 - E52: push check와 CI가 kit의 체크리스트 이력 검사를 실행한다. `package.json`이 KR14와 KR15를 담은 kit 0.0.14를 pin하고, `make check-push`가 push 범위에 `sok-check docs --range`를 실행하며, CI가 event의 범위에 `make check-push`를 실행한다. Red: 변경 전 Makefile과 `ci.yml`에서 push check test가 실패했다. Green: 통과한다.
 - P21: core 호환 문서가 `package.json`이 선언한 범위 `^0.0.39`을 적는다.
