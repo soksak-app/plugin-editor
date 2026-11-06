@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- E50: 실제 임시 파일, 운영체제 알림과 별도 JSONL fixture process를 쓰는 editor 통합 case 다섯 개를 추가했다. 멈춘 write, 외부 충돌/reload, save/reload 뒤 오래된 read와 dispose에서 실제 disk bytes와 tab 보고를 확인한다. 추적하는 변이 명령은 fixture를 정상으로 유지하며 editor 결함 두 종류를 동작 assertion 세 개에서 검출한다. Baseline과 실패 case 모두 watcher/listener 정리, process 종료와 directory 삭제를 확인한다. 집중 소비자/source 검사는 91/91 통과하고 `make check`도 통과한다. Editor dispose와 host 측 자원 정리는 별도 책임을 유지한다. 배포 editor code 변경 없이 통합 coverage를 추가했다. Fixture 소유 Red/Green은 close 전과 진행 중의 종료를 별도로 다룬다. Adapter는 종료 signal을 보존하고 모든 close 대기를 취소하며 비처리 rejection이나 임시 directory를 남기지 않는다.
 - E49: 중복 SDK 이름 source test만 제거했다. Fixture 여섯 개가 실제 test builder를 실행하고 유효한 출력 module을 import하며, 독립 source 검사 네 개는 유지한다. 검증: 집중 test 10/10이 통과한다. 임시 복사본에서 build SDK guard를 끄면 금지 import test 네 개가 모두 실패하고 대조군 두 개는 통과한다. 변경 전 build도 이 입력을 거부했으므로 runtime 결함 수정이 아니라 test 통합이다. E47–E49 뒤 최종 검증: `pnpm test`가 skip 없이 193/193 통과하고 `make check`도 통과한다.
 - E48: 대체된 watch/save 응답을 무시하고 save와 겹친 read를 갱신하며, 최신 disk 충돌을 보존하고 dispose 뒤의 늦은 tab 갱신과 write를 막는다. Red: 통제된 case 26개가 응답 순서와 dispose 실패를 드러냈으며, 수정 중 발견한 pending watch와 초기화 회귀도 포함한다. Green: 해당 case와 기존 save, watch, cleanup, 줄바꿈 case 13개가 통과한다. 반론 review로 reload, 겹친 첫 저장, naming과 초기화 coverage를 추가했으며 native 동시성은 실행하지 않았다.
 - E47: save가 실제로 쓴 문서를 기억하므로 기존 파일 저장과 첫 저장 중의 편집이 tab 경계에서 수정 상태를 유지한다. Red: 통제된 지연 응답 두 case가 true 대신 false를 보고했다. Green: 두 case와 기존 save, conflict, watch, 줄바꿈 case 아홉 개가 함께 통과한다.
