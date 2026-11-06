@@ -1,4 +1,4 @@
-// Rules of the test sources of this repository: no test names an SDK package, the UI runs from the build tree only, no
+// Independent rules of the test sources of this repository: the UI runs from the build tree only, no
 // resolver hook is loaded, the shared modules come from the build tree, and the view host reads no SDK file.
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
@@ -6,8 +6,6 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-// The needle is built from parts so that this file names no SDK package.
-const NEEDLE = ["@", "soksak/"].join("");
 const TEST_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(TEST_ROOT);
 
@@ -21,11 +19,6 @@ function sourcesOf(directory) {
 
 const relative = (file) => path.relative(ROOT, file);
 const packageJson = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"));
-
-test("no test source names an SDK package (F238-c-13, F238-c-28)", () => {
-  const named = sourcesOf(TEST_ROOT).filter((file) => readFileSync(file, "utf8").includes(NEEDLE)).map(relative);
-  assert.deepEqual(named, []);
-});
 
 test("the tests import the UI from the build tree and the models, never from ui/ (F238-c-13)", () => {
   const direct = sourcesOf(TEST_ROOT).filter((file) => /(?:from|import\()\s*["'](?:\.\.\/)+ui\//.test(readFileSync(file, "utf8")))

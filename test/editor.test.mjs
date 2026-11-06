@@ -17,7 +17,7 @@ const validateContentFrame = new Ajv2020({ allErrors: true }).compile(eventCatal
 const declared = (kind, name) => manifest.exposes[kind].some((entry) => entry.name === name);
 
 async function setup(t, { path = "src/main.js", params = { path }, files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), contributions = {}, scheme = "dark", log = [], stored = null,
-  diagnostics = null, scopeSurface = null, place = () => { throw new Error("the test runs no core command"); } } = {}) {
+  diagnostics = null, scopeSurface = null, filesPort = null, place = () => { throw new Error("the test runs no core command"); } } = {}) {
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const root = host.attachShadow({ mode: "open" });
@@ -28,7 +28,7 @@ async function setup(t, { path = "src/main.js", params = { path }, files = new M
   const binder = createBinder((name, params) => commands.get(name)(params), {
     check(name) { assert.ok(declared("commands", name), `undeclared command ${name}`); },
   });
-  const sidecar = fakeFiles(files);
+  const sidecar = filesPort ?? fakeFiles(files);
   const controller = await mount(root, {
     surfaceId: "editor-1",
     project: { root: "/project" },
@@ -227,6 +227,46 @@ test("content frame diagnostics observe the view root and restore its card style
 });
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+// File replies and their consumers use microtasks; one event-loop turn drains them without a timing delay.
+const repliesDrained = () => new Promise(setImmediate);
+
+for (const event of ["error", "changed"]) test(`a sidecar ${event} during contribution loading is handled before the editor is ready`, { timeout: 5000 }, async (t) => {
+  const files = new Map([["src/main.js", "initial\n"]]);
+  const sidecar = fakeFiles(files);
+  const loaded = Promise.withResolvers();
+  const loading = Promise.withResolvers();
+  const on = sidecar.on;
+  let receive;
+  sidecar.on = async (surface, listener) => { receive = listener; return on(surface, listener); };
+  const mounting = setup(t, { files, filesPort: sidecar, contributions: { get extension() {
+    loading.resolve();
+    return loaded.promise;
+  } } });
+  await loading.promise;
+  try {
+    if (event === "changed") files.set("src/main.js", "latest\n");
+    assert.doesNotThrow(() => receive(event === "error" ? { error: "watch unavailable" } : { changed: "src/main.js" }));
+  } finally { loaded.resolve([]); }
+  const editor = await mounting;
+  await repliesDrained();
+  if (event === "error") assert.match(editor.reports.error.at(-1), /watch unavailable/);
+  else assert.equal(editor.run("editor.read"), "latest\n");
+});
+
+test("a watch during the initial read refreshes the opened document", { timeout: 5000 }, async (t) => {
+  const files = new Map([["src/main.js", "initial\n"]]);
+  const sidecar = fakeFiles(files);
+  const opening = sidecar.holdReply("read");
+  const mounting = setup(t, { files, filesPort: sidecar });
+  await opening.received;
+  sidecar.change("src/main.js", "latest\n");
+  await repliesDrained();
+  opening.release();
+  const { run, status } = await mounting;
+  await repliesDrained();
+  assert.equal(run("editor.read"), "latest\n");
+  assert.equal(status("editor.document").version, sha("latest\n"));
+});
 
 test("the editor opens the file of its tab and watches it", async (t) => {
   const { run, status, sidecar } = await setup(t);
@@ -251,6 +291,345 @@ test("an edit marks the tab modified and a save writes the text in place", async
   assert.equal(status("editor.document").modified, false);
   assert.deepEqual(reports.modified, [false, true, false]);
   assert.deepEqual(reports.error, [null]);
+});
+
+for (const firstSave of [false, true]) test(`a delayed ${firstSave ? "first" : "existing file"} save keeps later edits reported as modified`, { timeout: 5000 }, async (t) => {
+  const path = "src/main.js";
+  const editor = await setup(t, firstSave ? { params: {}, files: new Map(), place: () => ({ path }) } : {});
+  const { run, status, reports, files, sidecar } = editor;
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "saved-" }] });
+  const written = run("editor.read");
+  const reply = sidecar.holdReply("write");
+  const saving = run("editor.save");
+  await reply.received;
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "unsaved-" }] });
+  reply.release();
+  assert.deepEqual(await saving, { version: sha(written) });
+  assert.equal(files.get(path), written);
+  assert.equal(run("editor.read"), `unsaved-${written}`);
+  assert.equal(status("editor.document").modified, true, "the newer document has not been written");
+  assert.equal(reports.modified.at(-1), true, "the close boundary must still receive the unsaved state");
+  assert.equal(status("editor.document").version, sha(written));
+  await run("editor.save");
+  assert.equal(files.get(path), `unsaved-${written}`);
+  assert.equal(status("editor.document").modified, false);
+  assert.equal(reports.modified.at(-1), false);
+});
+
+test("an older watch reply cannot replace the document written by a completed save", { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar, files } = await setup(t);
+  const oldRead = sidecar.holdReply("read");
+  sidecar.change("src/main.js", "old disk text\n");
+  await oldRead.received;
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
+  // Restore the expected base before the save; the held read still carries the older observation.
+  files.set("src/main.js", "let a = 1;\n// TODO: b\n");
+  const written = run("editor.read");
+  await run("editor.save");
+  oldRead.release();
+  await repliesDrained();
+  assert.equal(run("editor.read"), written);
+  assert.equal(status("editor.document").version, sha(written));
+  assert.equal(status("editor.document").disk, "same");
+  assert.equal(status("editor.document").modified, false);
+});
+
+test("an older watch reply cannot replace a newer disk change", { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar } = await setup(t);
+  const oldRead = sidecar.holdReply("read");
+  sidecar.change("src/main.js", "older\n");
+  await oldRead.received;
+  sidecar.change("src/main.js", "newer\n");
+  await repliesDrained();
+  oldRead.release();
+  await repliesDrained();
+  assert.equal(run("editor.read"), "newer\n");
+  assert.equal(status("editor.document").version, sha("newer\n"));
+  assert.equal(status("editor.document").disk, "same");
+});
+
+test("an older watch reply cannot replace an explicitly reloaded document", { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar, files } = await setup(t);
+  const oldRead = sidecar.holdReply("read");
+  sidecar.change("src/main.js", "older\n");
+  await oldRead.received;
+  files.set("src/main.js", "reloaded\n");
+  await run("editor.reload");
+  oldRead.release();
+  await repliesDrained();
+  assert.equal(run("editor.read"), "reloaded\n");
+  assert.equal(status("editor.document").version, sha("reloaded\n"));
+  assert.equal(status("editor.document").modified, false);
+});
+
+for (const later of ["save", "reload"]) test(`an older reload is refused after a newer ${later} completes`, { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar, files, reports } = await setup(t);
+  const oldRead = sidecar.holdReply("read");
+  const reloading = run("editor.reload");
+  const rejected = assert.rejects(reloading, /superseded the reload/);
+  await oldRead.received;
+  if (later === "save") {
+    run("editor.edit", { changes: [{ from: 0, to: 0, insert: "saved-" }] });
+    await run("editor.save");
+  } else {
+    files.set("src/main.js", "reloaded\n");
+    await run("editor.reload");
+  }
+  const current = run("editor.read");
+  const errors = [...reports.error];
+  oldRead.release();
+  await rejected;
+  assert.equal(run("editor.read"), current);
+  assert.equal(status("editor.document").version, sha(current));
+  assert.equal(status("editor.document").modified, false);
+  assert.deepEqual(reports.error, errors, "the superseded operation must not replace the newer error display");
+});
+
+test("a delayed save reply preserves the newer watched disk version for overwrite", { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar, files } = await setup(t);
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
+  const written = run("editor.read");
+  const saveReply = sidecar.holdReply("write");
+  const saving = run("editor.save");
+  await saveReply.received;
+  const watchReply = sidecar.holdReply("read");
+  sidecar.change("src/main.js", "external\n");
+  await watchReply.received;
+  watchReply.release();
+  await repliesDrained();
+  assert.equal(status("editor.document").disk, "changed");
+  saveReply.release();
+  await saving;
+  assert.equal(run("editor.read"), written);
+  assert.equal(status("editor.document").version, sha(written));
+  assert.equal(status("editor.document").disk, "changed", "the save reply predates the external write");
+  await run("editor.save", { overwrite: true });
+  assert.equal(files.get("src/main.js"), written);
+  assert.equal(sidecar.sent.filter((body) => body.operation === "write").at(-1).expect, sha("external\n"));
+  assert.equal(status("editor.document").disk, "same");
+});
+
+test("a watch restoring the saved disk version clears the conflict but keeps local edits", { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar, root } = await setup(t);
+  const original = run("editor.read");
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
+  for (const text of ["external\n", original]) {
+    const reply = sidecar.holdReply("read");
+    sidecar.change("src/main.js", text);
+    await reply.received;
+    reply.release();
+    await repliesDrained();
+    assert.equal(status("editor.document").disk, text === original ? "same" : "changed");
+  }
+  assert.equal(run("editor.read"), `local-${original}`);
+  assert.equal(status("editor.document").modified, true);
+  assert.equal(root.querySelector("#banner").hidden, true);
+});
+
+test("a delayed save reply cannot replace a newer document loaded by watch", { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar } = await setup(t);
+  const saveReply = sidecar.holdReply("write");
+  const saving = run("editor.save");
+  await saveReply.received;
+  sidecar.change("src/main.js", "newer\n");
+  await repliesDrained();
+  assert.equal(run("editor.read"), "newer\n");
+  saveReply.release();
+  await saving;
+  assert.equal(status("editor.document").version, sha("newer\n"));
+  assert.equal(status("editor.document").modified, false);
+});
+
+for (const first of ["save", "watch"]) test(`a refused save preserves the pending watch conflict when ${first} replies first`, { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar, reports } = await setup(t);
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
+  const readReply = sidecar.holdReply("read");
+  sidecar.change("src/main.js", "external\n");
+  await readReply.received;
+  const saveReply = sidecar.holdReply("write");
+  const rejected = assert.rejects(run("editor.save"), /changed on disk/);
+  await saveReply.received;
+  if (first === "watch") {
+    readReply.release();
+    await repliesDrained();
+  }
+  saveReply.release();
+  await rejected;
+  if (first === "save") readReply.release();
+  await repliesDrained();
+  assert.equal(status("editor.document").disk, "changed");
+  assert.equal(status("editor.document").modified, true);
+  assert.match(reports.error.at(-1), /changed on disk/);
+  await run("editor.save", { overwrite: true });
+  assert.equal(sidecar.sent.filter((body) => body.operation === "write").at(-1).expect, sha("external\n"));
+});
+
+test("an older save reply cannot replace a newer completed save", { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar, files } = await setup(t);
+  const firstReply = sidecar.holdReply("write");
+  const firstSave = run("editor.save");
+  await firstReply.received;
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "newer-" }] });
+  const written = run("editor.read");
+  await run("editor.save");
+  firstReply.release();
+  await firstSave;
+  assert.equal(files.get("src/main.js"), written);
+  assert.equal(status("editor.document").version, sha(written));
+  assert.equal(status("editor.document").modified, false);
+});
+
+test("an older first-save reply cannot mark edits clean after a newer save", { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar, files, reports } = await setup(t, {
+    params: {}, files: new Map(), place: () => ({ path: "new.txt" }),
+  });
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "A" }] });
+  const firstReply = sidecar.holdReply("write");
+  const firstSave = run("editor.save");
+  await firstReply.received;
+  run("editor.edit", { changes: [{ from: 0, to: 1, insert: "B" }] });
+  await run("editor.save");
+  run("editor.edit", { changes: [{ from: 0, to: 1, insert: "A" }] });
+  firstReply.release();
+  await firstSave;
+  assert.equal(files.get("new.txt"), "B");
+  assert.equal(run("editor.read"), "A");
+  assert.equal(status("editor.document").modified, true, "A is not the content written by the newer save");
+  assert.equal(status("editor.document").version, sha("B"));
+  assert.equal(reports.modified.at(-1), true);
+});
+
+for (const heldOperation of ["write", "readBytes"]) test(`a superseded first save cannot overwrite a newer save after its ${heldOperation} reply`, { timeout: 5000 }, async (t) => {
+  const { run, status, sidecar, files } = await setup(t, {
+    params: {}, files: new Map([["new.txt", "B"]]), place: () => ({ path: "new.txt" }),
+  });
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "A" }] });
+  const firstReply = sidecar.holdReply(heldOperation);
+  const firstSave = run("editor.save").then((value) => ({ value }), (error) => ({ error }));
+  await firstReply.received;
+  run("editor.edit", { changes: [{ from: 0, to: 1, insert: "B" }] });
+  await run("editor.save");
+  const sends = sidecar.sent.length;
+  firstReply.release();
+  const result = await firstSave;
+  assert.equal(files.get("new.txt"), "B", "the superseded save must not overwrite the later stored content");
+  assert.match(result.error?.message ?? "", /superseded the first save/);
+  assert.equal(sidecar.sent.length, sends, "neither a read nor a write may start for the superseded save");
+  assert.equal(status("editor.document").version, sha("B"));
+  assert.equal(status("editor.document").modified, false);
+});
+
+test("an older save failure cannot replace the error display of a newer successful save", { timeout: 5000 }, async (t) => {
+  const { run, sidecar, files, reports } = await setup(t);
+  const original = run("editor.read");
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
+  files.set("src/main.js", "external\n");
+  const firstReply = sidecar.holdReply("write");
+  const rejected = assert.rejects(run("editor.save"), /changed on disk/);
+  await firstReply.received;
+  files.set("src/main.js", original);
+  await run("editor.save");
+  const errors = [...reports.error];
+  firstReply.release();
+  await rejected;
+  assert.deepEqual(reports.error, errors);
+});
+
+for (const refused of [false, true]) test(`an older save-place ${refused ? "failure" : "reply"} cannot affect a newer completed save`, { timeout: 5000 }, async (t) => {
+  const chosen = Promise.withResolvers();
+  const requested = Promise.withResolvers();
+  let calls = 0;
+  const { run, status, sidecar, reports } = await setup(t, { params: {}, files: new Map(), place: () => {
+    if (calls++ > 0) return { path: "current.txt" };
+    requested.resolve();
+    return chosen.promise;
+  } });
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "current" }] });
+  const rejected = assert.rejects(run("editor.save"), refused ? /place failed/ : /superseded the first save/);
+  await requested.promise;
+  await run("editor.save");
+  const before = structuredClone(reports);
+  const sends = sidecar.sent.length;
+  if (refused) chosen.reject(new Error("place failed"));
+  else chosen.resolve({ path: "obsolete.txt" });
+  await repliesDrained();
+  assert.equal(sidecar.sent.length, sends, "the superseded place must not start a write");
+  await rejected;
+  assert.deepEqual(reports, before);
+  assert.equal(status("editor.document").path, "current.txt");
+});
+
+test("an older first-save contribution reply cannot change the newly named file", { timeout: 5000 }, async (t) => {
+  const extensions = Promise.withResolvers();
+  const loading = Promise.withResolvers();
+  const secondPlace = Promise.withResolvers();
+  let extensionCalls = 0;
+  let placeCalls = 0;
+  const contributions = { get extension() {
+    if (++extensionCalls !== 2) return [];
+    loading.resolve();
+    return extensions.promise;
+  } };
+  const { run, status, root, reports, sidecar } = await setup(t, { params: {}, files: new Map(), contributions,
+    place: () => ++placeCalls === 1 ? { path: "older.txt" } : secondPlace.promise });
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "text" }] });
+  const firstSave = run("editor.save");
+  const secondSave = run("editor.save");
+  await loading.promise;
+  secondPlace.resolve({ path: "newer.txt" });
+  await secondSave;
+  const before = structuredClone(reports);
+  const sends = sidecar.sent.length;
+  extensions.resolve([{ plugin: "probe", item: {}, module: new URL("./fixtures/upper-gutter.mjs", import.meta.url).href,
+    fail(reason) { assert.fail(reason); } }]);
+  await firstSave;
+  assert.equal(root.querySelector(".probe-mark") !== null, false, "the older file's extension must not enter the newer document");
+  assert.equal(status("editor.document").path, "newer.txt");
+  assert.deepEqual(reports, before);
+  assert.equal(sidecar.sent.length, sends, "the older naming must not start another watch");
+});
+
+for (const operation of ["save", "watch", "reload"]) test(`disposing with a pending ${operation} prevents late tab updates`, { timeout: 5000 }, async (t) => {
+  const { run, sidecar, reports, root, dispose, logs } = await setup(t);
+  const reply = sidecar.holdReply(operation === "save" ? "write" : "read");
+  let rejected;
+  if (operation === "save") {
+    run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
+    rejected = assert.rejects(run("editor.save"), /editor closed/);
+  } else if (operation === "reload") rejected = assert.rejects(run("editor.reload"), /editor closed/);
+  else sidecar.change("src/main.js", "external\n");
+  await reply.received;
+  const before = structuredClone(reports);
+  await dispose();
+  await rejected;
+  reply.release();
+  await repliesDrained();
+  assert.deepEqual(reports, before, "a disposed tab receives no modified, error, title or state report");
+  assert.equal(sidecar.listenerCount(), 0);
+  assert.equal(root.childNodes.length, 0);
+  assert.equal(eventsOf(logs, "close").at(-1).fields.pending, 1);
+  assert.equal(eventsOf(logs, "request").at(-1).fields.ok, false);
+});
+
+for (const refused of [false, true]) test(`disposing while the first save ${refused ? "refuses" : "chooses"} a path prevents a late update`, { timeout: 5000 }, async (t) => {
+  const chosen = Promise.withResolvers();
+  const requested = Promise.withResolvers();
+  const { run, sidecar, reports, dispose } = await setup(t, { params: {}, files: new Map(), place: () => {
+    requested.resolve();
+    return chosen.promise;
+  } });
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "unsaved" }] });
+  const rejected = assert.rejects(run("editor.save"), refused ? /place failed/ : /editor closed/);
+  await requested.promise;
+  const before = structuredClone(reports);
+  await dispose();
+  if (refused) chosen.reject(new Error("place failed"));
+  else chosen.resolve({ path: "new.txt" });
+  await repliesDrained();
+  assert.deepEqual(sidecar.sent, [], "the closed editor must not send a new write");
+  await rejected;
+  assert.deepEqual(reports, before);
+  assert.equal(sidecar.listenerCount(), 0);
 });
 
 test("a save after the file changed on disk fails, shows the tab error and keeps the changes", async (t) => {
