@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E47: A save remembers the document it wrote, so edits during either an existing-file or first save remain modified at the tab boundary. Red: both controlled delayed-reply cases reported false instead of true. Green: both pass, together with nine existing save, conflict, watch and line-break cases.
 - F497-editor: `engines.soksak` is `^0.0.39`, and the version is 0.0.25.
 - F494-editor: `engines.soksak` is `^0.0.38`, and the version is 0.0.24.
 - F479-editor: The release run published v0.0.23, and the registry lists it.

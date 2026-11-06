@@ -253,6 +253,29 @@ test("an edit marks the tab modified and a save writes the text in place", async
   assert.deepEqual(reports.error, [null]);
 });
 
+for (const firstSave of [false, true]) test(`a delayed ${firstSave ? "first" : "existing file"} save keeps later edits reported as modified`, { timeout: 5000 }, async (t) => {
+  const path = "src/main.js";
+  const editor = await setup(t, firstSave ? { params: {}, files: new Map(), place: () => ({ path }) } : {});
+  const { run, status, reports, files, sidecar } = editor;
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "saved-" }] });
+  const written = run("editor.read");
+  const reply = sidecar.holdReply("write");
+  const saving = run("editor.save");
+  await reply.received;
+  run("editor.edit", { changes: [{ from: 0, to: 0, insert: "unsaved-" }] });
+  reply.release();
+  assert.deepEqual(await saving, { version: sha(written) });
+  assert.equal(files.get(path), written);
+  assert.equal(run("editor.read"), `unsaved-${written}`);
+  assert.equal(status("editor.document").modified, true, "the newer document has not been written");
+  assert.equal(reports.modified.at(-1), true, "the close boundary must still receive the unsaved state");
+  assert.equal(status("editor.document").version, sha(written));
+  await run("editor.save");
+  assert.equal(files.get(path), `unsaved-${written}`);
+  assert.equal(status("editor.document").modified, false);
+  assert.equal(reports.modified.at(-1), false);
+});
+
 test("a save after the file changed on disk fails, shows the tab error and keeps the changes", async (t) => {
   const { run, status, reports, sidecar } = await setup(t);
   run("editor.edit", { changes: [{ from: 0, to: 0, insert: "// head\n" }] });

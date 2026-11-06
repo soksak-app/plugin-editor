@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- E47: save가 실제로 쓴 문서를 기억하므로 기존 파일 저장과 첫 저장 중의 편집이 tab 경계에서 수정 상태를 유지한다. Red: 통제된 지연 응답 두 case가 true 대신 false를 보고했다. Green: 두 case와 기존 save, conflict, watch, 줄바꿈 case 아홉 개가 함께 통과한다.
 - F497-editor: `engines.soksak`은 `^0.0.39`이고, version은 0.0.25이다.
 - F494-editor: `engines.soksak`은 `^0.0.38`이고, version은 0.0.24이다.
 - F479-editor: release run이 v0.0.23을 게시했고 registry가 이를 올린다.

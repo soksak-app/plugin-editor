@@ -419,12 +419,13 @@ export async function mount(root, context) {
     if (typeof overwrite !== "boolean") throw new TypeError("editor.save requires overwrite as true or false");
     if (path === null) return saveNew();
     const start = performance.now();
+    const document = view.state.doc;
     const text = view.state.sliceDoc();
     try {
       const reply = await files.request({ operation: "write", path, text,
         expect: overwrite ? diskVersion : fileState.version, bom: fileState.bom });
       emitEvent("info", "plugin.editor.save", { path, bytes: bytesOf(text), overwrite, micros: microsSince(start), ok: true });
-      saved = view.state.doc;
+      saved = document;
       diskVersion = reply.version;
       fileState = { ...fileState, version: reply.version, disk: "same" };
       describe();
@@ -447,6 +448,7 @@ export async function mount(root, context) {
     const chosen = await place();
     if (chosen === null) return { version: null };
     const start = performance.now();
+    const document = view.state.doc;
     const text = view.state.sliceDoc();
     const write = (expect) => files.request({ operation: "write", path: chosen, text, expect, bom: false });
     let reply;
@@ -464,7 +466,7 @@ export async function mount(root, context) {
       throw error;
     }
     emitEvent("info", "plugin.editor.save", { path: chosen, bytes: bytesOf(text), overwrite: false, micros: microsSince(start), ok: true });
-    saved = view.state.doc;
+    saved = document;
     diskVersion = reply.version;
     fileState = { ...fileState, version: reply.version, disk: "same" };
     describe();
