@@ -35,11 +35,25 @@ test("make check runs the event source check of the kit and the document check o
   ].join("\n"));
 });
 
-// A published commit message is kept, so the push checks it; CI runs the tests and checks on the pushed commits.
-test("make check-push runs only the commit message check of the pushed range (F274-editor)", () => {
+// A published commit is kept, so the push checks its message and the checklist history it carries (F274-editor, E52); CI runs
+// the tests and checks on the pushed commits and the same push check on the range of its event.
+test("make check-push runs only the commit message check and the checklist history check of the pushed range (F274-editor, E52)", () => {
   const header = makefile.split("\n").find((line) => line.startsWith("check-push:")) ?? "";
   assert.equal(header, "check-push:", header);
-  assert.match(recipe("check-push"), /pnpm exec sok-check commits "\$\(or \$\(RANGE\),origin\/main\.\.HEAD\)"/);
+  assert.equal(recipe("check-push"), [
+    '\tpnpm exec sok-check commits "$(or $(RANGE),origin/main..HEAD)"',
+    '\tpnpm exec sok-check docs --range "$(or $(RANGE),origin/main..HEAD)"',
+  ].join("\n"));
+});
+
+test("CI runs make check-push on the range of its event and no kit command of its own (E52)", () => {
+  const ci = readFileSync(path.join(ROOT, ".github", "workflows", "ci.yml"), "utf8");
+  assert.match(ci, /^ {10}fetch-depth: 0$/m, "the checkout of ci.yml must fetch every commit of the pushed range");
+  const step = /^ {6}- name: Pushed range\n {8}if: ([^\n]*)\n {8}run: ([^\n]*)$/m.exec(ci);
+  assert.ok(step, "ci.yml has no Pushed range step");
+  assert.equal(step[1], "github.event_name == 'pull_request' || github.event.before != '0000000000000000000000000000000000000000'");
+  assert.equal(step[2], "make check-push RANGE=${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('{0}..{1}', github.event.before, github.sha) }}");
+  assert.doesNotMatch(ci, /sok-check/, "ci.yml must run the kit commands through the Makefile");
 });
 
 test("the pre-push hook runs make check-push on the pushed range (F238-c-25)", () => {

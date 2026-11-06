@@ -2,8 +2,9 @@
 
 [English](CHANGELOG.md)
 
+- E52: push check와 CI가 kit의 체크리스트 이력 검사를 실행한다. `package.json`이 KR14와 KR15를 담은 kit 0.0.14를 pin하고, `make check-push`가 push 범위에 `sok-check docs --range`를 실행하며, CI가 event의 범위에 `make check-push`를 실행한다. Red: 변경 전 Makefile과 `ci.yml`에서 push check test가 실패했다. Green: 통과한다.
 - P21: core 호환 문서가 `package.json`이 선언한 범위 `^0.0.39`을 적는다.
-- E47: `plugin.json`은 `exposes.element`를 선언하고, page는 `expose.element`를 호출하며, `engines.soksak`은 `^0.0.35`이고, plugin API case 사본은 core F502-13의 파일이다. 그 release는 F502-13의 core release와 KR9의 records kit release를 기다린다. Red: 변경 전 source에서 바뀐 test 100개 중 54개가 실패했고, 그중 44개는 `expose.dom is not a function`으로 실패했다. Green: 통과한다.
+- E47: `plugin.json`은 `exposes.element`를 선언하고, page는 `expose.element`를 호출하며, `engines.soksak`은 `^0.0.35`이고, plugin API case 사본은 core F502-13의 파일이다. 그 release는 F502-13의 core release와 KR19의 records kit release를 기다린다. Red: 변경 전 source에서 바뀐 test 100개 중 54개가 실패했고, 그중 44개는 `expose.dom is not a function`으로 실패했다. Green: 통과한다.
 - E51: `contract-copies.json`이 contract 사본 아홉 개를 SHA-256과 함께 선언하고, release가 이를 담으며, test가 사본과 비교한다. Red: 선언이 없어 test가 실패했다. Green: 통과한다.
 - E50: core 호환성 문서는 package가 선언한 범위 `^0.0.34`를 적고, test가 두 문서를 `engines.soksak`과 비교한다. Red: test가 `^0.0.34`에 대한 `^0.0.24`로 실패했다. Green: 통과한다.
 - E49: `scripts/test-sdk.json`의 case 목록을 읽는다. test는 나열된 각 사본이 있고, 그 surface가 그 export를 가리키며, replay test가 나열된 file을 table을 거쳐 정확히 재생하는지 확인한다. `observeViewDocumentFrames`는 case file을 나열하지 않고, 쓰이지 않는 사본 `diagnostics.json`은 제거된다. Red: surface test가 surface가 `validateDiagnostics`인 `diagnostics.json`에서 실패했다. Green: 통과한다.
