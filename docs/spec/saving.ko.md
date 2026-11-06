@@ -15,3 +15,5 @@ Filesystem 통합 경계는 임시 project 파일, 실제 운영체제 파일 �
 통합 fixture는 text `read`, `readBytes`, version을 확인하는 in-place `write`, file `watch`와 `closed` JSONL message를 지원한다. Descriptor를 닫고 파일을 독립적으로 다시 읽어 확인한 뒤에만 write 성공을 응답한다. Native 알림은 반복될 수 있으며 소비자는 실제 bytes를 다시 읽는다. IPC 순서 제어는 실제 write의 첫 byte 전에 멈추며 성공 응답을 꾸며내지 않는다. 보류한 read는 원래 snapshot을 유지하고, 보류한 알림도 운영체제 event를 유지하면서 전달만 지연한다. Fixture는 directory/tree/git operation, metadata/link 동작이나 부분 write 실패를 다루지 않는다. Editor dispose는 요청 거부와 구독 해제를 소유하고, host 측 close는 close envelope, watcher/process 종료와 임시 directory 삭제를 소유한다. `node scripts/test-filesystem-mutations.mjs`는 정상 baseline과 격리한 editor 변이를 검사하며, 의도적으로 실패시킨 test도 지정된 동작 assertion과 성공한 cleanup을 요구한다. Loader, build, 취소나 timeout 실패는 변이 검출 증거로 인정하지 않는다.
 
 Fixture process가 예기치 않게 끝나면 host adapter는 기록한 종료 원인으로 close를 거부하고 남은 모든 close 대기를 취소하며 임시 directory도 삭제한다. Fixture 소유 fault test가 이 정리 경로를 editor 변이 증거와 별도로 검증한다.
+
+Shared editor 소비자 host는 plugin manifest의 `exposes.element` 선언에 따라 노출 element를 `exposure.element`로 등록한다. Filesystem 통합 test와 응답을 통제하는 test가 이 host를 함께 쓰므로 현재 exposure 계약에 함께 연결되어 실행된다.
