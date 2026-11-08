@@ -24,7 +24,7 @@ test("editor content reads the document text that the view holds", { timeout: 50
 test("editor content refuses other text, a value that is not text and a hidden root document", { timeout: 5000 }, async () => {
   await assert.rejects(editorContentProof(session({ "editor.read": () => "OTHER\n" }), "probe", "SOKSAK EDITOR CONTENT"),
     /does not show "SOKSAK EDITOR CONTENT": "OTHER\\n"/);
-  await assert.rejects(editorContentProof(session({ "editor.read": () => null }), "probe", "SOKSAK EDITOR CONTENT"), /content is not text/);
+  await assert.rejects(editorContentProof(session({ "editor.read": () => null }), "probe", "SOKSAK EDITOR CONTENT"), /editor.read of probe answered no text/);
   await assert.rejects(editorContentProof(session({ "editor.read": () => "SOKSAK EDITOR CONTENT\n" }, { visible: false }), "probe",
     "SOKSAK EDITOR CONTENT"), /shows no document region ""/);
 });

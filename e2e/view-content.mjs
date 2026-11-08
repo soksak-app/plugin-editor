@@ -3,33 +3,22 @@
 import assert from "node:assert/strict";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { valueProof } from "@soksak/window-check/view-content.mjs";
+import { readViewContent, viewContentProof } from "@soksak/window-check/view-content.mjs";
 
 /** The text of the content case of an editor measurement. */
 export const EDITOR_TEXT = "SOKSAK EDITOR CONTENT";
 
-/** The visible document region `document` of surface in host.window, or a failure that names what it holds. */
-async function visibleDocument(s, surface, document) {
-  const host = await s.get("host.window");
-  const row = host.documents.find((item) => item.surface === surface && item.document === document);
-  assert.ok(row?.visible && row.frame.width > 0 && row.frame.height > 0,
-    `${surface} shows no document region ${JSON.stringify(document)}: ${JSON.stringify(row)}`);
-  return row;
-}
+/** The content read of the editor view: the document text that `editor.read` answers in its visible root document. */
+export const EDITOR_READ = Object.freeze({ command: "editor.read" });
 
 /**
- * The text that the editor view of surface holds as its shown content, the document text (editor.read), in its visible root document.
- * The caller waits for the presentation of the window (host.window.presented) after this read.
+ * The text that the editor view of surface holds as its shown content (readViewContent with EDITOR_READ). The caller waits for the
+ * presentation of the window (host.window.presented) after this read.
  */
-export async function readEditorContent(s, surface) {
-  await visibleDocument(s, surface, "");
-  return s.run("editor.read", {}, surface);
-}
+export const readEditorContent = (s, surface) => readViewContent(s, surface, EDITOR_READ);
 
-/** Reads the content of surface (readEditorContent) and returns the proof that it holds expected (valueProof). */
-export async function editorContentProof(s, surface, expected) {
-  return valueProof(expected, await readEditorContent(s, surface), `editor ${surface}`);
-}
+/** Reads the content of surface and returns the proof that it holds expected (viewContentProof with EDITOR_READ). */
+export const editorContentProof = (s, surface, expected) => viewContentProof(s, surface, expected, EDITOR_READ);
 
 /**
  * The content case of an editor measurement: a file of the project that holds EDITOR_TEXT, removed by the cleanups of the session,
