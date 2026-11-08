@@ -1,5 +1,5 @@
 // The benchmark of the editor process footprint: the process group of a normal editor view and of a hidden-only editor view are
-// measured, and the evidence is written into the logs of the configuration folder.
+// measured, and the evidence of each application is written to build/editor-footprint/<application>.json, which the run keeps.
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -91,7 +91,7 @@ for (const app of Object.values(APPS)) {
 
         const evidence = { host: app.name, normalView, hiddenOnlyView: hiddenView.evidence,
           editorFootprint: hiddenView.editorFootprint };
-        const directory = join(app.configDir, "logs", "editor-footprint");
+        const directory = new URL("../../build/editor-footprint/", import.meta.url).pathname;
         mkdirSync(directory, { recursive: true });
         const path = join(directory, `${app.name}.json`);
         writeFileSync(path, `${JSON.stringify(evidence, null, 2)}\n`);
