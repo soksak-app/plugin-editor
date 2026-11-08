@@ -1,5 +1,5 @@
 # Tests, checks and packs the editor plugin (docs/features.md). pack writes the release with pnpm pack.
-.PHONY: install test check pack check-push install-hooks
+.PHONY: install test test-app check pack check-push install-hooks
 
 # The tests use no SDK package or kit: pnpm test builds the test tree (scripts/build-test.mjs) and runs the plugin tests.
 # The installation stage (core docs/spec/plugins.md#repositories): it installs the locked dependencies; the tests, checks and packs consume them without installing.
@@ -8,6 +8,12 @@ install:
 
 test:
 	pnpm test
+
+# test-app runs the window checks of this plugin (e2e/) against the published core application of the core release of the installed
+# @soksak/window-check (core docs/spec/plugins.md#window-checks-of-a-plugin): scripts/test-app.mjs keeps the application zips of that
+# release in build/app-cache/, installs this plugin from its packed release into each application and runs the checks.
+test-app:
+	node scripts/test-app.mjs
 
 # check runs the checks of the kit releases that package.json pins: sok-check events counts the records missing from the sources
 # and matches events.json with the emit sites, and sok-check docs checks the records. The application validates plugin.json
