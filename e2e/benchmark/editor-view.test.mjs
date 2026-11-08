@@ -24,6 +24,7 @@ for (const app of Object.values(APPS)) {
       ] });
       const result = await runViewMeasurements(t, s, {
         plugin: "editor",
+        // The DOM mount baseline of the editor view (docs/spec/view-measurement.md).
         baselinesMs: { wailsv3: 13, tauriv2: 35 },
         measureEditorFootprint: true,
         collect: async () => {

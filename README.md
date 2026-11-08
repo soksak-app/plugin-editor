@@ -2,7 +2,7 @@
 
 [한국어](README.ko.md)
 
-Editor plugin: opens text files of the project in CodeMirror and saves them through the files sidecar. Other plugins extend it through the extension points `editor.extension` and `editor.formatter` ([docs/extension-points.md](docs/extension-points.md)). The plugin format is defined in the soksak core specification (`docs/spec/plugins.md`).
+Editor plugin: opens text files of the project in CodeMirror and saves them through the files sidecar. Other plugins extend it through the extension points `editor.extension` and `editor.formatter` ([docs/extension-points.md](docs/extension-points.md)). The plugin format is defined in the soksak core specification (`docs/spec/plugins.md`). [docs/spec/view-measurement.md](docs/spec/view-measurement.md) records the DOM mount baseline of the view.
 
 ```sh
 make test                                   # tests
