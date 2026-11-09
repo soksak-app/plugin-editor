@@ -11,10 +11,8 @@ import { currentEventOffsets, readEvents } from "@soksak/window-check/event-log.
 import { fresh } from "./start.mjs";
 
 /** Waits until the view has registered the status before the first status watch. */
-const editorDocumentRegistered = (s, surface) => s.until("core.surfaces", (all) => {
-  const view = all.find((item) => item.surface === surface);
-  return view?.exposes.includes("status editor.document") ? view : undefined;
-}, "the editor did not register status editor.document");
+const editorDocumentRegistered = (s, surface) => s.until("core.surfaces", (all) => all.some((item) => item.surface === surface
+  && item.exposes.includes("status editor.document")), "the editor did not register status editor.document");
 
 /** Gives an inactive editor view the native first responder through its declared text element. */
 const focusEditorForKeys = async (s, surface) => {
