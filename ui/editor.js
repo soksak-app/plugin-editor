@@ -389,13 +389,20 @@ export async function mount(root, context) {
     try {
       body = await readAgain("watch");
     } catch (error) {
-      // readAgain records every failure; only the current read may change the tab's error display.
+      // readAgain records every failure; only the current read may change the tab's error display. A failed read that a
+      // newer file operation superseded is dropped, and the drop is recorded.
       if (!disposed && generation === watchGeneration) throw error;
+      if (!disposed) emitEvent("debug", "plugin.editor.watch.superseded", { path, ok: false });
       return;
     } finally {
       pendingWatches -= 1;
     }
-    if (disposed || generation !== watchGeneration) return;
+    if (disposed) return;
+    // A read that a newer file operation superseded changes nothing; the drop of its reply is recorded.
+    if (generation !== watchGeneration) {
+      emitEvent("debug", "plugin.editor.watch.superseded", { path, ok: true });
+      return;
+    }
     diskVersion = body.version;
     diskRevision += 1;
     if (body.version === fileState.version) {

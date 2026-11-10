@@ -260,6 +260,28 @@
       },
       "description": "The files sidecar stopped the watch and reported why."
     },
+    "plugin.editor.watch.superseded": {
+      "layer": "plugin",
+      "class": "io",
+      "level": "debug",
+      "fields": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "ok"
+        ]
+      },
+      "description": "A newer file operation superseded the read of a watched change, and the editor dropped the reply of that read without changing the document; ok is false when that read failed."
+    },
     "plugin.editor.disk.decision": {
       "layer": "plugin",
       "class": "lifecycle",
