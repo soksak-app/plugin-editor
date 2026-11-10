@@ -9,7 +9,7 @@ const packageManifest = JSON.parse(readFileSync(new URL("../package.json", impor
 const events = JSON.parse(readFileSync(new URL("../events.json", import.meta.url), "utf8"));
 
 // Every release holds the diagnostic declaration and its module, and only a diagnostic build reads them (core docs/spec/plugins.md).
-test("the published editor package holds the diagnostic declaration and module", { timeout: 5000 }, () => {
+test("the published editor package holds the diagnostic declaration and module", () => {
   assert.ok(packageManifest.files.includes("ui/view-diagnostics.js"));
   assert.ok(packageManifest.files.includes("diagnostics.json"));
   assert.ok(packageManifest.files.includes(declaration.module));

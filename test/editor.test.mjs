@@ -10,6 +10,7 @@ import { emitViewFrameProbe, inspectViewFrameProbe, resetViewFrameProbe } from "
 const { mount } = await import("../build/test/ui/editor.js");
 const { markdownView, projectImagePath, safeImageSource } = await import("../build/test/ui/markdown.js");
 const { EditorView } = await import("../build/test/shared/@codemirror/view.js");
+const { StateEffect } = await import("../build/test/shared/@codemirror/state.js");
 const { attach: attachDiagnostics } = await import("../build/test/ui/editor-diagnostics.js");
 const manifest = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.url), "utf8"));
 const eventCatalog = JSON.parse(readFileSync(new URL("../events.json", import.meta.url), "utf8"));
@@ -17,7 +18,7 @@ const validateContentFrame = new Ajv2020({ allErrors: true }).compile(eventCatal
 const declared = (kind, name) => manifest.exposes[kind].some((entry) => entry.name === name);
 
 
-test("a diagnostic hidden-memory start skips the visible editor and creates one hidden view", { timeout: 5000 }, async (t) => {
+test("a diagnostic hidden-memory start skips the visible editor and creates one hidden view", async (t) => {
   const documentText = "const first = 1;\nconst second = 2;\n";
   assert.deepEqual(manifest.surface.params.properties.diagnosticMode.enum, ["hidden-memory"]);
   assert.equal(manifest.surface.params.properties.document.type, "string");
@@ -50,7 +51,7 @@ test("a diagnostic hidden-memory start skips the visible editor and creates one 
   assert.equal(editor.root.querySelector(".cm-editor"), null, "the diagnostic command removes the initial hidden view");
 });
 
-test("a hidden-memory start is refused without the diagnostic declaration", { timeout: 5000 }, async (t) => {
+test("a hidden-memory start is refused without the diagnostic declaration", async (t) => {
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const root = host.attachShadow({ mode: "open" });
@@ -67,7 +68,7 @@ test("a hidden-memory start is refused without the diagnostic declaration", { ti
   assert.equal(root.querySelectorAll(".cm-editor").length, 0, "refusal occurs before EditorView construction");
 });
 
-test("a hidden-memory start removes its view when diagnostic attachment fails", { timeout: 5000 }, async (t) => {
+test("a hidden-memory start removes its view when diagnostic attachment fails", async (t) => {
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const root = host.attachShadow({ mode: "open" });
@@ -83,7 +84,7 @@ test("a hidden-memory start removes its view when diagnostic attachment fails", 
   assert.equal(root.querySelector("[data-editor-diagnostic-hidden]"), null, "a failed diagnostic attach removes its host");
 });
 
-test("content frame diagnostics observe the view root and restore its card style", { timeout: 5000 }, async (t) => {
+test("content frame diagnostics observe the view root and restore its card style", async (t) => {
   resetViewFrameProbe();
   t.after(resetViewFrameProbe);
   const documentRoot = window.document.documentElement;
@@ -174,11 +175,28 @@ test("content frame diagnostics observe the view root and restore its card style
   assert.equal(inspectViewFrameProbe().stopCount, 2);
 });
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
-// File replies and their consumers use microtasks; one event-loop turn drains them without a timing delay.
-const repliesDrained = () => new Promise(setImmediate);
+/**
+ * Resolves when condition() holds after an update of view. An update listener of the view checks it at each update, so the
+ * wait resolves in the update that completes it.
+ */
+function viewUpdate(view, condition) {
+  if (condition()) return Promise.resolve();
+  const done = Promise.withResolvers();
+  let found = false;
+  view.dispatch({ effects: StateEffect.appendConfig.of(EditorView.updateListener.of(() => {
+    if (found || !condition()) return;
+    found = true;
+    done.resolve();
+  })) });
+  return done.promise;
+}
+// The editor records the decision of a watch read when it has handled the read of a change on disk, and records a watch read
+// that a newer file operation superseded when it drops that read: each record ends the handling of its read.
+const decision = (nextLog) => nextLog("disk.decision");
+const superseded = (nextLog) => nextLog("watch.superseded");
+const decided = (editor) => editor.until(() => editor.logs.some((entry) => entry.event === "disk.decision"));
 
-for (const event of ["error", "changed"]) test(`a sidecar ${event} during contribution loading is handled before the editor is ready`, { timeout: 5000 }, async (t) => {
+for (const event of ["error", "changed"]) test(`a sidecar ${event} during contribution loading is handled before the editor is ready`, async (t) => {
   const files = new Map([["src/main.js", "initial\n"]]);
   const sidecar = fakeFiles(files);
   const loaded = Promise.withResolvers();
@@ -196,22 +214,24 @@ for (const event of ["error", "changed"]) test(`a sidecar ${event} during contri
     assert.doesNotThrow(() => receive(event === "error" ? { error: "watch unavailable" } : { changed: "src/main.js" }));
   } finally { loaded.resolve([]); }
   const editor = await mounting;
-  await repliesDrained();
+  // The error is shown before the editor is ready; the change is read after it, and its decision ends its handling.
+  if (event === "changed") await decided(editor);
   if (event === "error") assert.match(editor.reports.error.at(-1), /watch unavailable/);
   else assert.equal(editor.run("editor.read"), "latest\n");
 });
 
-test("a watch during the initial read refreshes the opened document", { timeout: 5000 }, async (t) => {
+test("a watch during the initial read refreshes the opened document", async (t) => {
   const files = new Map([["src/main.js", "initial\n"]]);
   const sidecar = fakeFiles(files);
   const opening = sidecar.holdReply("read");
   const mounting = setup(t, { files, filesPort: sidecar });
   await opening.received;
-  sidecar.change("src/main.js", "latest\n");
-  await repliesDrained();
+  // The change reaches the editor before the held read reply: each reply reaches it in the order of its delivery.
+  await sidecar.change("src/main.js", "latest\n");
   opening.release();
-  const { run, status } = await mounting;
-  await repliesDrained();
+  const editor = await mounting;
+  const { run, status } = editor;
+  await decided(editor);
   assert.equal(run("editor.read"), "latest\n");
   assert.equal(status("editor.document").version, sha("latest\n"));
 });
@@ -241,7 +261,7 @@ test("an edit marks the tab modified and a save writes the text in place", async
   assert.deepEqual(reports.error, [null]);
 });
 
-for (const firstSave of [false, true]) test(`a delayed ${firstSave ? "first" : "existing file"} save keeps later edits reported as modified`, { timeout: 5000 }, async (t) => {
+for (const firstSave of [false, true]) test(`a delayed ${firstSave ? "first" : "existing file"} save keeps later edits reported as modified`, async (t) => {
   const path = "src/main.js";
   const editor = await setup(t, firstSave ? { params: {}, files: new Map(), place: () => ({ path }) } : {});
   const { run, status, reports, files, sidecar } = editor;
@@ -264,8 +284,8 @@ for (const firstSave of [false, true]) test(`a delayed ${firstSave ? "first" : "
   assert.equal(reports.modified.at(-1), false);
 });
 
-test("an older watch reply cannot replace the document written by a completed save", { timeout: 5000 }, async (t) => {
-  const { run, status, sidecar, files } = await setup(t);
+test("an older watch reply cannot replace the document written by a completed save", async (t) => {
+  const { run, status, sidecar, files, nextLog } = await setup(t);
   const oldRead = sidecar.holdReply("read");
   sidecar.change("src/main.js", "old disk text\n");
   await oldRead.received;
@@ -274,43 +294,47 @@ test("an older watch reply cannot replace the document written by a completed sa
   files.set("src/main.js", "let a = 1;\n// TODO: b\n");
   const written = run("editor.read");
   await run("editor.save");
+  const older = superseded(nextLog);
   oldRead.release();
-  await repliesDrained();
+  await older;
   assert.equal(run("editor.read"), written);
   assert.equal(status("editor.document").version, sha(written));
   assert.equal(status("editor.document").disk, "same");
   assert.equal(status("editor.document").modified, false);
 });
 
-test("an older watch reply cannot replace a newer disk change", { timeout: 5000 }, async (t) => {
-  const { run, status, sidecar } = await setup(t);
+test("an older watch reply cannot replace a newer disk change", async (t) => {
+  const { run, status, sidecar, nextLog } = await setup(t);
   const oldRead = sidecar.holdReply("read");
   sidecar.change("src/main.js", "older\n");
   await oldRead.received;
+  const newer = decision(nextLog);
   sidecar.change("src/main.js", "newer\n");
-  await repliesDrained();
+  await newer;
+  const older = superseded(nextLog);
   oldRead.release();
-  await repliesDrained();
+  await older;
   assert.equal(run("editor.read"), "newer\n");
   assert.equal(status("editor.document").version, sha("newer\n"));
   assert.equal(status("editor.document").disk, "same");
 });
 
-test("an older watch reply cannot replace an explicitly reloaded document", { timeout: 5000 }, async (t) => {
-  const { run, status, sidecar, files } = await setup(t);
+test("an older watch reply cannot replace an explicitly reloaded document", async (t) => {
+  const { run, status, sidecar, files, nextLog } = await setup(t);
   const oldRead = sidecar.holdReply("read");
   sidecar.change("src/main.js", "older\n");
   await oldRead.received;
   files.set("src/main.js", "reloaded\n");
   await run("editor.reload");
+  const older = superseded(nextLog);
   oldRead.release();
-  await repliesDrained();
+  await older;
   assert.equal(run("editor.read"), "reloaded\n");
   assert.equal(status("editor.document").version, sha("reloaded\n"));
   assert.equal(status("editor.document").modified, false);
 });
 
-for (const later of ["save", "reload"]) test(`an older reload is refused after a newer ${later} completes`, { timeout: 5000 }, async (t) => {
+for (const later of ["save", "reload"]) test(`an older reload is refused after a newer ${later} completes`, async (t) => {
   const { run, status, sidecar, files, reports } = await setup(t);
   const oldRead = sidecar.holdReply("read");
   const reloading = run("editor.reload");
@@ -333,8 +357,8 @@ for (const later of ["save", "reload"]) test(`an older reload is refused after a
   assert.deepEqual(reports.error, errors, "the superseded operation must not replace the newer error display");
 });
 
-test("a delayed save reply preserves the newer watched disk version for overwrite", { timeout: 5000 }, async (t) => {
-  const { run, status, sidecar, files } = await setup(t);
+test("a delayed save reply preserves the newer watched disk version for overwrite", async (t) => {
+  const { run, status, sidecar, files, nextLog } = await setup(t);
   run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
   const written = run("editor.read");
   const saveReply = sidecar.holdReply("write");
@@ -343,8 +367,9 @@ test("a delayed save reply preserves the newer watched disk version for overwrit
   const watchReply = sidecar.holdReply("read");
   sidecar.change("src/main.js", "external\n");
   await watchReply.received;
+  const conflict = decision(nextLog);
   watchReply.release();
-  await repliesDrained();
+  await conflict;
   assert.equal(status("editor.document").disk, "changed");
   saveReply.release();
   await saving;
@@ -357,16 +382,17 @@ test("a delayed save reply preserves the newer watched disk version for overwrit
   assert.equal(status("editor.document").disk, "same");
 });
 
-test("a watch restoring the saved disk version clears the conflict but keeps local edits", { timeout: 5000 }, async (t) => {
-  const { run, status, sidecar, root } = await setup(t);
+test("a watch restoring the saved disk version clears the conflict but keeps local edits", async (t) => {
+  const { run, status, sidecar, root, nextLog } = await setup(t);
   const original = run("editor.read");
   run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
   for (const text of ["external\n", original]) {
     const reply = sidecar.holdReply("read");
     sidecar.change("src/main.js", text);
     await reply.received;
+    const handled = decision(nextLog);
     reply.release();
-    await repliesDrained();
+    await handled;
     assert.equal(status("editor.document").disk, text === original ? "same" : "changed");
   }
   assert.equal(run("editor.read"), `local-${original}`);
@@ -374,13 +400,14 @@ test("a watch restoring the saved disk version clears the conflict but keeps loc
   assert.equal(root.querySelector("#banner").hidden, true);
 });
 
-test("a delayed save reply cannot replace a newer document loaded by watch", { timeout: 5000 }, async (t) => {
-  const { run, status, sidecar } = await setup(t);
+test("a delayed save reply cannot replace a newer document loaded by watch", async (t) => {
+  const { run, status, sidecar, nextLog } = await setup(t);
   const saveReply = sidecar.holdReply("write");
   const saving = run("editor.save");
   await saveReply.received;
+  const loaded = decision(nextLog);
   sidecar.change("src/main.js", "newer\n");
-  await repliesDrained();
+  await loaded;
   assert.equal(run("editor.read"), "newer\n");
   saveReply.release();
   await saving;
@@ -388,8 +415,8 @@ test("a delayed save reply cannot replace a newer document loaded by watch", { t
   assert.equal(status("editor.document").modified, false);
 });
 
-for (const first of ["save", "watch"]) test(`a refused save preserves the pending watch conflict when ${first} replies first`, { timeout: 5000 }, async (t) => {
-  const { run, status, sidecar, reports } = await setup(t);
+for (const first of ["save", "watch"]) test(`a refused save preserves the pending watch conflict when ${first} replies first`, async (t) => {
+  const { run, status, sidecar, reports, nextLog } = await setup(t);
   run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
   const readReply = sidecar.holdReply("read");
   sidecar.change("src/main.js", "external\n");
@@ -397,14 +424,18 @@ for (const first of ["save", "watch"]) test(`a refused save preserves the pendin
   const saveReply = sidecar.holdReply("write");
   const rejected = assert.rejects(run("editor.save"), /changed on disk/);
   await saveReply.received;
+  // A watch read that replies while the save is pending is superseded by the save and ends with its superseded record. When the
+  // save replies first, its refusal reads the file again, and the conflict decision of that read ends the handling.
   if (first === "watch") {
+    const read = superseded(nextLog);
     readReply.release();
-    await repliesDrained();
+    await read;
   }
+  const conflict = decision(nextLog);
   saveReply.release();
   await rejected;
   if (first === "save") readReply.release();
-  await repliesDrained();
+  await conflict;
   assert.equal(status("editor.document").disk, "changed");
   assert.equal(status("editor.document").modified, true);
   assert.match(reports.error.at(-1), /changed on disk/);
@@ -412,7 +443,7 @@ for (const first of ["save", "watch"]) test(`a refused save preserves the pendin
   assert.equal(sidecar.sent.filter((body) => body.operation === "write").at(-1).expect, sha("external\n"));
 });
 
-test("an older save reply cannot replace a newer completed save", { timeout: 5000 }, async (t) => {
+test("an older save reply cannot replace a newer completed save", async (t) => {
   const { run, status, sidecar, files } = await setup(t);
   const firstReply = sidecar.holdReply("write");
   const firstSave = run("editor.save");
@@ -427,7 +458,7 @@ test("an older save reply cannot replace a newer completed save", { timeout: 500
   assert.equal(status("editor.document").modified, false);
 });
 
-test("an older first-save reply cannot mark edits clean after a newer save", { timeout: 5000 }, async (t) => {
+test("an older first-save reply cannot mark edits clean after a newer save", async (t) => {
   const { run, status, sidecar, files, reports } = await setup(t, {
     params: {}, files: new Map(), place: () => ({ path: "new.txt" }),
   });
@@ -447,7 +478,7 @@ test("an older first-save reply cannot mark edits clean after a newer save", { t
   assert.equal(reports.modified.at(-1), true);
 });
 
-for (const heldOperation of ["write", "readBytes"]) test(`a superseded first save cannot overwrite a newer save after its ${heldOperation} reply`, { timeout: 5000 }, async (t) => {
+for (const heldOperation of ["write", "readBytes"]) test(`a superseded first save cannot overwrite a newer save after its ${heldOperation} reply`, async (t) => {
   const { run, status, sidecar, files } = await setup(t, {
     params: {}, files: new Map([["new.txt", "B"]]), place: () => ({ path: "new.txt" }),
   });
@@ -467,7 +498,7 @@ for (const heldOperation of ["write", "readBytes"]) test(`a superseded first sav
   assert.equal(status("editor.document").modified, false);
 });
 
-test("an older save failure cannot replace the error display of a newer successful save", { timeout: 5000 }, async (t) => {
+test("an older save failure cannot replace the error display of a newer successful save", async (t) => {
   const { run, sidecar, files, reports } = await setup(t);
   const original = run("editor.read");
   run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
@@ -483,7 +514,7 @@ test("an older save failure cannot replace the error display of a newer successf
   assert.deepEqual(reports.error, errors);
 });
 
-for (const refused of [false, true]) test(`an older save-place ${refused ? "failure" : "reply"} cannot affect a newer completed save`, { timeout: 5000 }, async (t) => {
+for (const refused of [false, true]) test(`an older save-place ${refused ? "failure" : "reply"} cannot affect a newer completed save`, async (t) => {
   const chosen = Promise.withResolvers();
   const requested = Promise.withResolvers();
   let calls = 0;
@@ -500,14 +531,14 @@ for (const refused of [false, true]) test(`an older save-place ${refused ? "fail
   const sends = sidecar.sent.length;
   if (refused) chosen.reject(new Error("place failed"));
   else chosen.resolve({ path: "obsolete.txt" });
-  await repliesDrained();
-  assert.equal(sidecar.sent.length, sends, "the superseded place must not start a write");
+  // The refusal of the superseded save ends its handling.
   await rejected;
+  assert.equal(sidecar.sent.length, sends, "the superseded place must not start a write");
   assert.deepEqual(reports, before);
   assert.equal(status("editor.document").path, "current.txt");
 });
 
-test("an older first-save contribution reply cannot change the newly named file", { timeout: 5000 }, async (t) => {
+test("an older first-save contribution reply cannot change the newly named file", async (t) => {
   const extensions = Promise.withResolvers();
   const loading = Promise.withResolvers();
   const secondPlace = Promise.withResolvers();
@@ -537,7 +568,7 @@ test("an older first-save contribution reply cannot change the newly named file"
   assert.equal(sidecar.sent.length, sends, "the older naming must not start another watch");
 });
 
-for (const operation of ["save", "watch", "reload"]) test(`disposing with a pending ${operation} prevents late tab updates`, { timeout: 5000 }, async (t) => {
+for (const operation of ["save", "watch", "reload"]) test(`disposing with a pending ${operation} prevents late tab updates`, async (t) => {
   const { run, sidecar, reports, root, dispose, logs } = await setup(t);
   const reply = sidecar.holdReply(operation === "save" ? "write" : "read");
   let rejected;
@@ -550,8 +581,8 @@ for (const operation of ["save", "watch", "reload"]) test(`disposing with a pend
   const before = structuredClone(reports);
   await dispose();
   await rejected;
-  reply.release();
-  await repliesDrained();
+  // The disposed editor has no listener left, so the delivery of the released reply ends its handling.
+  await reply.release();
   assert.deepEqual(reports, before, "a disposed tab receives no modified, error, title or state report");
   assert.equal(sidecar.listenerCount(), 0);
   assert.equal(root.childNodes.length, 0);
@@ -559,7 +590,7 @@ for (const operation of ["save", "watch", "reload"]) test(`disposing with a pend
   assert.equal(eventsOf(logs, "request").at(-1).fields.ok, false);
 });
 
-for (const refused of [false, true]) test(`disposing while the first save ${refused ? "refuses" : "chooses"} a path prevents a late update`, { timeout: 5000 }, async (t) => {
+for (const refused of [false, true]) test(`disposing while the first save ${refused ? "refuses" : "chooses"} a path prevents a late update`, async (t) => {
   const chosen = Promise.withResolvers();
   const requested = Promise.withResolvers();
   const { run, sidecar, reports, dispose } = await setup(t, { params: {}, files: new Map(), place: () => {
@@ -573,19 +604,19 @@ for (const refused of [false, true]) test(`disposing while the first save ${refu
   await dispose();
   if (refused) chosen.reject(new Error("place failed"));
   else chosen.resolve({ path: "new.txt" });
-  await repliesDrained();
-  assert.deepEqual(sidecar.sent, [], "the closed editor must not send a new write");
+  // The refusal of the save of the closed editor ends its handling.
   await rejected;
+  assert.deepEqual(sidecar.sent, [], "the closed editor must not send a new write");
   assert.deepEqual(reports, before);
   assert.equal(sidecar.listenerCount(), 0);
 });
 
 test("a save after the file changed on disk fails, shows the tab error and keeps the changes", async (t) => {
-  const { run, status, reports, sidecar } = await setup(t);
+  const { run, status, reports, sidecar, nextLog } = await setup(t);
   run("editor.edit", { changes: [{ from: 0, to: 0, insert: "// head\n" }] });
+  const conflict = decision(nextLog);
   sidecar.change("src/main.js", "changed elsewhere\n");
-  await settle();
-  await settle();
+  await conflict;
   assert.equal(status("editor.document").disk, "changed");
   await assert.rejects(run("editor.save"), /changed on disk: src\/main.js/);
   assert.equal(reports.error.at(-1), "저장하지 못했습니다 · changed on disk: src/main.js");
@@ -596,16 +627,16 @@ test("a save after the file changed on disk fails, shows the tab error and keeps
 });
 
 test("a change on disk replaces an unmodified text and is ignored when it is the editor's own write", async (t) => {
-  const { run, status, sidecar } = await setup(t);
+  const { run, status, sidecar, nextLog } = await setup(t);
+  const loaded = decision(nextLog);
   sidecar.change("src/main.js", "new text\n");
-  await settle();
-  await settle();
+  await loaded;
   assert.equal(run("editor.read"), "new text\n");
   run("editor.edit", { changes: [{ from: 0, to: 3, insert: "old" }] });
   await run("editor.save");
+  const same = decision(nextLog);
   sidecar.change("src/main.js", "old text\n");
-  await settle();
-  await settle();
+  await same;
   assert.equal(status("editor.document").disk, "same");
 });
 
@@ -652,15 +683,15 @@ test("every interactive element of the editor is bound to a declared command and
 });
 
 test("the shortcut Command-S saves and Command-F opens the find bar", async (t) => {
-  const { root, status, run, files } = await setup(t);
+  const { root, status, run, files, nextLog } = await setup(t);
   run("editor.edit", { changes: [{ from: 0, to: 0, insert: "x" }] });
   const content = root.querySelector(".cm-content");
   const key = (code, options = {}) => new window.KeyboardEvent("keydown", { code, metaKey: true, bubbles: true, cancelable: true, ...options });
   const save = key("KeyS");
+  const saved = nextLog("save");
   content.dispatchEvent(save);
   assert.equal(save.defaultPrevented, true);
-  await settle();
-  await settle();
+  await saved;
   assert.equal(files.get("src/main.js").startsWith("xlet"), true);
   content.dispatchEvent(key("KeyF", { altKey: true }));
   assert.equal(status("editor.find").open, true);
@@ -741,16 +772,16 @@ test("an open of a missing file records the failure and still fails", async (t) 
 });
 
 test("a save records its bytes, overwrite and result, and a refused save records the error", async (t) => {
-  const { run, logs, sidecar } = await setup(t);
+  const { run, logs, sidecar, nextLog } = await setup(t);
   run("editor.edit", { changes: [{ from: 8, to: 9, insert: "2" }] });
   await run("editor.save");
   const [saved] = eventsOf(logs, "save");
   assert.equal(saved.level, "info");
   assert.deepEqual({ ...saved.fields, micros: isMicros(saved.fields.micros) }, { path: "src/main.js", bytes: 22, overwrite: false, micros: true, ok: true });
   run("editor.edit", { changes: [{ from: 0, to: 0, insert: "x" }] });
+  const conflict = decision(nextLog);
   sidecar.change("src/main.js", "elsewhere\n");
-  await settle();
-  await settle();
+  await conflict;
   await assert.rejects(run("editor.save"), /changed on disk/);
   const refused = eventsOf(logs, "save").at(-1);
   assert.equal(refused.level, "warn");
@@ -759,24 +790,24 @@ test("a save records its bytes, overwrite and result, and a refused save records
 });
 
 test("a change on disk records the change, the read and the decision", async (t) => {
-  const { run, logs, sidecar } = await setup(t);
+  const { run, logs, sidecar, nextLog } = await setup(t);
+  const loaded = decision(nextLog);
   sidecar.change("src/main.js", "new text\n");
-  await settle();
-  await settle();
+  await loaded;
   assert.deepEqual(eventsOf(logs, "watch.change").map((entry) => entry.fields), [{ path: "src/main.js" }]);
   const [read] = eventsOf(logs, "read");
   assert.equal(read.fields.reason, "watch");
   assert.equal(read.fields.bytes, 9);
   assert.equal(read.fields.ok, true);
   assert.deepEqual(eventsOf(logs, "disk.decision").map((entry) => entry.fields), [{ path: "src/main.js", decision: "loaded", modified: false }]);
+  const same = decision(nextLog);
   sidecar.change("src/main.js", "new text\n");
-  await settle();
-  await settle();
+  await same;
   assert.equal(eventsOf(logs, "disk.decision").at(-1).fields.decision, "same");
   run("editor.edit", { changes: [{ from: 0, to: 0, insert: "mine " }] });
+  const conflict = decision(nextLog);
   sidecar.change("src/main.js", "other\n");
-  await settle();
-  await settle();
+  await conflict;
   assert.deepEqual(eventsOf(logs, "disk.decision").at(-1).fields, { path: "src/main.js", decision: "conflict", modified: true });
 });
 
@@ -792,9 +823,10 @@ test("a read of the reload command and a failed read are recorded", async (t) =>
 });
 
 test("the stop of the watch is recorded as an error event", async (t) => {
-  const { logs, sidecar } = await setup(t);
+  const { logs, sidecar, nextLog } = await setup(t);
+  const stopped = nextLog("watch.error");
   sidecar.report({ error: "the watch ended" });
-  await settle();
+  await stopped;
   assert.deepEqual(eventsOf(logs, "watch.error"), [{ level: "error", event: "watch.error", fields: { path: "src/main.js", error: "the watch ended" } }]);
 });
 
@@ -915,9 +947,9 @@ test("the tab stays loaded while a formatter runs", async (t) => {
   const formatter = { plugin: "fmt", item: {}, module: `data:text/javascript,${encodeURIComponent("export const format = (text) => globalThis.__editorFormat(text);")}`, fail() {} };
   globalThis.__editorFormat = (text) => new Promise((resolve) => { finish = () => resolve(text.toUpperCase()); });
   t.after(() => { delete globalThis.__editorFormat; });
-  const { run, reports } = await setup(t, { contributions: { formatter: [formatter] } });
+  const { run, reports, until } = await setup(t, { contributions: { formatter: [formatter] } });
   const formatted = run("editor.format");
-  await settle();
+  await until(() => reports.keep.length > 0);
   assert.deepEqual(reports.keep, [["busy", true]]);
   finish();
   await formatted;
@@ -986,8 +1018,8 @@ test("Markdown decorations cover headings near the end of a large document", asy
   const headingStart = text.lastIndexOf("# Final heading");
   assert.equal(headings[0].from, headingStart);
   run("editor.edit", { changes: [{ from: headingStart + 2, to: headingStart + "# Final heading".length, insert: "Updated heading" }] });
-  // The decorations of the edited heading appear when the parse of the large document completes in its 50 ms slices.
-  // No event reports that completion to the test, so the test waits for the refreshed decorations within a bound.
+  // The decorations of the edited heading appear when the parse of the large document completes; the view update that
+  // carries them is the event that the test awaits.
   const headingLines = () => {
     const ranges = [];
     view.state.field(markdownView).decorations.between(0, view.state.doc.length, (from, to, value) => {
@@ -995,11 +1027,12 @@ test("Markdown decorations cover headings near the end of a large document", asy
     });
     return ranges;
   };
-  let updated = headingLines();
-  for (let turn = 0; turn < 5000 && !(updated.length === 1 && view.state.sliceDoc(updated[0].from, updated[0].to) === "# Updated heading"); turn += 1) {
-    await settle();
-    updated = headingLines();
-  }
+  const refreshed = () => {
+    const lines = headingLines();
+    return lines.length === 1 && view.state.sliceDoc(lines[0].from, lines[0].to) === "# Updated heading";
+  };
+  await viewUpdate(view, refreshed);
+  const updated = headingLines();
   assert.equal(updated.length, 1, "the completed parse refreshes decorations after an edit");
   assert.equal(view.state.sliceDoc(updated[0].from, updated[0].to), "# Updated heading");
 });
@@ -1039,9 +1072,12 @@ test("Markdown image URLs refresh after edits and reloads", async (t) => {
   const { root, run, sidecar, dispose } = await setup(t, { path: "docs/nested/readme.md", files });
   await run("editor.markdown.toggle");
   const firstUrl = root.querySelector("img.cm-md-image").getAttribute("src");
+  const view = EditorView.findFromDOM(root.querySelector(".cm-editor"));
+  const imageUrl = () => root.querySelector("img.cm-md-image")?.getAttribute("src");
   const from = text.indexOf("images/first.png");
   run("editor.edit", { changes: [{ from, to: from + "images/first.png".length, insert: "images/second.png" }] });
-  await settle();
+  // The view update that draws the image of the edited source is the event that the test awaits.
+  await viewUpdate(view, () => ![undefined, firstUrl].includes(imageUrl()));
   const secondUrl = root.querySelector("img.cm-md-image").getAttribute("src");
   assert.notEqual(secondUrl, firstUrl);
   assert.deepEqual(new Uint8Array(await (await fetch(secondUrl)).arrayBuffer()), second);
@@ -1050,7 +1086,7 @@ test("Markdown image URLs refresh after edits and reloads", async (t) => {
   await run("editor.save");
   files.set("docs/nested/images/second.png", reloaded);
   await run("editor.reload");
-  await settle();
+  await viewUpdate(view, () => ![undefined, secondUrl].includes(imageUrl()));
   const reloadedUrl = root.querySelector("img.cm-md-image").getAttribute("src");
   assert.notEqual(reloadedUrl, secondUrl);
   assert.deepEqual(new Uint8Array(await (await fetch(reloadedUrl)).arrayBuffer()), reloaded);

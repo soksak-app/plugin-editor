@@ -5,8 +5,8 @@ import { createCalls } from "./calls.mjs";
 // the theme subscription, and the exposure calls. It runs over window.sokView of the view wire (view-wire.mjs) and posts
 // through handler.postMessage. The conformance test replays test/fixtures/contract/view-bridge.json, view-native.json and
 // view-commands.json. The page's runtime.log has no level query: it sends each record through the call layer, and its field
-// builder runs for each record (core packages/plugin-api/view.js). The page's calls keep the time limit of calls.json
-// (test/models/calls.mjs).
+// builder runs for each record (core packages/plugin-api/view.js). The page's calls end as the calls of calls.json, by their
+// reply, their cancel or the end of their peer, and by no timer (test/models/calls.mjs).
 
 const NOT_REGISTERED = 1002;
 const FAILED = -32000;
@@ -32,9 +32,9 @@ export function createViewBridge({ handler, report = () => {} }) {
   const natives = new Map();
 
   const post = (message) => handler.postMessage(message);
-  // The page's calls keep the limit of the call layer (core calls.json); the reports of the layer reach report.
+  // The page's calls are the calls of the call layer (core calls.json); the reports of the layer reach report.
   const layer = createCalls({ plugin, send: (message) => post({ sok: 1, ...message }), report });
-  const request = (command, params, timeout) => layer.request(command, params, timeout);
+  const request = (command, params, options) => layer.request(command, params, options);
   const answer = (id, payload) => post({ sok: 1, reply: id, ...payload });
 
   /** The host requests answered from the registered commands; a command that is not registered is refused. */

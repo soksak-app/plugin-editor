@@ -140,7 +140,7 @@ function installPageErrors(report) {
 // The page: the start values, the bridge over the injected channel, the theme of the document, and the mount into the
 // shadow root of the page body.
 const start = startValues();
-// The reports of the bridge: each loss of a call or a snapshot (timeout, late-reply, peer-lost, skipped, stalled) is stored as
+// The reports of the bridge: each loss of a call or a snapshot (late-reply, peer-lost, skipped, stalled) is stored as
 // an error of the calls. open-calls is the count of the open calls, a state that changes with every call and no loss, so the
 // page stores none of it; storing it through a call would report a new count without end. The reporter needs the calls of
 // the bridge, so a loss before it exists waits in losses.

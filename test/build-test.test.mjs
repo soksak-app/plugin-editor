@@ -30,14 +30,14 @@ function fixture(t, testSource, { declared = true } = {}) {
 
 function build(directory) {
   const result = spawnSync(process.execPath, [path.join(directory, "scripts/build-test.mjs")], {
-    cwd: directory, encoding: "utf8", timeout: 10000,
+    cwd: directory, encoding: "utf8",
   });
   assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.signal, null, result.stderr);
   return result;
 }
 
-test("the test build accepts declared UI models and consumer imports of the built UI", { timeout: 15000 }, async (t) => {
+test("the test build accepts declared UI models and consumer imports of the built UI", async (t) => {
   const directory = fixture(t, namedImport("../build/test/ui/entry.js"));
   const result = build(directory);
   assert.equal(result.status, 0, result.stderr);
@@ -50,13 +50,13 @@ for (const [kind, source] of [
   ["scoped dynamic", dynamicImport(sdk)],
   ["legacy static", namedImport("soksak")],
   ["legacy dynamic", dynamicImport("soksak")],
-]) test(`the test build rejects a ${kind} SDK import in a consumer test`, { timeout: 15000 }, (t) => {
+]) test(`the test build rejects a ${kind} SDK import in a consumer test`, (t) => {
   const result = build(fixture(t, source));
   assert.notEqual(result.status, 0, "the build accepted a prohibited SDK import");
   assert.match(result.stderr, /test source names an SDK package: test[/\\]entry\.test\.mjs/);
 });
 
-test("the test build rejects a UI import without a declared SDK model", { timeout: 15000 }, (t) => {
+test("the test build rejects a UI import without a declared SDK model", (t) => {
   const result = build(fixture(t, namedImport("../build/test/ui/entry.js"), { declared: false }));
   assert.notEqual(result.status, 0, "the build accepted an undeclared UI dependency");
   assert.match(result.stderr, /unlisted SDK import/);

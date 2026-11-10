@@ -1,43 +1,60 @@
-// Conformance of the call-limit model: each case of calls.json is replayed on a fake clock (node:test mock.timers). A request
-// step sends a call, an advance step moves the clock, and a reply step delivers a reply from the peer. Each step compares the
-// messages sent, the reports, and the settled outcome of the watched request with the case.
+// Conformance of the call model: each case of calls.json is replayed against test/models/calls.mjs. A request step sends a
+// call (signal true gives it an abort signal), a reply step delivers a reply from the peer, a cancel step aborts the signal of
+// the named request, and a peer-lost step ends the peer. Each step compares the messages sent, the reports, and the outcome of
+// the watched request with the case. No step moves a clock: the clock of the model is fixed at 0, so the start of a call and
+// the delay of a late reply are 0, and each step finds that the model started no timer. A step whose case states a settled
+// outcome awaits the settlement of the watched call, the event that the step asserts.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createCalls } from "./models/calls.mjs";
 
 const contract = JSON.parse(readFileSync(new URL("./fixtures/contract/calls.json", import.meta.url), "utf8"));
-const settle = async () => {
-  for (let i = 0; i < 10; i += 1) await Promise.resolve();
-};
 
 for (const testCase of contract.cases) {
   test(testCase.id, async (t) => {
-    t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+    const timers = t.mock.method(globalThis, "setTimeout");
     const sent = [];
     const reports = [];
-    const outcomes = new Map();
-    const calls = createCalls({ plugin: "probe", send: (message) => sent.push(message), report: (event) => reports.push(event) });
+    const settlements = new Map();
+    const settled = new Map();
+    const signals = new Map();
+    const calls = createCalls({ plugin: "probe", now: () => 0, send: (message) => sent.push(message), report: (event) => reports.push(event) });
     for (const step of testCase.steps) {
       const mark = { sent: sent.length, reports: reports.length };
       if (step.request) {
-        const pending = calls.request(step.request.command, step.request.params, step.request.timeout);
-        outcomes.set(step.watch, null);
-        pending.then((resolved) => outcomes.set(step.watch, { resolved }), (error) => outcomes.set(step.watch, { rejected: error.message, code: error.code }));
-      } else if (step.advance !== undefined) {
-        t.mock.timers.tick(step.advance);
+        const { name, command, params, signal } = step.request;
+        const options = {};
+        if (signal) {
+          const controller = new AbortController();
+          signals.set(name, controller);
+          options.signal = controller.signal;
+        }
+        settlements.set(name, calls.request(command, params, options).then(
+          (resolved) => settled.set(name, { resolved }),
+          (error) => settled.set(name, { rejected: error.message, code: error.code ?? null })));
       } else if (step.reply) {
         calls.reply(step.reply.id, step.reply.error === undefined ? { result: step.reply.result } : { error: step.reply.error });
+      } else if (step.cancel !== undefined) {
+        signals.get(step.cancel).abort();
+      } else if (step.peerLost !== undefined) {
+        calls.peerLost(step.peerLost);
       } else {
         throw new Error(`the replay has no step for ${JSON.stringify(step)}`);
       }
-      await settle();
-      const actual = { sent: sent.slice(mark.sent), reports: reports.slice(mark.reports), outcome: outcomes.get(step.watch) ?? null };
+      assert.equal(timers.mock.callCount(), 0, `${testCase.id}: the call model started a timer at ${JSON.stringify(step)}`);
+      if (step.output.outcome !== null) await settlements.get(step.watch);
+      const actual = { sent: sent.slice(mark.sent), reports: reports.slice(mark.reports), outcome: settled.get(step.watch) ?? null };
       assert.deepEqual(actual, step.output, `${testCase.id}: ${JSON.stringify(step)}`);
     }
   });
 }
 
-test("the call-limit conformance covers every case of the contract", () => {
-  assert.equal(contract.cases.length, 4);
+test("the call conformance covers every case of the contract", () => {
+  assert.deepEqual(contract.cases.map((entry) => entry.id), [
+    "calls.end.reply-resolves-the-call",
+    "calls.end.error-reply-rejects-with-its-code",
+    "calls.end.cancel-ends-the-call-and-a-later-reply-is-late",
+    "calls.end.peer-end-rejects-each-open-call",
+  ]);
 });

@@ -9,11 +9,13 @@ function fakeFiles(files) {
   const listeners = new Set();
   const sent = [];
   const held = [];
-  const reply = (body) => queueMicrotask(() => { for (const fn of listeners) fn(body); });
+  // A reply reaches the listeners in a later microtask; the returned promise resolves after they have received it.
+  const reply = (body) => new Promise((resolve) => queueMicrotask(() => { for (const fn of listeners) fn(body); resolve(); }));
   const port = {
     sent,
     listenerCount: () => listeners.size,
-    // Hold one reply after its operation has taken effect; received and release control the ordering without a timer.
+    // Hold one reply after its operation has taken effect; received and release control the ordering without a timer, and
+    // release returns the delivery of the reply.
     holdReply(operation) {
       const { promise: received, resolve } = Promise.withResolvers();
       let response;
@@ -22,7 +24,7 @@ function fakeFiles(files) {
         if (response === undefined) throw new Error(`no ${operation} reply is held`);
         const body = response;
         response = undefined;
-        reply(body);
+        return reply(body);
       } };
     },
     on: async (surface, fn) => { listeners.add(fn); return () => listeners.delete(fn); },
@@ -30,7 +32,7 @@ function fakeFiles(files) {
     async send(surface, body) {
       sent.push(body);
       const index = held.findIndex((entry) => entry.operation === body.operation);
-      const respond = index < 0 ? reply : held.splice(index, 1)[0].hold;
+      const respond = index < 0 ? (response) => { reply(response); } : held.splice(index, 1)[0].hold;
       if (body.operation === "watch") return respond({ id: body.id });
       if (body.operation === "read") {
         if (!files.has(body.path)) return respond({ id: body.id, error: `no such file: ${body.path}` });
@@ -58,7 +60,7 @@ function fakeFiles(files) {
     report: (body) => reply(body),
     change(path, text) {
       files.set(path, text);
-      reply({ changed: path });
+      return reply({ changed: path });
     },
   };
   return port;
