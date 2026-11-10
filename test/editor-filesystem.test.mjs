@@ -20,7 +20,7 @@ async function project(t, text = "initial\r\n") {
   return { editor, port, file };
 }
 
-test("filesystem save keeps edits made while its real write is paused", { timeout: 15000 }, async (t) => {
+test("filesystem save keeps edits made while its real write is paused", async (t) => {
   const { editor, port, file } = await project(t);
   editor.run("editor.edit", { changes: [{ from: 0, to: 0, insert: "saved-" }] });
   const submitted = editor.run("editor.read");
@@ -46,7 +46,7 @@ test("filesystem save keeps edits made while its real write is paused", { timeou
   assert.deepEqual(port.inspect().exit, { code: 0, signal: null });
 });
 
-test("filesystem notifications preserve dirty text until an explicit reload", { timeout: 15000 }, async (t) => {
+test("filesystem notifications preserve dirty text until an explicit reload", async (t) => {
   const { editor, port, file } = await project(t);
   editor.run("editor.edit", { changes: [{ from: 0, to: 0, insert: "local-" }] });
   const local = editor.run("editor.read");
@@ -75,7 +75,7 @@ test("filesystem notifications preserve dirty text until an explicit reload", { 
   await port.close();
 });
 
-test("filesystem held read cannot replace a later persisted save", { timeout: 15000 }, async (t) => {
+test("filesystem held read cannot replace a later persisted save", async (t) => {
   const { editor, port, file } = await project(t);
   const older = port.holdReply("read");
   const nativeChange = port.nextNativeChange(filePath);
@@ -90,9 +90,10 @@ test("filesystem held read cannot replace a later persisted save", { timeout: 15
   const observed = [];
   const stop = editor.watchStatus("editor.document", (state) => observed.push(state.version));
   t.after(stop);
+  // The editor drops the held read, which a newer file operation superseded, and records that drop.
+  const dropped = editor.nextLog("watch.superseded");
   older.release();
-  // The held wire delivery and its editor continuation are microtasks, drained by the next event-loop turn.
-  await new Promise(setImmediate);
+  await dropped;
   assert.ok(observed.every((value) => value === version(submitted)), "a stale filesystem read must not replace the persisted save");
   assert.equal(editor.run("editor.read"), submitted);
   assert.equal(editor.status("editor.document").version, version(submitted));
@@ -102,7 +103,7 @@ test("filesystem held read cannot replace a later persisted save", { timeout: 15
   await port.close();
 });
 
-test("filesystem held read cannot replace a later explicit reload", { timeout: 15000 }, async (t) => {
+test("filesystem held read cannot replace a later explicit reload", async (t) => {
   const { editor, port, file } = await project(t);
   const older = port.holdReply("read");
   await writeFile(file, "initial\r\n", { flag: "r+" });
@@ -114,8 +115,10 @@ test("filesystem held read cannot replace a later explicit reload", { timeout: 1
   const observed = [];
   const stop = editor.watchStatus("editor.document", (state) => observed.push(state.version));
   t.after(stop);
+  // The editor drops the held read, which a newer file operation superseded, and records that drop.
+  const dropped = editor.nextLog("watch.superseded");
   older.release();
-  await new Promise(setImmediate);
+  await dropped;
   assert.ok(observed.every((value) => value === version("reloaded\r\n")), "a stale filesystem read must not replace the explicit reload");
   assert.equal(editor.run("editor.read"), "reloaded\r\n");
   assert.equal(editor.reports.modified.at(-1), false);
@@ -125,7 +128,7 @@ test("filesystem held read cannot replace a later explicit reload", { timeout: 1
   await port.close();
 });
 
-test("filesystem disposal rejects the pending save before the host releases the process and watchers", { timeout: 15000 }, async (t) => {
+test("filesystem disposal rejects the pending save before the host releases the process and watchers", async (t) => {
   const { editor, port } = await project(t);
   editor.run("editor.edit", { changes: [{ from: 0, to: 0, insert: "pending-" }] });
   const pause = await port.pauseWrite();

@@ -34,7 +34,7 @@
   ],
   "scripts": {
     "build": "node scripts/build-vendor.mjs",
-    "test": "node scripts/build-vendor.mjs --check && node scripts/build-test.mjs && node --test test/*.test.mjs"
+    "test": "node scripts/build-vendor.mjs --check && node scripts/build-test.mjs && node --test --test-timeout=120000 test/*.test.mjs"
   },
   "devDependencies": {
     "@codemirror/commands": "6.11.1",

@@ -17,8 +17,30 @@ export async function setup(t, { path = "src/main.js", params = { path }, files 
   const commands = new Map();
   const statuses = new Map();
   const subscriptions = new Map();
-  const reports = { modified: [], error: [], title: [], commands: [], state: [], keep: [] };
-  const logs = log;
+  // The waits of the test on the records of the host, each with its condition. Each record of a report or a log checks them,
+  // so a wait resolves in the turn of the record that completes it.
+  const waits = new Set();
+  const recorded = () => {
+    for (const wait of [...waits]) {
+      if (!wait.condition()) continue;
+      waits.delete(wait);
+      wait.resolve();
+    }
+  };
+  const until = (condition) => {
+    if (condition()) return Promise.resolve();
+    const wait = { condition, ...Promise.withResolvers() };
+    waits.add(wait);
+    return wait.promise;
+  };
+  // The push of a recorded list is not enumerable, so a copy or a comparison of the list sees its records only.
+  const recording = (list) => Object.defineProperty(list, "push", { value: (...items) => {
+    const length = Array.prototype.push.apply(list, items);
+    recorded();
+    return length;
+  } });
+  const reports = Object.fromEntries(["modified", "error", "title", "commands", "state", "keep"].map((name) => [name, recording([])]));
+  const logs = recording(log);
   const binder = createBinder((name, params) => commands.get(name)(params), {
     check(name) { assert.ok(declared("commands", name), `undeclared command ${name}`); },
   });
@@ -65,5 +87,12 @@ export async function setup(t, { path = "src/main.js", params = { path }, files 
   const run = (name, params = {}) => commands.get(name)(params);
   const status = (name) => statuses.get(name)();
   const watchStatus = (name, listener) => subscriptions.get(name)(listener);
-  return { root, run, status, watchStatus, reports, sidecar, files, binder, controller, logs, dispose };
+  // Resolves with the first log record of event after the call that predicate accepts: the record of the handling that the
+  // test awaits.
+  const nextLog = (event, predicate = () => true) => {
+    const mark = logs.length;
+    const found = () => logs.slice(mark).find((entry) => entry.event === event && predicate(entry.fields));
+    return until(() => found() !== undefined).then(found);
+  };
+  return { root, run, status, watchStatus, reports, sidecar, files, binder, controller, logs, dispose, until, nextLog };
 }

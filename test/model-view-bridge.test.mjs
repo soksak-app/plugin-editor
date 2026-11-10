@@ -7,17 +7,50 @@ import { installViewWire } from "./models/view-wire.mjs";
 import { createViewBridge } from "./models/view-bridge.mjs";
 import { casesOf } from "./sdk-cases.mjs";
 
-const settle = async () => {
-  for (let i = 0; i < 4; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
-};
+/**
+ * The messages that a page posts, in order. posted.at(count) resolves when the page has posted count messages: each post
+ * resolves the waits that it completes, in the turn of the post.
+ */
+function postedMessages() {
+  const posted = [];
+  const waits = [];
+  posted.record = (message) => {
+    posted.push(message);
+    for (const wait of waits.filter((entry) => posted.length >= entry.count)) {
+      waits.splice(waits.indexOf(wait), 1);
+      wait.resolve();
+    }
+  };
+  posted.until = (count) => {
+    if (posted.length >= count) return Promise.resolve();
+    const wait = { count, ...Promise.withResolvers() };
+    waits.push(wait);
+    return wait.promise;
+  };
+  return posted;
+}
 
 /** The window of a view page of the plugin probe, with the sok-view handler that records each posted message. */
 function page(url = "soksak://probe/") {
   const { window } = createWindow(url);
-  const posted = [];
-  window.webkit = { messageHandlers: { "sok-view": { postMessage: (message) => posted.push(message) } } };
+  const posted = postedMessages();
+  window.webkit = { messageHandlers: { "sok-view": { postMessage: (message) => posted.record(message) } } };
   useWindow(window);
   return { window, posted };
+}
+
+/**
+ * The number of messages that a step of a case states as posted: the message of a message step, the records of a log step,
+ * the calls of a log-builder step, and the posted list of a native, command or exposure step. A step that states none posts
+ * none, and its handling ends in the turn of the step.
+ */
+function postedCount(item) {
+  const output = item.output;
+  if (output === undefined || output === null) return 0;
+  if (MESSAGE_ACTIONS.has(item.action)) return 1;
+  if (item.action === "log") return output.length;
+  if (item.action === "log-builder") return output.calls;
+  return Array.isArray(output.posted) ? output.posted.length : 0;
 }
 
 /** Dispatches one host message to the window as the host posts it. */
@@ -27,6 +60,8 @@ const dispatch = (window, data) => window.dispatchEvent(new window.MessageEvent(
 async function step(context, item) {
   const { window, posted, delivered, state } = context;
   const mark = posted.length;
+  // The step awaits the messages that its case states as posted, the occurrence that it asserts.
+  const posts = () => posted.until(mark + postedCount(item));
   const deliveredMark = delivered.length;
   let result = null;
   let throws = null;
@@ -51,24 +86,23 @@ async function step(context, item) {
   if (item.action === "request") {
     promise = bridge.calls.request(item.input.command, item.input.params);
     context.last = promise;
-    await settle();
+    await posts();
     return posted.slice(mark)[0];
   }
   if (item.action === "host-reply") {
     const body = item.input.error !== undefined ? { error: item.input.error } : { result: item.input.result };
     replyTo(item.input.id, body);
-    await settle();
     if (item.output === undefined) return undefined;
     return context.last ? await context.last : null;
   }
   if (item.action === "host-malformed") {
     dispatch(window, item.input);
-    await settle();
+    await posts();
     return posted.slice(mark)[0];
   }
   if (item.action === "sidecar-send") {
     context.last = bridge.runtime.sidecar(item.input.sidecar).send(item.input.id, item.input.body, item.input.cids);
-    await settle();
+    await posts();
     return posted.slice(mark)[0];
   }
   if (item.action === "log" || item.action === "log-builder") {
@@ -79,7 +113,7 @@ async function step(context, item) {
       : item.input.fields;
     bridge.runtime.log[item.input.level](item.input.event, fields,
       item.input.cids === undefined ? undefined : { cids: item.input.cids });
-    await settle();
+    await posts();
     if (item.action === "log-builder") return { calls: posted.length - mark, built };
     return posted.slice(mark);
   }
@@ -87,12 +121,12 @@ async function step(context, item) {
     const sidecar = bridge.runtime.sidecar(item.input.sidecar);
     const fn = item.input.kind === "message" ? (body) => context.messages.push(body) : (reason) => context.failures.push(reason);
     context.last = item.input.kind === "message" ? sidecar.on(item.input.id, fn) : sidecar.onFailure(item.input.id, fn);
-    await settle();
+    await posts();
     return posted.slice(mark)[0];
   }
   if (item.action === "host-event") {
     dispatch(window, { sok: 1, event: item.input.event, data: item.input.data });
-    await settle();
+    await posts();
     if (item.input.event === "sidecar.message" || item.input.event === "sidecar.failure") {
       return { messages: [...context.messages], failures: [...context.failures] };
     }
@@ -115,7 +149,7 @@ async function step(context, item) {
     } catch (error) {
       throws = error.message;
     }
-    await settle();
+    await posts();
     return { posted: posted.slice(mark), delivered: context.natives.splice(0), result, throws };
   }
   if (item.off) {
@@ -124,7 +158,7 @@ async function step(context, item) {
   }
   if (item.event) {
     dispatch(window, { sok: 1, event: item.event.event, data: item.event.data });
-    await settle();
+    await posts();
     return { posted: posted.slice(mark), delivered: context.natives.splice(0), result: null, throws: null };
   }
   if (item.register) {
@@ -137,13 +171,13 @@ async function step(context, item) {
     } catch (error) {
       throws = error.message;
     }
-    await settle();
+    await posts();
     return { posted: posted.slice(mark), delivered: [], result: null, throws };
   }
   if (item.request) {
     dispatch(window, { sok: 1, id: item.request.id, command: item.request.command, params: item.request.params,
       ...(item.request.cids === undefined ? {} : { cids: item.request.cids }) });
-    await settle();
+    await posts();
     return { posted: posted.slice(mark), delivered: [], result: null, throws: null };
   }
   if (item.exposureRegister) {
@@ -154,14 +188,14 @@ async function step(context, item) {
     } catch (error) {
       throws = error.message;
     }
-    await settle();
+    await posts();
     return { posted: posted.slice(mark), delivered: [], result: null, throws };
   }
   if (item.exposureReply) {
     const pending = bridge.exposure.reply(item.exposureReply.id, item.exposureReply.payload);
     if (item.answer) replyTo(lastId(), item.answer);
     await pending;
-    await settle();
+    await posts();
     return { posted: posted.slice(mark), delivered: [], result: null, throws: null };
   }
   throw new Error(`the replay has no step for ${JSON.stringify(item)}`);
@@ -224,20 +258,28 @@ test("runtime.sidecar() refuses a call without a sidecar name", () => {
   assert.deepEqual(created.posted.filter((message) => String(message.command).startsWith("runtime.sidecar")), []);
 });
 
-// The page's calls keep the time limit of core calls.json: a call without a host reply is rejected at its limit.
-test("a page call without a host reply is rejected at its limit", async (t) => {
-  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+// The page's calls end as the calls of core calls.json: by the host reply or by the cancel of the call, and by no timer.
+test("a page call ends by its host reply or its cancel and starts no timer", async (t) => {
+  const timers = t.mock.method(globalThis, "setTimeout");
   const created = page();
   installViewWire(created.window, { host: "probe" });
-  const bridge = createViewBridge({ handler: created.window.webkit.messageHandlers["sok-view"] });
-  let failure = null;
-  bridge.calls.request("demo.open", {}).catch((error) => { failure = error; });
-  const microtasks = async () => { for (let i = 0; i < 10; i += 1) await Promise.resolve(); };
-  t.mock.timers.tick(9999);
-  await microtasks();
-  assert.equal(failure, null, "the call is open before its limit");
-  t.mock.timers.tick(1);
-  await microtasks();
-  assert.equal(failure?.message, "command demo.open did not reply within 10000ms");
-  assert.equal(failure?.code, -32000);
+  const reports = [];
+  const bridge = createViewBridge({ handler: created.window.webkit.messageHandlers["sok-view"], report: (event) => reports.push(event) });
+  const mark = created.posted.length;
+  const replied = bridge.calls.request("demo.open", { id: "x" });
+  const controller = new AbortController();
+  const cancelled = bridge.calls.request("demo.read", {}, { signal: controller.signal }).then(() => null, (error) => error);
+  assert.deepEqual(created.posted.slice(mark), [
+    { sok: 1, id: 1, command: "demo.open", params: { id: "x" } },
+    { sok: 1, id: 2, command: "demo.read", params: {} },
+  ]);
+  controller.abort();
+  const failure = await cancelled;
+  assert.equal(failure?.message, "cancelled");
+  assert.deepEqual(created.posted.slice(mark + 2), [{ sok: 1, id: 2, cancel: true }]);
+  dispatch(created.window, { sok: 1, id: 1, result: { count: 2 } });
+  assert.deepEqual(await replied, { count: 2 });
+  assert.deepEqual(reports.filter((event) => event.kind !== "open-calls"), []);
+  assert.deepEqual(reports.at(-1), { kind: "open-calls", plugin: "probe", count: 0, oldestStartedAt: null });
+  assert.equal(timers.mock.callCount(), 0, "the page call started a timer");
 });

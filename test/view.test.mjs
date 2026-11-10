@@ -34,9 +34,10 @@ test("the view page refuses to mount without the declarations of the start value
 });
 
 test("the view page registers its exposure from the declarations of the start values", async (t) => {
-  const { reports, settle } = createViewPage(t, "declarations");
+  const { reports, until } = createViewPage(t, "declarations");
   await import("../build/test/ui/view.js?case=declarations");
-  await settle();
+  const registeredStatuses = () => reports.native.filter(([name, payload]) => name === "registered" && payload.kind === "status");
+  await until(() => registeredStatuses().length >= manifest.exposes.status.length);
   const statuses = reports.native.filter(([name, payload]) => name === "registered" && payload.kind === "status")
     .map(([, payload]) => payload.name);
   assert.deepEqual(statuses.toSorted(), manifest.exposes.status.map((entry) => entry.name).toSorted());
@@ -65,7 +66,7 @@ test("the view context uses the logger supplied by its SDK bridge", async (t) =>
 });
 
 test("the view page opens the file of its tab through the view channel", async (t) => {
-  const { reports, logs, run, settle, sidecar } = createViewPage(t, "open");
+  const { reports, logs, run, sidecar } = createViewPage(t, "open");
   await import("../build/test/ui/view.js?case=open");
   assert.deepEqual(sidecar.sent.map((body) => body.operation), ["read", "watch"]);
   assert.equal(await run("editor.read"), "let a = 1;\n// TODO: b\n");
@@ -79,10 +80,9 @@ test("the view page opens the file of its tab through the view channel", async (
   assert.equal(open.level, "info");
   assert.equal(open.fields.path, "src/main.js");
   assert.equal(open.fields.ok, true);
-  await settle();
 });
 
-test("the view page resolves extension points through the view bridge", { timeout: 5000 }, async (t) => {
+test("the view page resolves extension points through the view bridge", async (t) => {
   const host = createViewPage(t, "view-contributions");
   await import("../build/test/ui/view.js?case=view-contributions");
   assert.deepEqual(host.reports.contributions, ["extension", "formatter"]);
@@ -91,22 +91,25 @@ test("the view page resolves extension points through the view bridge", { timeou
 });
 
 test("the view page answers a forwarded exposure request from its own values", async (t) => {
-  const { reports, expose, settle } = createViewPage(t, "exposure");
+  const { reports, expose, until } = createViewPage(t, "exposure");
   await import("../build/test/ui/view.js?case=exposure");
-  await settle();
+  await until(() => reports.subscribed.includes("exposure-request"));
   const id = expose("status.get", { name: "editor.document" });
-  await settle();
-  const replies = reports.native.filter(([name, payload]) => name === "exposureReply" && payload.id === id);
+  const repliesOf = () => reports.native.filter(([name, payload]) => name === "exposureReply" && payload.id === id);
+  await until(() => repliesOf().length > 0);
+  const replies = repliesOf();
   assert.equal(replies.length, 1, `the page answered the exposure request ${id} once`);
   assert.equal(replies[0][1].result.path, "src/main.js");
 });
 
 test("a watched status sends its value to the main page as a changed call", async (t) => {
-  const { reports, expose, settle } = createViewPage(t, "watch-changed");
+  const { reports, expose, until } = createViewPage(t, "watch-changed");
   await import("../build/test/ui/view.js?case=watch-changed");
-  await settle();
-  expose("status.watch", { name: "editor.document" });
-  await settle();
+  await until(() => reports.subscribed.includes("exposure-request"));
+  const id = expose("status.watch", { name: "editor.document" });
+  // The watch ends its handling with the reply to the request; the first value of the watch is its changed call.
+  await until(() => reports.native.some(([name, payload]) => name === "exposureReply" && payload.id === id)
+    && reports.native.some(([name]) => name === "changed"));
   const changes = reports.native.filter(([name]) => name === "changed").map(([, payload]) => payload);
   assert.equal(changes.length, 1, `the page sent ${changes.length} changed calls for the watch, expected 1`);
   assert.deepEqual(Object.keys(changes[0]).toSorted(), ["name", "value", "version"]);
@@ -115,17 +118,16 @@ test("a watched status sends its value to the main page as a changed call", asyn
 });
 
 test("an uncaught error of the view page is an error event of the plugin", async (t) => {
-  const { window, logs, settle } = createViewPage(t, "page-error");
+  const { window, logs, until } = createViewPage(t, "page-error");
   await import("../build/test/ui/view.js?case=page-error");
-  await settle();
   window.dispatchEvent(new window.ErrorEvent("error", { error: new Error("boom"), message: "boom" }));
-  await settle();
+  await until(() => logs.some((entry) => entry.event === "page.error"));
   assert.deepEqual(logs.filter((entry) => entry.event === "page.error"),
     [{ level: "error", event: "page.error", fields: { where: "page", error: "boom" } }]);
 });
 
 test("an edit of the view saves through the sidecar and reports the tab state", async (t) => {
-  const { reports, run, settle, sidecar } = createViewPage(t, "save");
+  const { reports, run, sidecar } = createViewPage(t, "save");
   await import("../build/test/ui/view.js?case=save");
   await run("editor.edit", { changes: [{ from: 8, to: 9, insert: "2" }] });
   assert.deepEqual(reports.modified, [false, true]);
@@ -134,12 +136,11 @@ test("an edit of the view saves through the sidecar and reports the tab state", 
   assert.deepEqual(reports.modified, [false, true, false]);
   assert.deepEqual(reports.error, [null]);
   assert.ok(reports.state.length > 0, "the page wrote the tab state of the view");
-  await settle();
 });
 
 test("the first save of a blank document asks for its file through core.file.place", async (t) => {
   const files = new Map();
-  const { reports, run, settle, sidecar } = createViewPage(t, "blank", { params: {}, files,
+  const { reports, run, sidecar } = createViewPage(t, "blank", { params: {}, files,
     place: () => ({ path: "notes/plan.md" }) });
   await import("../build/test/ui/view.js?case=blank");
   await run("editor.edit", { changes: [{ from: 0, to: 0, insert: "# plan\n" }] });
@@ -149,25 +150,22 @@ test("the first save of a blank document asks for its file through core.file.pla
   assert.deepEqual(sidecar.sent.map((body) => [body.operation, body.operation === "write" ? body.expect : body.paths]),
     [["write", null], ["watch", ["notes/plan.md"]]]);
   assert.deepEqual(reports.title, ["새 문서", "plan.md"]);
-  await settle();
 });
 
 test("the theme of the view starts from the theme script and follows a change", async (t) => {
-  const { window, post, settle } = createViewPage(t, "theme", { scheme: "light" });
+  const { window, post, mutation } = createViewPage(t, "theme", { scheme: "light" });
   await import("../build/test/ui/view.js?case=theme");
-  await settle();
   assert.equal(window.document.documentElement.style.colorScheme, "light");
   post({ sok: 1, event: "theme", data: { scheme: "dark", tokens: {} } });
-  await settle();
+  await mutation(() => window.document.documentElement.style.colorScheme === "dark");
   assert.equal(window.document.documentElement.style.colorScheme, "dark");
 });
 
 // F238-c-13.4: each sidecar call of the view page names the sidecar that plugin.json declares.
 test("the view page names its declared sidecar in each sidecar call", async (t) => {
-  const { reports, run, settle } = createViewPage(t, "sidecar-name");
+  const { reports, run } = createViewPage(t, "sidecar-name");
   await import("../build/test/ui/view.js?case=sidecar-name");
   await run("editor.read");
-  await settle();
   const declared = Object.keys(manifest.dependencies);
   assert.equal(declared.length, 1);
   assert.ok(reports.sidecarNames.length >= 2, "the page sent its sidecar calls");
@@ -176,12 +174,12 @@ test("the view page names its declared sidecar in each sidecar call", async (t) 
 
 // E14: the page records its trace as the events of its catalog, and each sidecar send carries its correlation identifiers.
 test("the view page records the open, save and watch trace as declared events", async (t) => {
-  const { logs, run, sidecar, settle } = createViewPage(t, "trace");
+  const { logs, run, sidecar, until } = createViewPage(t, "trace");
   await import("../build/test/ui/view.js?case=trace");
   await run("editor.edit", { changes: [{ from: 8, to: 9, insert: "2" }] });
   await run("editor.save");
   sidecar.change("src/main.js", "changed on disk\n");
-  await settle();
+  await until(() => logs.some((entry) => entry.event === "watch.change"));
   const catalog = JSON.parse(readFileSync(new URL("../events.json", import.meta.url), "utf8")).events;
   const events = logs.map((entry) => entry.event);
   for (const event of ["open", "save", "watch.start", "watch.change"]) {
@@ -191,19 +189,18 @@ test("the view page records the open, save and watch trace as declared events", 
 });
 
 test("each sidecar send of the view page carries its correlation identifiers", async (t) => {
-  const { reports, run, settle } = createViewPage(t, "send-cids");
+  const { reports, run } = createViewPage(t, "send-cids");
   await import("../build/test/ui/view.js?case=send-cids");
   await run("editor.read");
   await run("editor.save");
-  await settle();
   assert.ok(reports.sendCids.length >= 2, "the page sent its sidecar calls");
   for (const cids of reports.sendCids) assert.ok(Array.isArray(cids), `cids ${JSON.stringify(cids)} is a list`);
 });
 
 test("a refused bridge log is shown through the bridge error route", async (t) => {
-  const { reports, settle } = createViewPage(t, "log-refused", { refuseLog: "log route refused" });
+  const { reports, until } = createViewPage(t, "log-refused", { refuseLog: "log route refused" });
   await import("../build/test/ui/view.js?case=log-refused");
-  await settle();
+  await until(() => reports.errorLines.length > 0);
   assert.ok(reports.errorLines.length > 0, "the bridge reported no refused record through runtime.error");
   assert.match(reports.errorLines[0].where, /^log plugin\.editor\.[a-z.]+$/);
   assert.equal(reports.errorLines[0].text, "log route refused");

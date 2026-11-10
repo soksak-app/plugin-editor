@@ -10,20 +10,18 @@ import { installViewWire } from "./models/view-wire.mjs";
 const MANIFEST = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.url), "utf8"));
 const declared = (kind, name) => (MANIFEST.exposes[kind] ?? []).some((entry) => entry.name === name);
 
-const settle = (rounds = 6) => {
-  let done = Promise.resolve();
-  for (let i = 0; i < rounds; i += 1) done = done.then(() => new Promise((resolve) => setTimeout(resolve, 0)));
-  return done;
-};
 
 /**
  * Creates one window with the view page of one case mounted: the start values, the view script of the host, the host
  * side of the sok-view channel, and the fetch of the core root files. The globals of the test process serve the window.
  *
- * Returns { window, sidecar, reports, logs, run, post, expose, settle }. reports holds the tab reports, the state writes, the
- * registrations, the native calls and the event subscriptions that the page sent; logs holds the runtime.log records;
- * run(name, params) sends one command request of core to the page; expose(method, params) forwards one exposure request
- * and returns its id; post(message) posts one host message to the page.
+ * Returns { window, sidecar, reports, logs, run, post, expose, until, mutation }. reports holds the tab reports, the state
+ * writes, the registrations, the native calls and the event subscriptions that the page sent; logs holds the runtime.log
+ * records; run(name, params) sends one command request of core to the page; expose(method, params) forwards one exposure
+ * request and returns its id; post(message) posts one host message to the page. until(condition) resolves when condition()
+ * holds over the records: it is checked when the wait starts and after each message of the page that the host receives and
+ * each call that the host serves, so it resolves in the turn of the record that completes it. mutation(condition) resolves
+ * when condition() holds after a mutation of the document of the page.
  */
 export function createViewPage(t, caseId, { params = { path: "src/main.js" }, stored = null,
   files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]), scheme = "dark", refuseLog = null,
@@ -41,7 +39,33 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
   const post = (message) => window.dispatchEvent(new window.MessageEvent("message", { source: window, origin: "", data: message }));
   // The host of the view: it receives the ready message, the calls and the replies of the page through the sok-view
   // handler, and it posts each host message through the window of the page (docs/spec/native-surfaces.md#view-surfaces).
-  const handler = { postMessage: (message) => { received.push(message); deliver(message); } };
+  const handler = { postMessage: (message) => { received.push(message); deliver(message); recorded(); } };
+  // The waits of the test on the records of the host, each with its condition.
+  const waits = new Set();
+  const recorded = () => {
+    for (const wait of [...waits]) {
+      if (!wait.condition()) continue;
+      waits.delete(wait);
+      wait.resolve();
+    }
+  };
+  const until = (condition) => {
+    if (condition()) return Promise.resolve();
+    const wait = { condition, ...Promise.withResolvers() };
+    waits.add(wait);
+    return wait.promise;
+  };
+  const mutation = (condition) => {
+    if (condition()) return Promise.resolve();
+    const done = Promise.withResolvers();
+    const observer = new window.MutationObserver(() => {
+      if (!condition()) return;
+      observer.disconnect();
+      done.resolve();
+    });
+    observer.observe(window.document, { subtree: true, attributes: true, childList: true, characterData: true });
+    return done.promise;
+  };
   window.webkit = { messageHandlers: { "sok-view": handler } };
 
   const reply = (id, payload) => post({ sok: 1, id, ...payload });
@@ -117,7 +141,8 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
           }
           throw new Error(`the page called ${command}, which is served by no route of the test host`);
       }
-    }).then((result) => reply(id, { result: result ?? null }), (error) => reply(id, { error: { code: -32000, message: String(error?.message ?? error) } }));
+    }).then((result) => { recorded(); reply(id, { result: result ?? null }); },
+      (error) => { recorded(); reply(id, { error: { code: -32000, message: String(error?.message ?? error) } }); });
   };
 
   // The host events of the surface that the page subscribed to through runtime.native.on, as the main page keeps them.
@@ -165,5 +190,5 @@ export function createViewPage(t, caseId, { params = { path: "src/main.js" }, st
     pending.set(id, { resolve, reject });
     post({ sok: 1, id, command: name, params: paramsOfRun });
   });
-  return { window, sidecar, files, reports, logs, received, fetches, run, post, expose, settle };
+  return { window, sidecar, files, reports, logs, received, fetches, run, post, expose, until, mutation };
 }

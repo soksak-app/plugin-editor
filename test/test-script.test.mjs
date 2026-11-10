@@ -10,7 +10,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const script = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).scripts.test;
 const nodeTest = script.split("&&").map((part) => part.trim()).find((part) => part.startsWith("node --test "));
 assert.ok(nodeTest, "the test script runs no node --test command");
-const patterns = nodeTest.slice("node --test ".length).trim().split(/\s+/).map((pattern) => pattern.replace(/^"(.*)"$/, "$1"));
+// The options of the command, as --test-timeout, select no file.
+const patterns = nodeTest.slice("node --test ".length).trim().split(/\s+/).filter((argument) => !argument.startsWith("--"))
+  .map((pattern) => pattern.replace(/^"(.*)"$/, "$1"));
 
 // Each test file under test/, as a path relative to the repository root with forward slashes.
 function testFiles(directory) {

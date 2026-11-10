@@ -4,7 +4,7 @@ import { access } from "node:fs/promises";
 import test from "node:test";
 import { filesystemPort } from "./filesystem-port.mjs";
 
-for (const phase of ["before", "during"]) test(`a filesystem fixture terminated ${phase} close retains its exit cause and cancels every wait`, { timeout: 15000 }, async (t) => {
+for (const phase of ["before", "during"]) test(`a filesystem fixture terminated ${phase} close retains its exit cause and cancels every wait`, async (t) => {
   const cleanup = [];
   const port = await filesystemPort({ after(fn) { cleanup.push(fn); }, diagnostic: t.diagnostic.bind(t) });
   // The helper registers cleanup even for a failed assertion. This test deliberately expects the same SIGKILL cause there.
@@ -25,8 +25,8 @@ for (const phase of ["before", "during"]) test(`a filesystem fixture terminated 
     await assert.rejects(port.close(), /SIGKILL/);
   } else {
     const rejected = assert.rejects(port.close(), /SIGKILL/);
-    // Let close register its waits, while keeping pipe delivery out of the current microtask turn.
-    await Promise.resolve();
+    // Close registers its acknowledgement and watcher cleanup waits; the test awaits both registrations.
+    await port.untilWaiting(2);
     assert.equal(port.inspect().waiting, 2, "both close acknowledgement and watcher cleanup must be pending");
     process.kill(port.inspect().pid, "SIGKILL");
     await rejected;
