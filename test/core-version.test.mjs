@@ -15,7 +15,7 @@ test("the core compatibility documents state the engines.soksak that the package
 
 // Core 0.0.41 is the core release that adds the surface of the view to each log record, which the content_frame event
 // (plugin.editor.view.content_frame) requires (E62-3); earlier releases omit it, so the frame payload fails the event catalog.
-// The package pins the plugin API of core 0.0.41 and runs its view test host against that release (E62).
+// The package pins the plugin API of core 0.0.41 and runs its view bridge against that release (E62).
 test("the package requires core 0.0.41, the core release that adds the view surface to each content frame record (E62-3)", () => {
   assert.equal(pkg.engines.soksak, "^0.0.41");
 });

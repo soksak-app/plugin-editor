@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
-import { openView } from "@soksak/plugin-api/testing";
+import { openPageView } from "./fixtures/host.mjs";
 import { installedOf, openEditor } from "./editor-view.mjs";
 import { filesSidecar, sha, SIDECAR, SURFACE } from "./files-sidecar.mjs";
 
@@ -99,10 +99,7 @@ test("content frame diagnostics observe the view root and restore its card style
   const start = { surface: SURFACE, params: null, origin: { directory: null }, project: null, diagnostics: diagnosticDeclaration };
   const declarations = { status: manifest.exposes.status,
     commands: [...manifest.exposes.commands, ...diagnosticDeclaration.exposes.commands], element: manifest.exposes.element };
-  const view = await openView("editor", { start, declarations, host: {
-    surface: SURFACE, declarations, statuses: {}, contributions: installedOf([]), sidecars: [SIDECAR], project: null,
-    state: { read: () => null, write() {} }, sidecar: {}, commands: {}, native: {}, faults: {},
-  } });
+  const view = await openPageView("editor", { start, declarations, host: { installed: installedOf([]), sidecars: [SIDECAR] } });
   t.after(() => view.close());
   const { window } = view;
   const documentRoot = window.document.documentElement;
@@ -185,12 +182,9 @@ test("content frame diagnostics observe the view root and restore its card style
 });
 
 test("each content frame record carries the surface of the view, as the event catalog requires", async (t) => {
-  const view = await openView("editor", { start: { surface: SURFACE, params: null, origin: { directory: null }, project: null },
-    declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands, element: manifest.exposes.element }, host: {
-      surface: SURFACE, declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands, element: manifest.exposes.element },
-      statuses: {}, contributions: installedOf([]), sidecars: [SIDECAR], project: null,
-      state: { read: () => null, write() {} }, sidecar: {}, commands: {}, native: {}, faults: {},
-    } });
+  const view = await openPageView("editor", { start: { surface: SURFACE, params: null, origin: { directory: null }, project: null },
+    declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands, element: manifest.exposes.element },
+    host: { installed: installedOf([]), sidecars: [SIDECAR] } });
   t.after(() => view.close());
   const { window } = view;
   const { createViewBridge } = await import("@soksak/plugin-api/view");
@@ -223,12 +217,9 @@ test("the content frame trace refuses invalid fields and forwards each valid fra
   // measurement and calls it with each field set, as the observer does with the values of a resize. The real observer cannot
   // produce the invalid combinations, so these checks use the seam. The valid frame is the first frame of this measurement, so its
   // sequence is 0 and the read after it reports 1; the probe run reported 1 and 2 after one real frame.
-  const view = await openView("editor", { start: { surface: SURFACE, params: null, origin: { directory: null }, project: null },
-    declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands, element: manifest.exposes.element }, host: {
-      surface: SURFACE, declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands, element: manifest.exposes.element },
-      statuses: {}, contributions: installedOf([]), sidecars: [SIDECAR], project: null,
-      state: { read: () => null, write() {} }, sidecar: {}, commands: {}, native: {}, faults: {},
-    } });
+  const view = await openPageView("editor", { start: { surface: SURFACE, params: null, origin: { directory: null }, project: null },
+    declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands, element: manifest.exposes.element },
+    host: { installed: installedOf([]), sidecars: [SIDECAR] } });
   t.after(() => view.close());
   const { window } = view;
   const { createViewBridge } = await import("@soksak/plugin-api/view");
@@ -734,11 +725,9 @@ test("every interactive element of the editor is bound to a declared command and
   const sidecar = filesSidecar(new Map([["src/main.js", "let a = 1;\n"]]));
   const declarations = { status: manifest.exposes.status, commands: manifest.exposes.commands, element: manifest.exposes.element };
   const start = { surface: SURFACE, params: { path: "src/main.js" }, origin: { directory: null }, project: { id: "project", root: "/project" } };
-  const view = await openView("editor", { start, declarations, host: {
-    surface: SURFACE, declarations, statuses: {}, settings: {}, textSize: 1, contributions: installedOf([]), sidecars: [SIDECAR],
-    shortcuts: [], faults: {}, project: start.project, state: { read: () => null, write() {} }, commands: {},
+  const view = await openPageView("editor", { start, declarations, host: {
+    installed: installedOf([]), sidecars: [SIDECAR], settings: {}, textSize: 1,
     sidecar: { [SIDECAR]: (body) => sidecar.send(body) },
-    native: { exposureReply: () => null, changed: () => null, registered: () => null },
   } });
   t.after(() => view.close());
   sidecar.attach(view);
@@ -921,7 +910,11 @@ test("every command result is recorded with its time, and a refused command reco
   assert.match(failed.fields.error, /^-32000: editor\.read requires/);
   assert.equal(failed.fields.class, "RangeError");
   await editor.run("editor.reload");
-  assert.equal((await editor.nextLog("command", (fields) => fields.name === "editor.reload")).fields.ok, true);
+  // The record of the reload is in the log once the writer has sent it, which can be before or after the reply: the test waits for
+  // the record in the log, so it does not depend on the order of the two.
+  const isReload = (entry) => entry.event === "command" && entry.fields.name === "editor.reload";
+  await editor.until(() => editor.logs.some(isReload));
+  assert.equal(editor.logs.find(isReload).fields.ok, true);
 });
 
 test("a failed contribution and a format are recorded", async (t) => {

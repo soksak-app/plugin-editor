@@ -1,5 +1,6 @@
 # 기능
 
+- [o] E64 — P1: 시험은 plugin API 의 view 시험 host 대신 이 저장소의 fixture 로 host 경계에 답한다. 입력: 시험이 core 의 view host 구현을 실행해서 core 변경이 시험 결과를 바꾸었다. 기대: 어떤 시험도 `@soksak/plugin-api/testing` 을 import 하지 않으며, fixture `test/fixtures/host.mjs` 가 docs/spec/native-surfaces.md 가 정한 view 의 `sok-view` wire 에 답한다. 결과: 시험은 그 fixture 의 `openPageView` 로 view 를 연다. `grep -rn "plugin-api/testing" test` 는 비어 있다. `pnpm test` 는 147 개 중 147 개를 통과하며, 이 변경 전 tree 의 개수(147 개 중 147 개)와 같다. 이전 과정에서 `ui/` 의 결함이 발견되지 않아 `ui/` 결함에 대한 Red 와 Green 쌍을 기록하지 않는다. page 모듈과 `@soksak/plugin-api/view` 의 view bridge 는 고정된 release 가 제공하는 그대로 실행되며, fixture 는 host 쪽만 제공한다.
 - [o] E63 — P0: plugin API release of core 0.0.41로 시험하는 E62을 `engines.soksak` `^0.0.41`로 release하고 registry에 올린다. main의 release run이 v0.0.27을 게시했고, registry가 그것을 core 0.0.41과 함께 올린다(registry G113).
 - [o] E62 — P1: 시험은 package.json 이 고정한 SDK release 와 그 view 시험 host 를 쓰며, core 와 같게 유지되는 SDK·host 사본과 복사된 contract case 를 쓰지 않는다. plugin 은 그 version 과 engines.soksak 으로만 core 에 의존한다.
   Package 는 core release 0.0.41(`@soksak/plugin-api` 0.0.41)을 고정하고 `engines.soksak` 으로 `^0.0.41` 을 선언한다.

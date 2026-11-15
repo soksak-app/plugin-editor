@@ -81,7 +81,7 @@ test("no workflow checks out another repository", () => {
 });
 
 // The plugin depends on core only through the plugin API release that package.json pins (core docs/spec/plugins.md#repositories): the
-// tests run the page modules through the view test host of that release, so the pin is the one dependency on core. The pin is a file:
+// page modules import the view bridge of that release, so the pin is the one dependency on core. The pin is a file:
 // development pin of a core release tarball, or the GitHub release URL of one, which is the form that the kit pin takes.
 test("package.json pins the plugin API of a core release as its one core dependency", () => {
   const pin = PACKAGE.devDependencies[SCOPE + "plugin-api"];
@@ -90,7 +90,7 @@ test("package.json pins the plugin API of a core release as its one core depende
     `the plugin API pin ${pin} is neither a core release tarball nor its GitHub release URL`);
 });
 
-test("the checks come from the kit releases, and no check reads the plugin API of core outside the test host", () => {
+test("the checks come from the kit releases, and no check reads the plugin API of core", () => {
   for (const file of ["Makefile", ".githooks/commit-msg", ".githooks/pre-commit"]) {
     assert.doesNotMatch(readFileSync(path.join(ROOT, file), "utf8"), /CORE_PLUGIN_API_DIR|soksak-exposure|soksak-engines|node_modules\/@soksak|check-plugin/,
       `${file} must run only the commands of the kit releases`);

@@ -1,6 +1,6 @@
-// The files sidecar of the editor surface for the view test host: an in-memory file system. The sidecar lies outside core, so its
+// The files sidecar of the editor surface for the view host of this repository (test/fixtures/host.mjs): an in-memory file system. The sidecar lies outside core, so its
 // replies and watch messages are the fixtures of the tests, and each one reaches the page through the sidecar route that the
-// page registered (sidecarMessage of openView).
+// page registered (sidecarMessage of the view).
 import { createHash } from "node:crypto";
 
 export const SIDECAR = "@soksak/sidecar-files";
@@ -10,7 +10,7 @@ export const SURFACE = "editor-1";
 export const sha = (text) => createHash("sha256").update(text).digest("hex");
 
 /**
- * Creates the files sidecar over the Map `files` (path to text). attach(view) connects it to the view that openView returned,
+ * Creates the files sidecar over the Map `files` (path to text). attach(view) connects it to the view that the host opened,
  * before the page is loaded.
  *
  * send(body) runs the operation of a request at once. Its reply reaches the page as a sidecar message of the surface in a later

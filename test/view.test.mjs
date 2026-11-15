@@ -1,10 +1,10 @@
 // The view page at the consumer boundary (E24): the page of the view builds its surface context over the view channel and mounts
-// the editor module into the page. The page runs in the view test host of the SDK release that package.json pins (openView), and the
-// editor view helper (test/editor-view.mjs) opens it with the files sidecar of the test.
+// the editor module into the page. The page runs on the view host of this repository (test/fixtures/host.mjs), and the editor view
+// helper (test/editor-view.mjs) opens it with the files sidecar of the test.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { openView } from "@soksak/plugin-api/testing";
+import { openPageView } from "./fixtures/host.mjs";
 import { openEditor, installedOf } from "./editor-view.mjs";
 import { SIDECAR, SURFACE } from "./files-sidecar.mjs";
 
@@ -21,21 +21,15 @@ test("the view page begins with its doctype, holds no import map, and carries th
 });
 
 test("the view page refuses to mount without the start values of the surface", async (t) => {
-  const view = await openView("editor", { start: null, host: {
-    surface: SURFACE, declarations: {}, statuses: {}, contributions: installedOf([]), sidecars: [SIDECAR], project: null,
-    state: { read: () => null, write() {} }, sidecar: {}, commands: {}, native: {}, faults: {},
-  } });
+  const view = await openPageView("editor", { start: null, host: { installed: installedOf([]), sidecars: [SIDECAR] } });
   t.after(() => view.close());
   await assert.rejects(view.load(new URL("../build/test/ui/view.js", import.meta.url)),
     /the view of editor has no start values: the host provides window\.sokSurface/);
 });
 
 test("the view page refuses to mount without the declarations of the start values", async (t) => {
-  // openView merges declarations into the start values it sets, so the window of this view gets its start values from the test before load.
-  const view = await openView("editor", { start: null, host: {
-    surface: SURFACE, declarations: {}, statuses: {}, contributions: installedOf([]), sidecars: [SIDECAR], project: null,
-    state: { read: () => null, write() {} }, sidecar: {}, commands: {}, native: {}, faults: {},
-  } });
+  // The host merges declarations into the start values it sets, so the window of this view gets its start values from the test before load.
+  const view = await openPageView("editor", { start: null, host: { installed: installedOf([]), sidecars: [SIDECAR] } });
   t.after(() => view.close());
   view.window.sokSurface = Object.freeze({ surface: SURFACE, params: null, origin: null, project: null });
   await assert.rejects(view.load(new URL("../build/test/ui/view.js", import.meta.url)),
@@ -55,11 +49,8 @@ test("the view context uses the logger supplied by its SDK bridge", async (t) =>
   // The page bridge takes the one message listener of the view channel, so this view opens without loading the page: the SDK bridge
   // and the context module are created over the same window and handler.
   const start = { surface: SURFACE, params: null, origin: null, project: null };
-  const view = await openView("editor", { start, declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands,
-    element: manifest.exposes.element }, host: {
-    surface: SURFACE, declarations: {}, statuses: {}, contributions: installedOf([]), sidecars: [SIDECAR], project: null,
-    state: { read: () => null, write() {} }, sidecar: {}, commands: {}, native: {}, faults: {},
-  } });
+  const view = await openPageView("editor", { start, declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands,
+    element: manifest.exposes.element }, host: { installed: installedOf([]), sidecars: [SIDECAR] } });
   t.after(() => view.close());
   const { createViewBridge } = await import("@soksak/plugin-api/view");
   const { createViewContext } = await import("../build/test/ui/view-context.js");
@@ -106,9 +97,10 @@ test("the view page answers a forwarded exposure request from its own values", a
   const id = "exposure-request-1";
   await editor.push("exposure-request", { id, surface: SURFACE, method: "status.get", params: { name: "editor.document" } });
   await editor.settle();
-  const replies = editor.view.observed.document.filter((entry) => entry.name === "exposureReply" && entry.payload.id === id);
+  const replies = editor.view.calls.filter((call) => call.command === "runtime.native.call" && call.params.name === "exposureReply"
+    && call.params.payload.id === id);
   assert.equal(replies.length, 1, `the page answered the exposure request ${id} once`);
-  assert.equal(replies[0].payload.result.path, "src/main.js");
+  assert.equal(replies[0].params.payload.result.path, "src/main.js");
 });
 
 test("a watched status sends its value to the main page as a changed call", async (t) => {
