@@ -1,6 +1,6 @@
 # Features
 
-- [~] E63 — P0: Release E62, whose tests use the plugin API release of core 0.0.41, with `engines.soksak` `^0.0.41`, and list it in the registry. Active: the release run of main publishes it.
+- [o] E63 — P0: Release E62, whose tests use the plugin API release of core 0.0.41, with `engines.soksak` `^0.0.41`, and list it in the registry. The release run of main published v0.0.27, and the registry lists it with core 0.0.41 (registry G113).
 - [o] E62 — P1: The tests use the SDK release that package.json pins and its view test host instead of SDK and host copies kept equal to core through copied contract cases; the plugin depends on core only through that version and engines.soksak.
   The package pins core release 0.0.41 (`@soksak/plugin-api` 0.0.41) and declares `engines.soksak` `^0.0.41`.
 - [o] E62-3 — P0: Each content frame record carries the surface of the view, as the event catalog requires.
