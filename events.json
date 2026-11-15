@@ -491,6 +491,9 @@
           },
           "error": {
             "type": "string"
+          },
+          "class": {
+            "type": "string"
           }
         },
         "required": [

@@ -10,7 +10,7 @@ import {
 import { bracketMatching, forceParsing, indentOnInput, syntaxHighlighting } from "@soksak/shared/editor.extension/@codemirror/language.js";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@soksak/shared/editor.extension/@codemirror/commands.js";
 import { classHighlighter } from "@soksak/shared/editor.extension/@lezer/highlight.js";
-import { createEmitter, errorText, failure, microsSince } from "./events.js";
+import { createEmitter, errorClass, errorText, failure, microsSince } from "./events.js";
 import { createQuery, findMatches, replacementOf } from "./find.js";
 import { extensionOf, languageOf, languageSupport } from "./languages.js";
 import { connect } from "./requests.js";
@@ -226,6 +226,10 @@ export async function mount(root, context) {
   let nextSave = 0;
   let completedSave = 0;
   let disposed = false;
+  let endPlaceWait = null;
+  const placeClosed = new Promise((_, reject) => { endPlaceWait = reject; });
+  // Nothing awaits placeClosed until a first save names its file, so its rejection on close is handled here.
+  placeClosed.catch(() => {});
   let diskReady = false;
   let diskRefreshPending = false;
   const fileListeners = new Set();
@@ -431,7 +435,8 @@ export async function mount(root, context) {
     const start = performance.now();
     let chosen;
     try {
-      ({ path: chosen } = await context.runtime.command("core.file.place", { name: NEW_NAME }));
+      // The view that asked for the path closes before the workbench replies, so a close ends the wait with its own error.
+      ({ path: chosen } = await Promise.race([context.runtime.command("core.file.place", { name: NEW_NAME }), placeClosed]));
     } catch (error) {
       emitEvent("warn", "plugin.editor.place", { name: NEW_NAME, path: null, micros: microsSince(start), ok: false, error: failure(error, "-32603") });
       if (!disposed && sequence >= completedSave) context.tab.error(`저장하지 못했습니다 · ${errorText(error)}`);
@@ -801,7 +806,7 @@ export async function mount(root, context) {
   const recorded = (name, run) => (params) => {
     const start = performance.now();
     const done = (error) => emitEvent(error === undefined ? "debug" : "warn", "plugin.editor.command", { name, micros: microsSince(start),
-      ok: error === undefined, ...(error === undefined ? {} : { error: failure(error, "-32000") }) });
+      ok: error === undefined, ...(error === undefined ? {} : { error: failure(error, "-32000"), class: errorClass(error) }) });
     let result;
     try {
       result = run(params);
@@ -911,6 +916,7 @@ export async function mount(root, context) {
     focus: () => view.focus(),
     async dispose() {
       disposed = true;
+      endPlaceWait(new Error("the editor closed before the file was placed"));
       markdownImageGeneration += 1;
       revokeMarkdownImageUrls(markdownImageUrls);
       markdownImageUrls = new Map();

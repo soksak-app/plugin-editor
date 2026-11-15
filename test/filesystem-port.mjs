@@ -11,15 +11,21 @@ import os from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import { SIDECAR, SURFACE } from "./files-sidecar.mjs";
 
+/**
+ * The real files sidecar of the editor surface: a fixture process that serves the declared files wire. Its replies and native
+ * notifications reach the view through attach(view), the view of the editor, as the host posts them to the routed view.
+ */
 export async function filesystemPort(t, beforeClose = async () => {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), "editor-filesystem-"));
   const child = fork(fileURLToPath(new URL("./fixtures/filesystem-process.mjs", import.meta.url)), [root], {
     silent: true, execArgv: [],
   });
   const events = new EventEmitter();
-  const listeners = new Set();
   const failures = [];
+  // The view that receives the messages of the fixture; set by attach before the first request of the view.
+  let target = null;
   const sent = [];
   const operations = new Map();
   const holds = [];
@@ -29,6 +35,7 @@ export async function filesystemPort(t, beforeClose = async () => {}) {
   let nativeChanges = 0;
   let paused = false;
   let stopping = null;
+  let closeRequested = false;
   let exitResult = null;
   let heldChanges = null;
   // The number of waits of the port on the fixture; the process and its pipes hold the event loop while it is above 0.
@@ -58,7 +65,16 @@ export async function filesystemPort(t, beforeClose = async () => {}) {
       entry.resolve();
     }
   };
-  const deliver = (body) => { for (const listener of listeners) listener(body); };
+  // A closed view refuses the messages of the files sidecar, because it has no subscription left; the editor then ignores the reply
+  // of a request that it no longer waits for. Any other refusal is a failure of the port, which close reports.
+  const deliver = (body) => {
+    if (target === null) { failures.push(`no view is attached for ${JSON.stringify(body)}`); return; }
+    try {
+      target.sidecarMessage(SIDECAR, SURFACE, { body });
+    } catch (error) {
+      if (!/no subscription for it/.test(error.message)) failures.push(`the view refused a message of the files sidecar: ${error.message}`);
+    }
+  };
   child.stderr.setEncoding("utf8").on("data", (text) => { stderr += text; });
   child.on("error", (error) => { failures.push(error.message); });
   child.on("message", (message) => {
@@ -77,7 +93,7 @@ export async function filesystemPort(t, beforeClose = async () => {}) {
     let message;
     try { message = JSON.parse(line); }
     catch (error) { failures.push(`invalid fixture output: ${error.message}`); return; }
-    if (message.surface !== "editor-1") { failures.push(`unknown surface ${message.surface}`); return; }
+    if (message.surface !== SURFACE) { failures.push(`unknown surface ${message.surface}`); return; }
     if (message.closed) { events.emit("closed", message); return; }
     const body = message.body;
     if (body.changed !== undefined && heldChanges !== null) {
@@ -118,20 +134,26 @@ export async function filesystemPort(t, beforeClose = async () => {}) {
 
   const port = {
     root, sent,
-    on: async (surface, listener) => { assert.equal(surface, "editor-1"); listeners.add(listener); return () => listeners.delete(listener); },
-    onFailure: async () => () => {},
-    async send(surface, body) {
+    attach(view) {
+      assert.equal(target, null, "the files port is already attached to a view");
+      target = view;
+    },
+    async send(body) {
       sent.push(body);
       // The request holds the event loop until its reply comes.
       if (!operations.has(body.id)) hold();
       operations.set(body.id, body.operation);
-      await send({ surface, root, cids: [], body });
+      await send({ surface: SURFACE, root, cids: [], body });
     },
     async pauseWrite() {
       const armed = control("pause-write");
       const entered = waitEvent("control", (message) => message.paused === armed.id, "the real write pause");
       await armed.done;
       return { entered, async release() { await control("resume-write").done; paused = false; } };
+    },
+    // The fixture acknowledges an armed write pause, which proves that it reads its control messages; no write is made.
+    async acknowledged() {
+      await control("pause-write").done;
     },
     holdReply(operation) {
       const result = Promise.withResolvers();
@@ -162,7 +184,7 @@ export async function filesystemPort(t, beforeClose = async () => {}) {
       return waitEvent("control", (message) => message.nativeChange === relative, `native change of ${relative}`);
     },
     exited: () => untilExit(ended, "the exit of the fixture"),
-    inspect: () => ({ listeners: listeners.size, nativeChanges, pid: child.pid, exit: exitResult, waiting: waiting() }),
+    inspect: () => ({ nativeChanges, pid: child.pid, exit: exitResult, waiting: waiting() }),
     // Resolves when count close and control waits are pending: each wait that registers checks it.
     untilWaiting(count) {
       const entry = { count, ...Promise.withResolvers() };
@@ -171,6 +193,7 @@ export async function filesystemPort(t, beforeClose = async () => {}) {
       return entry.promise;
     },
     async close() {
+      closeRequested = true;
       if (stopping) return stopping;
       // The close holds the event loop until the process has ended.
       hold();
@@ -180,7 +203,10 @@ export async function filesystemPort(t, beforeClose = async () => {}) {
         const exitFailure = ({ code, signal }) => new Error(`filesystem fixture ended before close completed: ${signal ?? `exit ${code}`}`);
         try {
           await beforeClose();
-          assert.equal(listeners.size, 0, "the editor did not remove its sidecar subscription");
+          // The closed editor has no sidecar subscription, so the view refuses a message of the files sidecar.
+          // A port without an attached view has no subscription to check.
+          if (target !== null) assert.throws(() => target.sidecarMessage(SIDECAR, SURFACE, { body: { changed: "probe" } }),
+            /no subscription for it/, "the editor did not remove its sidecar subscription");
           heldChanges = null;
           if (exitResult !== null) throw exitFailure(exitResult);
           if (paused) { await control("resume-write").done; paused = false; }
@@ -205,19 +231,21 @@ export async function filesystemPort(t, beforeClose = async () => {}) {
           await rm(root, { recursive: true, force: true });
         }
         await assert.rejects(access(root), { code: "ENOENT" });
-        t.diagnostic("filesystem cleanup " + JSON.stringify({ watches: 0, listeners: listeners.size,
+        t.diagnostic("filesystem cleanup " + JSON.stringify({ watches: 0,
           exitCode: exitResult.code, signal: exitResult.signal, temporaryDirectoryRemoved: true }));
       })();
       return stopping;
     },
   };
-  t.after(() => port.close());
+  // A test that closes the port owns the outcome of its close; the cleanup closes only a port that the test left open.
+  t.after(() => { if (!closeRequested) return port.close(); });
   return port;
 }
 
-export function nextDocument(t, editor, predicate) {
-  const result = Promise.withResolvers();
-  const stop = editor.watchStatus("editor.document", (state) => { if (predicate(state)) result.resolve(state); });
-  t.after(stop);
-  return result.promise.finally(stop);
+/** Watches the document status of the editor and resolves with the first value that predicate accepts. */
+export async function nextDocument(editor, predicate) {
+  await editor.watch("editor.document");
+  const accepted = () => editor.reports.changed.filter((payload) => payload.name === "editor.document" && predicate(payload.value));
+  await editor.until(() => accepted().length > 0);
+  return accepted()[0].value;
 }

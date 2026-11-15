@@ -1,8 +1,10 @@
-// Builds the test tree build/test/: a copy of ui/ whose SDK imports point to the test models of test/models/, whose
-// shared extension imports point to the bundles that plugin.json declares, and whose vendored bundles import each other
-// by the same relative paths. The table scripts/test-sdk.json lists each SDK export that the UI imports or a model replays,
-// the model or value that stands in for it, and the copied core contract cases that its model replays, which the replay
-// tests read through test/sdk-cases.mjs. Test sources may import only build/test/, never ui/ and never an SDK name.
+// Builds the test tree build/test/: a copy of ui/ whose shared extension imports point to the bundles that plugin.json declares,
+// and a re-export of each shared module under build/test/shared/. This is plugin functionality, not SDK functionality: the
+// editor's extension modules (@codemirror/*, @lezer/*, ...) are listed in plugin.json extends, and the UI imports them through
+// @soksak/shared/editor.extension/<package>.js, which the host serves from the vendored bundles. The SDK imports of ui/ (the
+// @soksak/plugin-api package and its subpaths) are not rewritten: node resolves them to the SDK release that package.json pins,
+// and the tests run the real page modules of ui/ through that release's view test host (openView).
+// Test sources import the pages only from build/test/ui/, never from ui/.
 import fs from "node:fs";
 import path from "node:path";
 import { builtinModules } from "node:module";
@@ -12,12 +14,12 @@ import { parse } from "acorn";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputRoot = path.join(root, "build", "test");
 const outputUI = path.join(outputRoot, "ui");
-const outputFakes = path.join(outputRoot, "fakes");
 const outputShared = path.join(outputRoot, "shared");
 const POINT = "@soksak/shared/editor.extension/";
 const plugin = JSON.parse(fs.readFileSync(path.join(root, "plugin.json"), "utf8"));
+const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+const declared = new Set([...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]);
 const sharedModules = plugin.extends.extension.modules;
-const table = JSON.parse(fs.readFileSync(path.join(root, "scripts", "test-sdk.json"), "utf8"));
 const rel = (from, to) => {
   const value = path.relative(path.dirname(from), to).split(path.sep).join("/");
   return value.startsWith(".") ? value : "./" + value;
@@ -39,38 +41,32 @@ function parseModule(source, file) {
   }
 }
 
-/** Every import, export-from and dynamic import of a module: its specifier literal range, the names it takes and whether it is dynamic. */
+/** Every import, export-from, export-all and dynamic import of a module: its specifier literal range and whether it is dynamic. */
 function specifiersOf(source, file) {
   const found = [];
-  const add = (literal, names, dynamic = false) => {
+  const add = (literal, dynamic = false) => {
     if (literal === null || literal === undefined) return;
     if (literal.type !== "Literal" || typeof literal.value !== "string") {
-      if (dynamic) { found.push({ dynamic: true }); return; }
+      if (dynamic) return;
       throw new Error(`test build cannot resolve a non-literal module specifier in ${relative(file)}`);
     }
-    found.push({ specifier: literal.value, names, start: literal.start + 1, end: literal.end - 1, dynamic });
+    found.push({ specifier: literal.value, start: literal.start + 1, end: literal.end - 1, dynamic });
   };
   const visit = (node) => {
     if (node === null || typeof node !== "object") return;
     if (Array.isArray(node)) { for (const child of node) visit(child); return; }
-    if (node.type === "ImportDeclaration") {
-      add(node.source, node.specifiers.map((specifier) => specifier.type === "ImportSpecifier"
-        ? String(specifier.imported.name ?? specifier.imported.value)
-        : specifier.type === "ImportDefaultSpecifier" ? "default" : "*"));
-    } else if (node.type === "ExportNamedDeclaration" && node.source) {
-      add(node.source, node.specifiers.map((specifier) => String(specifier.local.name ?? specifier.local.value)));
-    } else if (node.type === "ExportAllDeclaration") {
-      add(node.source, ["*"]);
+    if (node.type === "ImportDeclaration" || (node.type === "ExportNamedDeclaration" && node.source) || node.type === "ExportAllDeclaration") {
+      add(node.source);
     } else if (node.type === "ImportExpression") {
-      add(node.source, [], true);
+      add(node.source, true);
     }
     for (const [key, value] of Object.entries(node)) if (key !== "start" && key !== "end") visit(value);
   };
   visit(parseModule(source, file));
-  return found.sort((a, b) => (a.start ?? 0) - (b.start ?? 0));
+  return found.sort((a, b) => a.start - b.start);
 }
 
-/** The names a module exports, for the table check of the models. */
+/** The names a module exports, to check that a re-export names an export of its target. */
 function exportedNames(file) {
   const names = new Set();
   for (const statement of parseModule(fs.readFileSync(file, "utf8"), file).body) {
@@ -90,26 +86,6 @@ fs.rmSync(outputRoot, { recursive: true, force: true });
 fs.mkdirSync(outputRoot, { recursive: true });
 fs.cpSync(path.join(root, "ui"), outputUI, { recursive: true });
 
-// The fake of each SDK module: the model of each export, or the declared value.
-const fakeFiles = new Map();
-table.modules.forEach((module, index) => {
-  const file = path.join(outputFakes, `sdk-${index}.mjs`);
-  const lines = [];
-  for (const [name, entry] of Object.entries(module.exports)) {
-    if (typeof entry.value === "string") {
-      lines.push(`export const ${name} = ${JSON.stringify(entry.value)};`);
-      continue;
-    }
-    const model = path.join(root, entry.model);
-    if (!fs.existsSync(model)) throw new Error(`test build: model ${entry.model} for ${module.specifier}#${name} is missing`);
-    if (!exportedNames(model).has(name)) throw new Error(`test build: model ${entry.model} does not export ${name}`);
-    lines.push(`export { ${name} } from ${JSON.stringify(rel(file, model))};`);
-  }
-  fakeFiles.set(module.specifier, { file, exports: new Set(Object.keys(module.exports)) });
-  fs.mkdirSync(outputFakes, { recursive: true });
-  fs.writeFileSync(file, lines.join("\n") + "\n");
-});
-
 // Each declared shared module is served from the vendored bundle that plugin.json names for it.
 const shared = new Map(Object.entries(sharedModules).map(([name, file]) => [name, path.join(root, file.replace("ui/", "build/test/ui/"))]));
 for (const [name, file] of shared) {
@@ -128,9 +104,8 @@ for (const file of walk(outputUI, (name) => name.endsWith(".js"))) {
   const source = fs.readFileSync(file, "utf8");
   const replacements = [];
   for (const item of specifiersOf(source, file)) {
-    if (item.dynamic && item.specifier === undefined) { dynamicImports += 1; continue; }
-    if (item.dynamic) { dynamicImports += 1; continue; }
     const specifier = item.specifier;
+    if (item.dynamic) dynamicImports += 1;
     if (specifier.startsWith(POINT)) {
       const name = specifier.slice(POINT.length, -".js".length);
       const target = shared.get(name);
@@ -138,17 +113,10 @@ for (const file of walk(outputUI, (name) => name.endsWith(".js"))) {
       replacements.push({ ...item, value: rel(file, target) });
       continue;
     }
-    if (specifier === "soksak" || specifier.startsWith("@soksak/")) {
-      const module = fakeFiles.get(specifier);
-      if (!module) throw new Error(`unlisted SDK import ${specifier} in ${relative(file)}`);
-      for (const name of item.names) {
-        if (!module.exports.has(name)) throw new Error(`unlisted SDK export ${specifier}#${name} in ${relative(file)}`);
-      }
-      replacements.push({ ...item, value: rel(file, module.file) });
-      continue;
-    }
     if (specifier.startsWith(".") || builtins.has(specifier)) continue;
-    throw new Error(`UI imports an unlisted package ${specifier} in ${relative(file)}`);
+    // A package of the UI resolves only from a dependency that package.json declares; the SDK is one of them.
+    const name = specifier.startsWith("@") ? specifier.split("/").slice(0, 2).join("/") : specifier.split("/")[0];
+    if (!declared.has(name)) throw new Error(`UI imports an undeclared package ${specifier} in ${relative(file)}`);
   }
   if (replacements.length === 0) continue;
   let next = source;
@@ -159,14 +127,10 @@ for (const file of walk(outputUI, (name) => name.endsWith(".js"))) {
   rewritten += replacements.length;
 }
 
-// Test sources import only the build tree; no test names an SDK package.
+// Test sources import the pages only from the build tree.
 for (const file of walk(path.join(root, "test"), (name) => /\.(?:mjs|js)$/.test(name))) {
   const source = fs.readFileSync(file, "utf8");
-  if (source.includes("@soksak/") || /(?:from|import\()\s*["']soksak["']/.test(source)) {
-    throw new Error(`test source names an SDK package: ${relative(file)}`);
-  }
   for (const item of specifiersOf(source, file)) {
-    if (item.dynamic || item.specifier === undefined) continue;
     if (!item.specifier.startsWith(".")) continue;
     const target = path.resolve(path.dirname(file), item.specifier.split(/[?#]/, 1)[0]);
     if (target.startsWith(path.join(root, "ui") + path.sep) || target === path.join(root, "ui")) {
@@ -175,4 +139,4 @@ for (const file of walk(path.join(root, "test"), (name) => /\.(?:mjs|js)$/.test(
   }
 }
 
-console.log(`Built test UI tree: ${walk(outputUI, () => true).length} files, ${rewritten} rewritten imports, ${shared.size} shared modules, ${table.modules.reduce((n, m) => n + Object.keys(m.exports).length, 0)} SDK exports, ${dynamicImports} runtime imports`);
+console.log(`Built test UI tree: ${walk(outputUI, () => true).length} files, ${rewritten} rewritten shared imports, ${shared.size} shared modules, ${dynamicImports} runtime imports`);

@@ -80,9 +80,17 @@ test("no workflow checks out another repository", () => {
   }
 });
 
-test("the checks come from the kit releases, and no check reads the plugin API of core", () => {
-  const dependencies = { ...PACKAGE.dependencies, ...PACKAGE.devDependencies };
-  assert.equal(dependencies[SCOPE + "plugin-api"], undefined, "package.json must not pin the plugin API of core");
+// The plugin depends on core only through the plugin API release that package.json pins (core docs/spec/plugins.md#repositories): the
+// tests run the page modules through the view test host of that release, so the pin is the one dependency on core. The pin is a file:
+// development pin of a core release tarball, or the GitHub release URL of one, which is the form that the kit pin takes.
+test("package.json pins the plugin API of a core release as its one core dependency", () => {
+  const pin = PACKAGE.devDependencies[SCOPE + "plugin-api"];
+  assert.ok(pin, "package.json must pin the plugin API of a core release in devDependencies");
+  assert.match(pin, /^(?:file:.*\/soksak-plugin-api-\d+\.\d+\.\d+\.tgz|https:\/\/github\.com\/soksak-app\/core\/releases\/download\/v\d+\.\d+\.\d+\/soksak-plugin-api-\d+\.\d+\.\d+\.tgz)$/,
+    `the plugin API pin ${pin} is neither a core release tarball nor its GitHub release URL`);
+});
+
+test("the checks come from the kit releases, and no check reads the plugin API of core outside the test host", () => {
   for (const file of ["Makefile", ".githooks/commit-msg", ".githooks/pre-commit"]) {
     assert.doesNotMatch(readFileSync(path.join(ROOT, file), "utf8"), /CORE_PLUGIN_API_DIR|soksak-exposure|soksak-engines|node_modules\/@soksak|check-plugin/,
       `${file} must run only the commands of the kit releases`);

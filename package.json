@@ -11,11 +11,10 @@
     "url": "git+https://github.com/soksak-app/plugin-editor.git"
   },
   "engines": {
-    "soksak": "^0.0.40"
+    "soksak": "^0.0.41"
   },
   "files": [
     "plugin.json",
-    "contract-copies.json",
     "diagnostics.json",
     "ui/editor-diagnostics.js",
     "events.json",
@@ -56,6 +55,7 @@
     "@lezer/lr": "1.4.11",
     "@marijn/find-cluster-break": "1.0.4",
     "@soksak/kit": "https://github.com/soksak-app/kit/releases/download/v0.0.14/soksak-kit-0.0.14.tgz",
+    "@soksak/plugin-api": "https://github.com/soksak-app/core/releases/download/v0.0.41/soksak-plugin-api-0.0.41.tgz",
     "acorn": "8.19.0",
     "ajv": "^8.20.0",
     "crelt": "1.0.7",

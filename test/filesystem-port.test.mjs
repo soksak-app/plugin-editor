@@ -5,20 +5,9 @@ import test from "node:test";
 import { filesystemPort } from "./filesystem-port.mjs";
 
 for (const phase of ["before", "during"]) test(`a filesystem fixture terminated ${phase} close retains its exit cause and cancels every wait`, async (t) => {
-  const cleanup = [];
-  const port = await filesystemPort({ after(fn) { cleanup.push(fn); }, diagnostic: t.diagnostic.bind(t) });
-  // The helper registers cleanup even for a failed assertion. This test deliberately expects the same SIGKILL cause there.
-  t.after(async () => {
-    for (const close of cleanup) {
-      try { await close(); }
-      catch (error) { assert.match(error.message, /SIGKILL/); }
-    }
-  });
-  const ready = Promise.withResolvers();
-  const stop = await port.on("editor-1", (body) => { if (body.id === "ready") ready.resolve(body); });
-  await port.send("editor-1", { operation: "watch", id: "ready", paths: [] });
-  assert.deepEqual(await ready.promise, { id: "ready" });
-  stop();
+  const port = await filesystemPort(t);
+  // The fixture's acknowledgement of a control message proves that it runs before it is killed.
+  await port.acknowledged();
   if (phase === "before") {
     process.kill(port.inspect().pid, "SIGKILL");
     assert.equal((await port.exited()).signal, "SIGKILL");
@@ -32,6 +21,5 @@ for (const phase of ["before", "during"]) test(`a filesystem fixture terminated 
     await rejected;
   }
   assert.equal(port.inspect().waiting, 0, "unexpected exit must cancel all close acknowledgement and watcher waits");
-  assert.equal(port.inspect().listeners, 0);
   await assert.rejects(access(port.root), { code: "ENOENT" });
 });

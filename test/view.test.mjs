@@ -1,11 +1,12 @@
-// The view page at the consumer boundary (E24): the page of the view carries the import map of the view, builds its
-// surface context over the view channel, and mounts the editor module into the page. The host side of the channel is
-// test/view-host.mjs, which serves the call route of a view as the core workbench answers it.
+// The view page at the consumer boundary (E24): the page of the view builds its surface context over the view channel and mounts
+// the editor module into the page. The page runs in the view test host of the SDK release that package.json pins (openView), and the
+// editor view helper (test/editor-view.mjs) opens it with the files sidecar of the test.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { sha } from "./fakes.mjs";
-import { createViewPage } from "./view-host.mjs";
+import { openView } from "@soksak/plugin-api/testing";
+import { openEditor, installedOf } from "./editor-view.mjs";
+import { SIDECAR, SURFACE } from "./files-sidecar.mjs";
 
 const manifest = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.url), "utf8"));
 
@@ -20,97 +21,100 @@ test("the view page begins with its doctype, holds no import map, and carries th
 });
 
 test("the view page refuses to mount without the start values of the surface", async (t) => {
-  const host = createViewPage(t, "no-start");
-  host.window.sokSurface = null;
-  await assert.rejects(import("../build/test/ui/view.js?case=no-start"),
+  const view = await openView("editor", { start: null, host: {
+    surface: SURFACE, declarations: {}, statuses: {}, contributions: installedOf([]), sidecars: [SIDECAR], project: null,
+    state: { read: () => null, write() {} }, sidecar: {}, commands: {}, native: {}, faults: {},
+  } });
+  t.after(() => view.close());
+  await assert.rejects(view.load(new URL("../build/test/ui/view.js", import.meta.url)),
     /the view of editor has no start values: the host provides window\.sokSurface/);
 });
 
 test("the view page refuses to mount without the declarations of the start values", async (t) => {
-  const host = createViewPage(t, "no-declarations");
-  host.window.sokSurface = Object.freeze({ surface: "editor-1", params: null, origin: null, project: null });
-  await assert.rejects(import("../build/test/ui/view.js?case=no-declarations"),
+  // openView merges declarations into the start values it sets, so the window of this view gets its start values from the test before load.
+  const view = await openView("editor", { start: null, host: {
+    surface: SURFACE, declarations: {}, statuses: {}, contributions: installedOf([]), sidecars: [SIDECAR], project: null,
+    state: { read: () => null, write() {} }, sidecar: {}, commands: {}, native: {}, faults: {},
+  } });
+  t.after(() => view.close());
+  view.window.sokSurface = Object.freeze({ surface: SURFACE, params: null, origin: null, project: null });
+  await assert.rejects(view.load(new URL("../build/test/ui/view.js", import.meta.url)),
     /window\.sokSurface \{surface, params, origin, project, declarations, diagnostics\}/);
 });
 
 test("the view page registers its exposure from the declarations of the start values", async (t) => {
-  const { reports, until } = createViewPage(t, "declarations");
-  await import("../build/test/ui/view.js?case=declarations");
-  const registeredStatuses = () => reports.native.filter(([name, payload]) => name === "registered" && payload.kind === "status");
-  await until(() => registeredStatuses().length >= manifest.exposes.status.length);
-  const statuses = reports.native.filter(([name, payload]) => name === "registered" && payload.kind === "status")
-    .map(([, payload]) => payload.name);
-  assert.deepEqual(statuses.toSorted(), manifest.exposes.status.map((entry) => entry.name).toSorted());
+  const editor = await openEditor(t);
+  // The core entries of the window are registered by the page too; the plugin's entries are the ones compared.
+  const registered = (kind) => editor.view.calls
+    .filter(({ command, params }) => command === "runtime.native.call" && params.name === "registered" && params.payload.kind === kind)
+    .map(({ params }) => params.payload.name).filter((name) => !name.startsWith("core."));
+  assert.deepEqual(registered("status").toSorted(), manifest.exposes.status.map((entry) => entry.name).toSorted());
 });
 
 test("the view context uses the logger supplied by its SDK bridge", async (t) => {
-  const { window } = createViewPage(t, "bridge-logger");
-  const page = await import("../build/test/ui/view.js?case=bridge-logger");
-  const bridgeLog = Object.freeze(Object.fromEntries(["error", "warn", "info", "debug", "trace"]
-    .map((level) => [level, () => {}])));
-  const bridge = {
-    calls: { request: () => { throw new Error("view context made a raw log call"); } },
-    commands: { register: async () => {} },
-    contributions: () => [],
-    exposure: { register: async () => {}, reply: () => {}, changed: () => {} },
-    runtime: {
-      error: async () => {},
-      log: bridgeLog,
-      native: { on: async () => () => {} },
-      sidecar: () => ({ send: async () => {}, on: async () => {}, onFailure: async () => {} }),
-      theme: () => {},
-    },
-  };
-  const { context } = page.createViewContext({ bridge, start: window.sokSurface, report: () => {} });
-  assert.strictEqual(context.runtime.log, bridgeLog);
+  // The page bridge takes the one message listener of the view channel, so this view opens without loading the page: the SDK bridge
+  // and the context module are created over the same window and handler.
+  const start = { surface: SURFACE, params: null, origin: null, project: null };
+  const view = await openView("editor", { start, declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands,
+    element: manifest.exposes.element }, host: {
+    surface: SURFACE, declarations: {}, statuses: {}, contributions: installedOf([]), sidecars: [SIDECAR], project: null,
+    state: { read: () => null, write() {} }, sidecar: {}, commands: {}, native: {}, faults: {},
+  } });
+  t.after(() => view.close());
+  const { createViewBridge } = await import("@soksak/plugin-api/view");
+  const { createViewContext } = await import("../build/test/ui/view-context.js");
+  const bridge = createViewBridge({ handler: view.window.webkit.messageHandlers["sok-view"], report: () => {} });
+  const { context } = createViewContext({ bridge, start: view.window.sokSurface, report: () => {} });
+  assert.strictEqual(context.runtime.log, bridge.runtime.log);
 });
 
 test("the view page opens the file of its tab through the view channel", async (t) => {
-  const { reports, logs, run, sidecar } = createViewPage(t, "open");
-  await import("../build/test/ui/view.js?case=open");
-  assert.deepEqual(sidecar.sent.map((body) => body.operation), ["read", "watch"]);
-  assert.equal(await run("editor.read"), "let a = 1;\n// TODO: b\n");
+  const editor = await openEditor(t);
+  assert.deepEqual(editor.sidecar.sent.map((body) => body.operation), ["read", "watch"]);
+  assert.equal(await editor.run("editor.read"), "let a = 1;\n// TODO: b\n");
   // Every declared command of the plugin is registered through the channel, and the registrations of the statuses and
   // the element names are the native calls of the surface.
-  assert.deepEqual(reports.registered.toSorted(), manifest.exposes.commands.map((entry) => entry.name).toSorted());
-  const kinds = reports.native.filter(([name]) => name === "registered").map(([, payload]) => payload.kind);
+  const registeredCommands = editor.view.calls.filter(({ command }) => command === "runtime.command.register").map(({ params }) => params.name);
+  assert.deepEqual(registeredCommands.toSorted(), manifest.exposes.commands.map((entry) => entry.name).toSorted());
+  // The core entries of the window are registered by the page too; the plugin's entries are the ones compared.
+  const kinds = editor.view.calls.filter(({ command, params }) => command === "runtime.native.call" && params.name === "registered"
+    && !params.payload.name.startsWith("core."))
+    .map(({ params }) => params.payload.kind);
   assert.deepEqual([...new Set(kinds)].toSorted(), ["element", "status"]);
-  assert.deepEqual(reports.title, ["main.js"]);
-  const open = logs.find((entry) => entry.event === "open");
+  assert.deepEqual(editor.reports.title, ["main.js"]);
+  const open = editor.logs.find((entry) => entry.event === "open");
   assert.equal(open.level, "info");
   assert.equal(open.fields.path, "src/main.js");
   assert.equal(open.fields.ok, true);
 });
 
 test("the view page resolves extension points through the view bridge", async (t) => {
-  const host = createViewPage(t, "view-contributions");
-  await import("../build/test/ui/view.js?case=view-contributions");
-  assert.deepEqual(host.reports.contributions, ["extension", "formatter"]);
-  assert.deepEqual(host.fetches, [],
-    `the view fetched ${host.fetches.join(", ")}; its start values carry its diagnostic declaration, and it reads no plugin list`);
+  const fetches = [];
+  const fetchOf = globalThis.fetch;
+  globalThis.fetch = (input, init) => { fetches.push(String(input)); return fetchOf(input, init); };
+  t.after(() => { globalThis.fetch = fetchOf; });
+  const editor = await openEditor(t);
+  await editor.settle();
+  assert.deepEqual(editor.view.calls.filter(({ command }) => command === "runtime.contributions").map(({ params }) => params.point),
+    ["extension", "formatter"]);
+  assert.deepEqual(fetches, [],
+    `the view fetched ${fetches.join(", ")}; its start values carry its diagnostic declaration, and it reads no plugin list`);
 });
 
 test("the view page answers a forwarded exposure request from its own values", async (t) => {
-  const { reports, expose, until } = createViewPage(t, "exposure");
-  await import("../build/test/ui/view.js?case=exposure");
-  await until(() => reports.subscribed.includes("exposure-request"));
-  const id = expose("status.get", { name: "editor.document" });
-  const repliesOf = () => reports.native.filter(([name, payload]) => name === "exposureReply" && payload.id === id);
-  await until(() => repliesOf().length > 0);
-  const replies = repliesOf();
+  const editor = await openEditor(t);
+  const id = "exposure-request-1";
+  await editor.push("exposure-request", { id, surface: SURFACE, method: "status.get", params: { name: "editor.document" } });
+  await editor.settle();
+  const replies = editor.view.observed.document.filter((entry) => entry.name === "exposureReply" && entry.payload.id === id);
   assert.equal(replies.length, 1, `the page answered the exposure request ${id} once`);
-  assert.equal(replies[0][1].result.path, "src/main.js");
+  assert.equal(replies[0].payload.result.path, "src/main.js");
 });
 
 test("a watched status sends its value to the main page as a changed call", async (t) => {
-  const { reports, expose, until } = createViewPage(t, "watch-changed");
-  await import("../build/test/ui/view.js?case=watch-changed");
-  await until(() => reports.subscribed.includes("exposure-request"));
-  const id = expose("status.watch", { name: "editor.document" });
-  // The watch ends its handling with the reply to the request; the first value of the watch is its changed call.
-  await until(() => reports.native.some(([name, payload]) => name === "exposureReply" && payload.id === id)
-    && reports.native.some(([name]) => name === "changed"));
-  const changes = reports.native.filter(([name]) => name === "changed").map(([, payload]) => payload);
+  const editor = await openEditor(t);
+  await editor.watch("editor.document");
+  const changes = editor.reports.changed.filter((payload) => payload.name === "editor.document");
   assert.equal(changes.length, 1, `the page sent ${changes.length} changed calls for the watch, expected 1`);
   assert.deepEqual(Object.keys(changes[0]).toSorted(), ["name", "value", "version"]);
   assert.deepEqual({ name: changes[0].name, version: changes[0].version }, { name: "editor.document", version: 1 });
@@ -118,70 +122,68 @@ test("a watched status sends its value to the main page as a changed call", asyn
 });
 
 test("an uncaught error of the view page is an error event of the plugin", async (t) => {
-  const { window, logs, until } = createViewPage(t, "page-error");
-  await import("../build/test/ui/view.js?case=page-error");
+  const editor = await openEditor(t);
+  const { window } = editor.view;
   window.dispatchEvent(new window.ErrorEvent("error", { error: new Error("boom"), message: "boom" }));
-  await until(() => logs.some((entry) => entry.event === "page.error"));
-  assert.deepEqual(logs.filter((entry) => entry.event === "page.error"),
-    [{ level: "error", event: "page.error", fields: { where: "page", error: "boom" } }]);
+  await editor.until(() => editor.logs.some((entry) => entry.event === "page.error"));
+  assert.deepEqual(editor.logs.filter((entry) => entry.event === "page.error"),
+    [{ level: "error", event: "page.error", fields: { where: "page", error: "boom", surface: SURFACE } }]);
 });
 
 test("an edit of the view saves through the sidecar and reports the tab state", async (t) => {
-  const { reports, run, sidecar } = createViewPage(t, "save");
-  await import("../build/test/ui/view.js?case=save");
-  await run("editor.edit", { changes: [{ from: 8, to: 9, insert: "2" }] });
-  assert.deepEqual(reports.modified, [false, true]);
-  await run("editor.save");
-  assert.deepEqual(sidecar.sent.map((body) => body.operation), ["read", "watch", "write"]);
-  assert.deepEqual(reports.modified, [false, true, false]);
-  assert.deepEqual(reports.error, [null]);
-  assert.ok(reports.state.length > 0, "the page wrote the tab state of the view");
+  const editor = await openEditor(t);
+  await editor.run("editor.edit", { changes: [{ from: 8, to: 9, insert: "2" }] });
+  assert.deepEqual(editor.reports.modified, [false, true]);
+  await editor.run("editor.save");
+  assert.deepEqual(editor.sidecar.sent.map((body) => body.operation), ["read", "watch", "write"]);
+  assert.deepEqual(editor.reports.modified, [false, true, false]);
+  assert.deepEqual(editor.reports.error, [null]);
+  assert.ok(editor.reports.state.length > 0, "the page wrote the tab state of the view");
 });
 
 test("the first save of a blank document asks for its file through core.file.place", async (t) => {
   const files = new Map();
-  const { reports, run, sidecar } = createViewPage(t, "blank", { params: {}, files,
-    place: () => ({ path: "notes/plan.md" }) });
-  await import("../build/test/ui/view.js?case=blank");
-  await run("editor.edit", { changes: [{ from: 0, to: 0, insert: "# plan\n" }] });
-  await run("editor.save");
+  const editor = await openEditor(t, { params: {}, files, commands: { "core.file.place": () => ({ path: "notes/plan.md" }) } });
+  await editor.run("editor.edit", { changes: [{ from: 0, to: 0, insert: "# plan\n" }] });
+  await editor.run("editor.save");
   assert.equal(files.get("notes/plan.md"), "# plan\n");
-  assert.deepEqual(reports.placed, [["core.file.place", { name: "새 문서.txt" }]]);
-  assert.deepEqual(sidecar.sent.map((body) => [body.operation, body.operation === "write" ? body.expect : body.paths]),
+  assert.deepEqual(editor.reports.commands, [["core.file.place", { name: "새 문서.txt" }]]);
+  assert.deepEqual(editor.sidecar.sent.map((body) => [body.operation, body.operation === "write" ? body.expect : body.paths]),
     [["write", null], ["watch", ["notes/plan.md"]]]);
-  assert.deepEqual(reports.title, ["새 문서", "plan.md"]);
+  assert.deepEqual(editor.reports.title, ["새 문서", "plan.md"]);
 });
 
 test("the theme of the view starts from the theme script and follows a change", async (t) => {
-  const { window, post, mutation } = createViewPage(t, "theme", { scheme: "light" });
-  await import("../build/test/ui/view.js?case=theme");
+  const editor = await openEditor(t, { scheme: "light" });
+  const { window } = editor.view;
   assert.equal(window.document.documentElement.style.colorScheme, "light");
-  post({ sok: 1, event: "theme", data: { scheme: "dark", tokens: {} } });
-  await mutation(() => window.document.documentElement.style.colorScheme === "dark");
+  // The host posts a theme message into the page as the window receives it: the message event of the page window.
+  window.dispatchEvent(new window.MessageEvent("message", { source: window, data: { sok: 1, event: "theme", data: { scheme: "dark", tokens: {} } } }));
+  await editor.settle();
   assert.equal(window.document.documentElement.style.colorScheme, "dark");
 });
 
 // F238-c-13.4: each sidecar call of the view page names the sidecar that plugin.json declares.
 test("the view page names its declared sidecar in each sidecar call", async (t) => {
-  const { reports, run } = createViewPage(t, "sidecar-name");
-  await import("../build/test/ui/view.js?case=sidecar-name");
-  await run("editor.read");
+  const editor = await openEditor(t);
+  await editor.run("editor.read");
   const declared = Object.keys(manifest.dependencies);
   assert.equal(declared.length, 1);
-  assert.ok(reports.sidecarNames.length >= 2, "the page sent its sidecar calls");
-  assert.deepEqual(reports.sidecarNames, reports.sidecarNames.map(() => declared[0]));
+  const sidecarNames = editor.view.calls.filter(({ command }) => command === "runtime.sidecar.send").map(({ params }) => params.sidecar);
+  assert.ok(sidecarNames.length >= 2, "the page sent its sidecar calls");
+  assert.deepEqual(sidecarNames, sidecarNames.map(() => declared[0]));
 });
 
 // E14: the page records its trace as the events of its catalog, and each sidecar send carries its correlation identifiers.
 test("the view page records the open, save and watch trace as declared events", async (t) => {
-  const { logs, run, sidecar, until } = createViewPage(t, "trace");
-  await import("../build/test/ui/view.js?case=trace");
-  await run("editor.edit", { changes: [{ from: 8, to: 9, insert: "2" }] });
-  await run("editor.save");
-  sidecar.change("src/main.js", "changed on disk\n");
-  await until(() => logs.some((entry) => entry.event === "watch.change"));
+  const editor = await openEditor(t);
+  await editor.run("editor.edit", { changes: [{ from: 8, to: 9, insert: "2" }] });
+  await editor.run("editor.save");
+  const changed = editor.nextLog("watch.change");
+  editor.sidecar.change("src/main.js", "changed on disk\n");
+  await changed;
   const catalog = JSON.parse(readFileSync(new URL("../events.json", import.meta.url), "utf8")).events;
-  const events = logs.map((entry) => entry.event);
+  const events = editor.logs.map((entry) => entry.event);
   for (const event of ["open", "save", "watch.start", "watch.change"]) {
     assert.ok(events.includes(event), `the page recorded ${event}; recorded ${events.join(", ")}`);
     assert.ok(Object.hasOwn(catalog, `plugin.editor.${event}`), `plugin.editor.${event} is declared`);
@@ -189,19 +191,28 @@ test("the view page records the open, save and watch trace as declared events", 
 });
 
 test("each sidecar send of the view page carries its correlation identifiers", async (t) => {
-  const { reports, run } = createViewPage(t, "send-cids");
-  await import("../build/test/ui/view.js?case=send-cids");
-  await run("editor.read");
-  await run("editor.save");
-  assert.ok(reports.sendCids.length >= 2, "the page sent its sidecar calls");
-  for (const cids of reports.sendCids) assert.ok(Array.isArray(cids), `cids ${JSON.stringify(cids)} is a list`);
+  const editor = await openEditor(t);
+  await editor.run("editor.read");
+  await editor.run("editor.save");
+  const cids = editor.view.calls.filter(({ command }) => command === "runtime.sidecar.send").map((call) => call.cids ?? []);
+  assert.ok(cids.length >= 2, "the page sent its sidecar calls");
+  for (const value of cids) assert.ok(Array.isArray(value), `cids ${JSON.stringify(value)} is a list`);
 });
 
 test("a refused bridge log is shown through the bridge error route", async (t) => {
-  const { reports, until } = createViewPage(t, "log-refused", { refuseLog: "log route refused" });
-  await import("../build/test/ui/view.js?case=log-refused");
-  await until(() => reports.errorLines.length > 0);
-  assert.ok(reports.errorLines.length > 0, "the bridge reported no refused record through runtime.error");
-  assert.match(reports.errorLines[0].where, /^log plugin\.editor\.[a-z.]+$/);
-  assert.equal(reports.errorLines[0].text, "log route refused");
+  const editor = await openEditor(t, { faults: { "command.runtime.log": "log route refused" } });
+  await editor.until(() => editor.view.calls.some(({ command }) => command === "runtime.error"));
+  const errorLines = editor.view.calls.filter(({ command }) => command === "runtime.error").map(({ params }) => params);
+  assert.ok(errorLines.length > 0, "the bridge reported no refused record through runtime.error");
+  assert.equal(errorLines[0].where, "log batch");
+  // The batch of the page reports its refusal with the count of its events, as the writer of the page sends it.
+  assert.match(errorLines[0].text, /^page event batch of \d+ events failed: log route refused$/);
+});
+
+// E62-1: the view page disposes the editor on pagehide, so the close is recorded and the editor ends its watch with the view.
+test("the view page disposes the editor on pagehide, so the close is recorded", async (t) => {
+  const editor = await openEditor(t);
+  await editor.run("editor.read");
+  await editor.close();
+  assert.deepEqual(editor.logs.filter((entry) => entry.event === "close").map((entry) => entry.fields), [{ path: "src/main.js", pending: 0, surface: SURFACE }]);
 });

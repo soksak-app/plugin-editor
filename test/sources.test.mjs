@@ -38,7 +38,7 @@ test("the shared modules are imported from the build tree (F238-c-16)", () => {
 });
 
 test("the view host reads no SDK file and runs no SDK script (F238-c-17)", () => {
-  const host = readFileSync(path.join(TEST_ROOT, "view-host.mjs"), "utf8");
-  assert.equal(host.includes("require.resolve"), false, "view-host.mjs resolves an SDK package");
-  assert.equal(/readFileSync\(new URL\(["']\.\/view-start/.test(host), false, "view-host.mjs reads the view script of the SDK");
+  const host = readFileSync(path.join(TEST_ROOT, "editor-view.mjs"), "utf8");
+  assert.equal(host.includes("require.resolve"), false, "editor-view.mjs resolves an SDK package");
+  assert.equal(/readFileSync\(new URL\(["']\.\/view-start/.test(host), false, "editor-view.mjs reads the view script of the SDK");
 });

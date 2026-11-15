@@ -21,6 +21,9 @@ export const microsSince = (start) => Math.max(0, Math.round((performance.now() 
 export const errorText = (error) => (error instanceof Error ? error.message : String(error));
 
 /** The failure in the result form `<code>: <text>` (core docs/spec/logging.md#result-form); `code` is the code of an error that has none. */
+/** The class of a thrown value: its name for an Error, else its typeof. The page records it, because the caller receives only the message. */
+export const errorClass = (error) => (error instanceof Error ? error.name : typeof error);
+
 export function failure(error, code) {
   return `${error?.code ?? code}: ${errorText(error)}`.slice(0, 1024);
 }
