@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E63: The version is 0.0.27, which releases E62 with `engines.soksak` `^0.0.41`.
 - E62-3: Each content frame record carries the surface of the view, which the event catalog requires. The SDK view log adds the surface of `window.sokSurface` to each record, so the plugin records need no change. Red, before the SDK change: the frame payload failed the catalog check with `must have required property 'surface'`, and the record had `undefined` for `surface` in place of `editor-1`. Green: the content-frame cases pass with the original stop, restart and dispose assertions; the probe's exact clock values are replaced by value relations, which the test comments state.
 - E62-2: A save that waits on `core.file.place` when the editor closes rejects with `the editor closed before the file was placed`, and no longer waits for a reply that the closed view cannot receive. Red: the two place-held close tests timed out on the earlier page, because the save never settled. Green: both pass with the restored `/editor closed/` rejection.
 - E62-1: The view page disposes the editor on `pagehide`, so the close is recorded and the watches end with the view. Red: `the view page disposes the editor on pagehide, so the close is recorded` failed on the unchanged page with `[]` in place of `[{ path: 'src/main.js', pending: 0 }]`, because no close ran. Green: the fixed page passes the same test.

@@ -1,5 +1,6 @@
 # 기능
 
+- [~] E63 — P0: plugin API release of core 0.0.41로 시험하는 E62을 `engines.soksak` `^0.0.41`로 release하고 registry에 올린다. 진행: main의 release run이 게시한다.
 - [o] E62 — P1: 시험은 package.json 이 고정한 SDK release 와 그 view 시험 host 를 쓰며, core 와 같게 유지되는 SDK·host 사본과 복사된 contract case 를 쓰지 않는다. plugin 은 그 version 과 engines.soksak 으로만 core 에 의존한다.
   Package 는 core release 0.0.41(`@soksak/plugin-api` 0.0.41)을 고정하고 `engines.soksak` 으로 `^0.0.41` 을 선언한다.
 - [o] E62-3 — P0: 각 content frame 기록은 event catalog 가 요구하는 view 의 surface 를 담는다.

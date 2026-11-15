@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- E63: version은 0.0.27이고, E62을 `engines.soksak` `^0.0.41`로 release한다.
 - E62-3: 각 content frame 기록은 event catalog 가 요구하는 view 의 surface 를 담는다. SDK view log 가 `window.sokSurface` 의 surface 를 각 기록에 더하므로 plugin 기록은 바뀔 필요가 없다. Red (SDK 변경 전): frame payload 가 catalog 검사에서 `must have required property 'surface'` 로 실패했고, 기록의 `surface` 는 `editor-1` 대신 `undefined` 였다. Green: content-frame 시험이 원래의 stop, restart, dispose assertion 과 함께 통과한다. Probe 의 정확한 clock 값은 값 관계로 바뀌었으며, 그 이유는 시험 주석에 적었다.
 - E62-2: `core.file.place` 를 기다리는 저장은 editor 가 닫힐 때 `the editor closed before the file was placed` 로 거부되며, 닫힌 view 가 받을 수 없는 답을 더 기다리지 않는다. Red: 이전 page 에서 place 대기 close 시험 두 개가 저장이 끝나지 않아 시간 초과로 실패했다. Green: 복원한 `/editor closed/` 거부와 함께 두 시험이 통과한다.
 - E62-1: view page 는 `pagehide` 에서 editor 를 dispose 하므로, close 가 기록되고 watch 가 view 와 함께 끝난다. Red: 변경 전 page 에서 `the view page disposes the editor on pagehide, so the close is recorded` 가 실패했다. 기대값 `[{ path: 'src/main.js', pending: 0 }]` 대신 `[]` 이 나왔는데, close 가 실행되지 않았기 때문이다. Green: 수정한 page 가 같은 시험을 통과한다.
