@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- E65: version은 0.0.28이고, E64을 release한다.
 - E64: 시험은 `openPageView` 로 여는 `test/fixtures/host.mjs` 로 view host 에 답한다. fixture 는 jsdom window 와 start 값을 만들고, 각 `sok-view` 호출에 docs/spec/native-surfaces.md 의 view wire 로 답하며, ready 메시지 뒤에 theme 을 보내고, sidecar 세션을 경로로 연결하며, page 의 batch 를 기록한다. 시험은 더 이상 `@soksak/plugin-api/testing` 을 import 하지 않아, core 의 view host 변경이 시험 결과를 바꾸지 않는다. 기대값은 그대로이며 `pnpm test` 는 147 개 중 147 개를 통과한다. 변경 전 tree 도 같았다. 한 reload 시험은 writer 가 답보다 먼저 보낼 수 있으므로 기록이 log 에 나타날 때까지 기다린다. 한 workflow 검사의 이름은 더 이상 시험 host 를 말하지 않는다. `ui/` 에서 결함은 발견되지 않았다.
 - E63: version은 0.0.27이고, E62을 `engines.soksak` `^0.0.41`로 release한다.
 - E62-3: 각 content frame 기록은 event catalog 가 요구하는 view 의 surface 를 담는다. SDK view log 가 `window.sokSurface` 의 surface 를 각 기록에 더하므로 plugin 기록은 바뀔 필요가 없다. Red (SDK 변경 전): frame payload 가 catalog 검사에서 `must have required property 'surface'` 로 실패했고, 기록의 `surface` 는 `editor-1` 대신 `undefined` 였다. Green: content-frame 시험이 원래의 stop, restart, dispose assertion 과 함께 통과한다. Probe 의 정확한 clock 값은 값 관계로 바뀌었으며, 그 이유는 시험 주석에 적었다.
