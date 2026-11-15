@@ -1,6 +1,6 @@
 # 기능
 
-- [~] E67 — P0: plugin API에 dependency를 선언하지 않는 E66를 `engines.soksak` `^0.0.41`로 release하고 registry에 올린다. 진행: main의 release run이 게시한다.
+- [o] E67 — P0: plugin API에 dependency를 선언하지 않는 E66를 `engines.soksak` `^0.0.41`로 release하고 registry에 올린다. main의 release run이 v 게시했고 registry가 올린다(registry G117).
 - [o] E66-1 — P1: editor 해제의 한 단계가 실패해도 뒤의 단계를 건너뛰지 않는다. 입력: page 가 닫힐 때 editor 진단의 해제가 예외를 던진다. 기대: editor 는 그래도 close 를 기록하고, sidecar 요청을 끝내며, view 를 파괴하고, exposure 를 해제한 뒤 그 실패들을 던진다. 결과: Red, `a failing diagnostic disposal still records the close and disposes the exposure of the closed editor` 가 변경 전 page 에서 `the closed editor did not record its close` 로 실패했고, Green, 각 해제 단계를 실행하는 page 에서 통과한다.
 - [o] E66 — P1: 플러그인은 plugin API 에 대한 의존을 선언하지 않으며, 시험은 그 인터페이스에 이 저장소의 fixture 로 답한다. 입력: `package.json` 이 `@soksak/plugin-api` 0.0.41 을 고정했고, 시험은 `test/fixtures/host.mjs` 와 `@soksak/plugin-api/view` 를 통해 그 코드를 실행했다. 결과: `package.json` 에 `@soksak/plugin-api` 의존이 없고 `pnpm-lock.yaml` 에도 없다. resolve hook `test/fixtures/plugin-api/register.mjs` 가 `@soksak/plugin-api`, `@soksak/plugin-api/view`, `@soksak/plugin-api/diagnostic-view-frames` 를 `test/fixtures/plugin-api/` 의 fixture 모듈로 해석하며, 이는 애플리케이션이 page 에 대해 import map 으로 해석하는 방식과 같다. core 와의 관계는 `engines.soksak` 뿐이다. 시험은 page 가 plugin API 에 하는 호출과 그 답으로 하는 동작을 판단한다. `pnpm test` 는 156 중 156 을 통과한다(이전 147). E66-1 은 이전 과정에서 발견한 결함이다.
 - [o] E65 — P0: 이 저장소의 fixture로 host에 답하는 E64을 release하고 registry에 올린다. main의 release run이 v0.0.28을 게시했고, registry가 그것을 올린다(registry G115).
