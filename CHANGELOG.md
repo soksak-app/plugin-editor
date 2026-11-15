@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E67: The version is 0.0.29, which releases E66 with `engines.soksak` `^0.0.41`.
 - E66-1: The editor disposal runs each step even when an earlier one fails (the diagnostics, the theme subscription, the sidecar requests, the view, the exposure) and throws the failures together. Red: `a failing diagnostic disposal still records the close and disposes the exposure of the closed editor` failed with `the closed editor did not record its close`. Green: it passes.
 - E66: The plugin declares no dependency on the plugin API: `@soksak/plugin-api` is removed from `package.json` and `pnpm-lock.yaml`, and the test script loads `test/fixtures/plugin-api/register.mjs`, a resolve hook that maps the three specifiers of the pages to the fixture modules of `test/fixtures/plugin-api/`. The fixture records each call and answers as the test arranges; the wire fixture `test/fixtures/host.mjs` is replaced by `test/fixtures/page-view.mjs`. The tests assert the calls of the page on the plugin API. Removed assertions: the `surface` that the view runtime adds to a record, the batch error route of the bridge, the changed call of a status watch with its version, the target and disconnect of the observer of the shared frame observer, and the Error conversion of a thrown value by the host. `pnpm test` passes 156 of 156 (147 before).
 - E65: The version is 0.0.28, which releases E64.

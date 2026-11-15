@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- E67: version은 0.0.29이고, E66를 `engines.soksak` `^0.0.41`로 release한다.
 - E66-1: editor 해제는 앞 단계가 실패해도 각 단계(진단, theme 구독, sidecar 요청, view, exposure)를 실행하고 실패들을 함께 던진다. Red: `a failing diagnostic disposal still records the close and disposes the exposure of the closed editor` 가 `the closed editor did not record its close` 로 실패했다. Green: 통과한다.
 - E66: 플러그인은 plugin API 에 대한 의존을 선언하지 않는다. `@soksak/plugin-api` 를 `package.json` 과 `pnpm-lock.yaml` 에서 제거했고, test script 는 page 의 세 지정자를 `test/fixtures/plugin-api/` 의 fixture 모듈로 해석하는 resolve hook `test/fixtures/plugin-api/register.mjs` 를 읽는다. fixture 는 각 호출을 기록하고 시험이 마련한 대로 답한다. wire fixture `test/fixtures/host.mjs` 는 `test/fixtures/page-view.mjs` 로 바뀌었다. 시험은 page 가 plugin API 에 하는 호출을 단언한다. 삭제한 단언: view runtime 이 record 에 더하는 `surface`, bridge 의 batch 오류 경로, status watch 의 changed 호출과 version, 공유 frame observer 의 대상과 disconnect, host 가 던진 값을 Error 로 바꾸는 변환. `pnpm test` 는 156 중 156 을 통과한다(이전 147).
 - E65: version은 0.0.28이고, E64을 release한다.
