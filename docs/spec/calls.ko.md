@@ -4,7 +4,7 @@
 
 editor page 는 core 0.0.40 의 call 규칙(core `docs/spec/plugin-processes.md`, rule 3)을 따른다. call 에는 시간 한도가 없다. call 은 답, cancel, 상대의 끝으로 끝나며, 어떤 timer 도 call 을 끝내지 않는다. core 0.0.40 은 command 선언의 `timeout` member 를 거부하므로(`<where>: timeout is not a member of a command declaration`) `plugin.json` 은 command 의 `timeout` 을 선언하지 않는다.
 
-test 의 call model `test/models/calls.mjs` 는 core 의 call layer(`packages/plugin-api/calls.js`)를 따르고 그 `calls.json` copy 를 재생한다.
+test 의 call 규칙은 core 0.0.40 의 call 계약(core `docs/spec/plugin-processes.md`, 규칙 3)을 따르며, plugin API 인터페이스에서 그것을 진술한다.
 
 - 답은 call 을 resolve 하고, error 답은 그 error 의 message 와 code 로 call 을 reject 한다.
 - abort signal 이 있는 request 는 signal 이 abort 될 때 `{id, cancel: true}` 를 보내고, call 은 `cancelled` 로 reject 된다. cancel 된 call 에 온 답은 late reply 다. 그 지연과 함께 알려지고 call 에 전달되지 않는다.

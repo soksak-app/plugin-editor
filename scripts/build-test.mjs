@@ -2,8 +2,8 @@
 // and a re-export of each shared module under build/test/shared/. This is plugin functionality, not SDK functionality: the
 // editor's extension modules (@codemirror/*, @lezer/*, ...) are listed in plugin.json extends, and the UI imports them through
 // @soksak/shared/editor.extension/<package>.js, which the host serves from the vendored bundles. The SDK imports of ui/ (the
-// @soksak/plugin-api package and its subpaths) are not rewritten: node resolves them to the SDK release that package.json pins,
-// and the tests run the real page modules of ui/ through that release's view test host (openView).
+// @soksak/plugin-api specifiers) are not rewritten and are not dependencies of this package: the application resolves them for the page
+// through its import map, and the tests resolve them to the fixture modules of test/fixtures/plugin-api.
 // Test sources import the pages only from build/test/ui/, never from ui/.
 import fs from "node:fs";
 import path from "node:path";
@@ -16,6 +16,7 @@ const outputRoot = path.join(root, "build", "test");
 const outputUI = path.join(outputRoot, "ui");
 const outputShared = path.join(outputRoot, "shared");
 const POINT = "@soksak/shared/editor.extension/";
+const IMPORT_MAP_PACKAGE = "@soksak/plugin-api";
 const plugin = JSON.parse(fs.readFileSync(path.join(root, "plugin.json"), "utf8"));
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const declared = new Set([...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]);
@@ -114,9 +115,10 @@ for (const file of walk(outputUI, (name) => name.endsWith(".js"))) {
       continue;
     }
     if (specifier.startsWith(".") || builtins.has(specifier)) continue;
-    // A package of the UI resolves only from a dependency that package.json declares; the SDK is one of them.
+    // A package of the UI resolves only from a dependency that package.json declares, except the plugin API, which the import map of
+    // the application resolves for the page.
     const name = specifier.startsWith("@") ? specifier.split("/").slice(0, 2).join("/") : specifier.split("/")[0];
-    if (!declared.has(name)) throw new Error(`UI imports an undeclared package ${specifier} in ${relative(file)}`);
+    if (name !== IMPORT_MAP_PACKAGE && !declared.has(name)) throw new Error(`UI imports an undeclared package ${specifier} in ${relative(file)}`);
   }
   if (replacements.length === 0) continue;
   let next = source;

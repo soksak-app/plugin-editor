@@ -1,5 +1,5 @@
-// Independent rules of the test sources of this repository: the UI runs from the build tree only, no
-// resolver hook is loaded, the shared modules come from the build tree, and the view host reads no SDK file.
+// Independent rules of the test sources of this repository: the UI runs from the build tree only, the
+// only resolver hook is the plugin API fixture, the shared modules come from the build tree, and the fixture reads no SDK file.
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -26,9 +26,16 @@ test("the tests import the UI from the build tree and the models, never from ui/
   assert.deepEqual(direct, []);
 });
 
-test("the test script loads no resolver hook (F238-c-15)", () => {
+test("the test script loads only the resolver hook of the plugin API fixture (F238-c-15)", () => {
   assert.equal(existsSync(path.join(TEST_ROOT, "shared-modules.mjs")), false);
-  assert.equal(packageJson.scripts.test.includes("--import"), false, packageJson.scripts.test);
+  const imports = packageJson.scripts.test.match(/--import\S*/g) ?? [];
+  assert.deepEqual(imports, ["--import=./test/fixtures/plugin-api/register.mjs"], packageJson.scripts.test);
+});
+
+test("the resolver hook maps only the specifiers of the plugin API (E66)", () => {
+  const hook = readFileSync(path.join(TEST_ROOT, "fixtures/plugin-api/resolve.mjs"), "utf8");
+  const mapped = [...hook.matchAll(/\["(@[^"]+)", "\.\/[^"]+"\]/g)].map((match) => match[1]);
+  assert.deepEqual(mapped, ["@soksak/plugin-api", "@soksak/plugin-api/view", "@soksak/plugin-api/diagnostic-view-frames"]);
 });
 
 test("the shared modules are imported from the build tree (F238-c-16)", () => {
@@ -37,8 +44,10 @@ test("the shared modules are imported from the build tree (F238-c-16)", () => {
   assert.ok(imported.length >= 2, `shared modules imported from build/test/shared/ in ${imported.join(", ") || "no file"}`);
 });
 
-test("the view host reads no SDK file and runs no SDK script (F238-c-17)", () => {
-  const host = readFileSync(path.join(TEST_ROOT, "editor-view.mjs"), "utf8");
-  assert.equal(host.includes("require.resolve"), false, "editor-view.mjs resolves an SDK package");
-  assert.equal(/readFileSync\(new URL\(["']\.\/view-start/.test(host), false, "editor-view.mjs reads the view script of the SDK");
+test("the plugin API fixture reads no SDK file and runs no SDK script (F238-c-17)", () => {
+  for (const file of sourcesOf(path.join(TEST_ROOT, "fixtures", "plugin-api")).concat(path.join(TEST_ROOT, "editor-view.mjs"))) {
+    const source = readFileSync(file, "utf8");
+    assert.equal(source.includes("require.resolve"), false, `${relative(file)} resolves an SDK package`);
+    assert.equal(/node_modules\/@soksak|readFileSync\(new URL\(["']\.\/view-start/.test(source), false, `${relative(file)} reads an SDK file`);
+  }
 });

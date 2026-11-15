@@ -1,6 +1,6 @@
-// The files sidecar of the editor surface for the view host of this repository (test/fixtures/host.mjs): an in-memory file system. The sidecar lies outside core, so its
+// The files sidecar of the editor surface for the plugin API fixture of this repository (test/fixtures/plugin-api): an in-memory file system. The sidecar lies outside core, so its
 // replies and watch messages are the fixtures of the tests, and each one reaches the page through the sidecar route that the
-// page registered (sidecarMessage of the view).
+// page registered with the plugin API (sidecarMessage of the view).
 import { createHash } from "node:crypto";
 
 export const SIDECAR = "@soksak/sidecar-files";

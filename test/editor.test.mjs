@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
-import { openPageView } from "./fixtures/host.mjs";
-import { installedOf, openEditor } from "./editor-view.mjs";
+import { openPageView } from "./fixtures/page-view.mjs";
+import { openEditor } from "./editor-view.mjs";
 import { filesSidecar, sha, SIDECAR, SURFACE } from "./files-sidecar.mjs";
 
 const { markdownView, projectImagePath, safeImageSource } = await import("../build/test/ui/markdown.js");
@@ -68,6 +68,20 @@ test("a diagnostic hidden-memory start skips the visible editor and creates one 
   assert.equal(editor.root.querySelector(".cm-editor"), null, "the diagnostic command removes the initial hidden view");
 });
 
+test("a failing diagnostic disposal still records the close and disposes the exposure of the closed editor (E66-1)", async (t) => {
+  // The stop of the frame observer throws when the page closes, so the disposal of the editor diagnostics fails; the editor still
+  // releases what it holds, and the failure is recorded as an error event of the page.
+  const editor = await openEditor(t, { diagnostic: true, frameStop: () => { throw new Error("observer stop failed"); } });
+  await editor.run("editor.diagnostics.content-trace", { action: "start" });
+  await editor.close();
+  assert.deepEqual(eventsOf(editor.logs, "close").map((entry) => entry.fields), [{ path: "src/main.js", pending: 0 }],
+    "the closed editor did not record its close");
+  assert.ok(editor.view.api.some(({ name }) => name === "exposure.dispose"), "the closed editor did not dispose its exposure");
+  assert.equal(editor.root.childNodes.length, 0);
+  assert.deepEqual(editor.logs.filter((entry) => entry.event === "page.error").map((entry) => entry.fields),
+    [{ where: "dispose", error: "observer stop failed" }]);
+});
+
 test("a hidden-memory start is refused without the diagnostic declaration", async (t) => {
   const editor = await openEditor(t, { params: { diagnosticMode: "hidden-memory", document: "const x = 1;" } });
   await editor.until(() => editor.logs.some((entry) => entry.event === "page.error"));
@@ -75,7 +89,7 @@ test("a hidden-memory start is refused without the diagnostic declaration", asyn
   assert.equal(failure.fields.where, "mount");
   assert.match(failure.fields.error, /requires the editor diagnostic declaration/);
   assert.equal(editor.root.querySelectorAll(".cm-editor").length, 0, "refusal occurs before EditorView construction");
-  const sidecarCalls = editor.view.calls.filter(({ command }) => command === "runtime.sidecar.on" || command === "runtime.sidecar.send");
+  const sidecarCalls = editor.view.api.filter(({ name }) => name === "runtime.sidecar.on" || name === "runtime.sidecar.send");
   assert.deepEqual(sidecarCalls, [], "hidden-memory start must not connect the files sidecar");
 });
 
@@ -94,12 +108,13 @@ test("a hidden-memory start removes its view when diagnostic attachment fails", 
 
 test("content frame diagnostics observe the view root and restore its card style", async (t) => {
   // The view opens without the page, so the frame measurement is the real attach of the editor diagnostics over the context of the
-  // view. The window of the view provides the ResizeObserver that the SDK observer uses; the test delivers each resize to it.
+  // view. The shared view-frame observer is the fixture of the plugin API: it records the options of the plugin and its stop, and the
+  // test delivers each frame through the log that the plugin gave it.
   const diagnosticDeclaration = JSON.parse(readFileSync(new URL("../diagnostics.json", import.meta.url), "utf8"));
   const start = { surface: SURFACE, params: null, origin: { directory: null }, project: null, diagnostics: diagnosticDeclaration };
   const declarations = { status: manifest.exposes.status,
     commands: [...manifest.exposes.commands, ...diagnosticDeclaration.exposes.commands], element: manifest.exposes.element };
-  const view = await openPageView("editor", { start, declarations, host: { installed: installedOf([]), sidecars: [SIDECAR] } });
+  const view = await openPageView("editor", { start, declarations, sidecars: [SIDECAR] });
   t.after(() => view.close());
   const { window } = view;
   const documentRoot = window.document.documentElement;
@@ -114,10 +129,11 @@ test("content frame diagnostics observe the view root and restore its card style
   const { context } = createViewContext({ bridge, start: window.sokSurface, report: () => {} });
   const dispose = await attach({ expose: context.exposure, root: window.document.body, document: window.document,
     runtime: context.runtime, readHistoryEntries: () => window.history.length });
-  const trace = (action) => view.request("editor.diagnostics.content-trace", { action });
+  const trace = (action) => view.run("editor.diagnostics.content-trace", { action });
   const before = await trace("read");
   assert.deepEqual(before, { enabled: false, sequence: 0, width: 640, height: 480, historyEntries: window.history.length,
     regionHistoryEntries: 0 });
+  assert.deepEqual(view.frameObservers, [], "the observer starts only with the start action");
   const start1 = await trace("start");
   assert.deepEqual(start1.markerColor, [17, 193, 231], "the start result declares the exact paint marker RGB");
   assert.ok(start1.sourceClock && typeof start1.sourceClock === "object", "the start result includes a source clock anchor");
@@ -131,37 +147,26 @@ test("content frame diagnostics observe the view root and restore its card style
   assert.equal(style.getPropertyValue("--card"), "rgb(17, 193, 231)");
   assert.equal(style.getPropertyPriority("--card"), "");
   await assert.rejects(trace("start"), /already enabled/);
-  const [observer] = view.observers;
-  assert.equal(view.observers.length, 1, "the measurement observes the view with the ResizeObserver of its window");
-  // The observer starts observing at the animation frame after the start, so the test awaits that frame.
-  await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
-  assert.ok(observer.targets.includes(documentRoot), "the observer observes the view document root");
-  // The record of the frame is written after the animation frame of the resize, so the test waits for the record.
-  const frames = Promise.withResolvers();
-  const frameRecords = () => view.events.filter((entry) => entry.event === "plugin.editor.view.content_frame");
-  Object.defineProperty(view.events, "push", { value: (...items) => {
-    const length = Array.prototype.push.apply(view.events, items);
-    if (frameRecords().length > 0) frames.resolve();
-    return length;
-  } });
-  observer.notify([{ target: documentRoot }]);
-  await frames.promise;
-  const [frame] = frameRecords();
-  assert.equal(frame.level, "trace");
-  // Exact values, as the probe gave them: the dimensions, the time origin, the sequence and the resize count of one resize.
-  assert.equal(frame.fields.width, 640);
-  assert.equal(frame.fields.height, 480);
-  assert.equal(frame.fields.documentTimeOriginMs, window.performance.timeOrigin);
-  assert.equal(frame.fields.sequence, 0);
-  assert.equal(frame.fields.resizeCount, 1);
-  // Value relations instead of the probe's exact clock values (firstResizeAtMs 0, resizeAtMs 0, frameTimeMs 1): the real observer
-  // reads the window clock at the resize and at the animation frame, so the exact values are not known before the resize. For one
-  // resize the first and the last resize time are the same, and the frame time follows the resize time.
-  assert.equal(frame.fields.firstResizeAtMs, frame.fields.resizeAtMs);
-  assert.ok(frame.fields.frameTimeMs >= frame.fields.resizeAtMs);
-  assert.equal(validateContentFrame(frame.fields), true,
+  assert.equal(view.frameObservers.length, 1, "the measurement starts one shared view-frame observer");
+  const [observer] = view.frameObservers;
+  assert.equal(observer.options.document, window.document, "the observer observes the document of the view");
+  assert.equal(observer.options.ResizeObserver, window.ResizeObserver, "the observer gets the ResizeObserver of the view window");
+  for (const name of ["requestAnimationFrame", "cancelAnimationFrame", "now"]) {
+    assert.equal(typeof observer.options[name], "function", `the observer gets ${name} of the view window`);
+  }
+  assert.equal(observer.options.timeOriginMs, window.performance.timeOrigin);
+  // The observer reports a frame through the log that the measurement gave it; the plugin forwards the frame as the trace record.
+  const frame = { sequence: 0, width: 640, height: 480, documentTimeOriginMs: window.performance.timeOrigin,
+    firstResizeAtMs: 10, resizeAtMs: 10, resizeCount: 1, frameTimeMs: 13 };
+  observer.options.log.trace("view.content_frame", frame);
+  await view.until(() => view.events.some((entry) => entry.event === "view.content_frame"));
+  const [record] = view.events.filter((entry) => entry.event === "view.content_frame");
+  assert.equal(record.level, "trace");
+  assert.deepEqual(record.fields, frame);
+  // The view runtime adds the surface to the record (events.json), so the catalog schema is checked with it.
+  assert.equal(validateContentFrame({ ...record.fields, surface: SURFACE }), true,
     `the context-scoped frame payload does not match events.json: ${JSON.stringify(validateContentFrame.errors)}`);
-  assert.equal(validateContentFrame({ ...frame.fields, unexpected: true }), false,
+  assert.equal(validateContentFrame({ ...record.fields, surface: SURFACE, unexpected: true }), false,
     "the published frame schema accepted an unexpected field");
   assert.equal((await trace("read")).sequence, 1);
   const stopped = await trace("stop");
@@ -170,56 +175,22 @@ test("content frame diagnostics observe the view root and restore its card style
   assert.equal(stopped.height, before.height);
   assert.equal(style.getPropertyValue("--card"), "rgb(9, 8, 7)");
   assert.equal(style.getPropertyPriority("--card"), "important");
-  // The probe's option checks (document, ResizeObserver, requestAnimationFrame, now, timeOriginMs) are not observable on the real observer;
-  // the observer's targets (above) and its disconnect (below) are the observable contract of the measurement.
-  assert.equal(observer.disconnected, true, "the stop disconnects the observer");
+  assert.equal(observer.stopped, 1, "the stop calls the stop function of the observer once");
   style.removeProperty("--card");
   await trace("start");
-  const [, restarted] = view.observers;
+  const [, restarted] = view.frameObservers;
   await dispose();
   assert.equal(Array.from({ length: style.length }, (_, index) => style.item(index)).includes("--card"), false);
-  assert.equal(restarted.disconnected, true, "the disposal disconnects the observer of the restarted measurement");
-});
-
-test("each content frame record carries the surface of the view, as the event catalog requires", async (t) => {
-  const view = await openPageView("editor", { start: { surface: SURFACE, params: null, origin: { directory: null }, project: null },
-    declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands, element: manifest.exposes.element },
-    host: { installed: installedOf([]), sidecars: [SIDECAR] } });
-  t.after(() => view.close());
-  const { window } = view;
-  const { createViewBridge } = await import("@soksak/plugin-api/view");
-  const { createViewContext } = await import("../build/test/ui/view-context.js");
-  const { createViewFrameMeasurement } = await import("../build/test/ui/editor-diagnostics.js");
-  const bridge = createViewBridge({ handler: window.webkit.messageHandlers["sok-view"], report: () => {} });
-  const { context } = createViewContext({ bridge, start: window.sokSurface, report: () => {} });
-  const observed = [];
-  const measurement = createViewFrameMeasurement({ document: window.document, runtime: context.runtime,
-    readHistoryEntries: () => window.history.length, observeFrames: (options) => { observed.push(options); return () => {}; } });
-  measurement.start();
-  const recorded = Promise.withResolvers();
-  Object.defineProperty(view.events, "push", { value: (...items) => {
-    const length = Array.prototype.push.apply(view.events, items);
-    if (view.events.some((entry) => entry.event === "plugin.editor.view.content_frame")) recorded.resolve();
-    return length;
-  } });
-  observed[0].log.trace("view.content_frame", {
-    sequence: 0, width: 640, height: 480, documentTimeOriginMs: window.performance.timeOrigin,
-    firstResizeAtMs: 10, resizeAtMs: 10, resizeCount: 1, frameTimeMs: 13,
-  });
-  await recorded.promise;
-  const [record] = view.events.filter((entry) => entry.event === "plugin.editor.view.content_frame");
-  assert.equal(record.fields.surface, SURFACE);
-  measurement.stop();
+  assert.equal(restarted.stopped, 1, "the disposal stops the observer of the restarted measurement");
 });
 
 test("the content frame trace refuses invalid fields and forwards each valid frame", async (t) => {
   // The shared observer reports through the trace of the measurement; the test takes that trace from the observer seam of the
-  // measurement and calls it with each field set, as the observer does with the values of a resize. The real observer cannot
-  // produce the invalid combinations, so these checks use the seam. The valid frame is the first frame of this measurement, so its
-  // sequence is 0 and the read after it reports 1; the probe run reported 1 and 2 after one real frame.
+  // measurement and calls it with each field set, as the observer does with the values of a resize. The valid frame is the first frame
+  // of this measurement, so its sequence is 0 and the read after it reports 1.
   const view = await openPageView("editor", { start: { surface: SURFACE, params: null, origin: { directory: null }, project: null },
     declarations: { status: manifest.exposes.status, commands: manifest.exposes.commands, element: manifest.exposes.element },
-    host: { installed: installedOf([]), sidecars: [SIDECAR] } });
+    sidecars: [SIDECAR] });
   t.after(() => view.close());
   const { window } = view;
   const { createViewBridge } = await import("@soksak/plugin-api/view");
@@ -246,16 +217,11 @@ test("the content frame trace refuses invalid fields and forwards each valid fra
     Object.fromEntries(Object.entries(validSource).filter(([name]) => name !== "firstResizeAtMs")),
   ];
   for (const fields of invalidSource) assert.throws(() => log.trace("view.content_frame", fields));
-  const recorded = Promise.withResolvers();
-  Object.defineProperty(view.events, "push", { value: (...items) => {
-    const length = Array.prototype.push.apply(view.events, items);
-    if (view.events.some((entry) => entry.event === "plugin.editor.view.content_frame")) recorded.resolve();
-    return length;
-  } });
+  assert.deepEqual(view.events, [], "an invalid frame is recorded as no trace");
   log.trace("view.content_frame", validSource);
-  await recorded.promise;
-  const [record] = view.events.filter((entry) => entry.event === "plugin.editor.view.content_frame");
-  assert.deepEqual(record.fields, { ...validSource, surface: SURFACE }, "the editor forwards every source coalescing field and the surface of the view");
+  await view.until(() => view.events.some((entry) => entry.event === "view.content_frame"));
+  const [record] = view.events.filter((entry) => entry.event === "view.content_frame");
+  assert.deepEqual(record.fields, validSource, "the editor forwards every source coalescing field");
   assert.equal(measurement.read().sequence, 1);
   measurement.stop();
 });
@@ -639,7 +605,7 @@ for (const refused of [false, true]) test(`disposing while the first save ${refu
   const editor = await openEditor(t, { params: {}, files: new Map(), commands: { "core.file.place": () => place.promise } });
   await editor.run("editor.edit", { changes: [{ from: 0, to: 0, insert: "unsaved" }] });
   const saving = assert.rejects(editor.run("editor.save"), /editor closed/);
-  await editor.until(() => editor.view.calls.some((call) => call.command === "core.file.place"));
+  await editor.until(() => editor.view.requests.some((call) => call.command === "core.file.place"));
   const before = structuredClone(editor.reports);
   const sent = editor.sidecar.sent.length;
   await editor.close();
@@ -720,15 +686,16 @@ test("find selects matches, replaces them, and reports an invalid regular expres
 });
 
 test("every interactive element of the editor is bound to a declared command and has an element name", async (t) => {
-  // The page bridge owns the message listener of the view channel, so the editor mounts through a view without the page: the SDK
-  // bridge, the context module and the editor module are the real ones, and the audit is the audit of the context that bound them.
+  // The editor mounts through a view without the page: the bridge of the plugin API fixture, the context module and the editor module
+  // are created over the same window, and the audit is the audit of the exposure that bound the elements.
   const sidecar = filesSidecar(new Map([["src/main.js", "let a = 1;\n"]]));
   const declarations = { status: manifest.exposes.status, commands: manifest.exposes.commands, element: manifest.exposes.element };
   const start = { surface: SURFACE, params: { path: "src/main.js" }, origin: { directory: null }, project: { id: "project", root: "/project" } };
-  const view = await openPageView("editor", { start, declarations, host: {
-    installed: installedOf([]), sidecars: [SIDECAR], settings: {}, textSize: 1,
-    sidecar: { [SIDECAR]: (body) => sidecar.send(body) },
-  } });
+  const view = await openPageView("editor", { start, declarations, sidecars: [SIDECAR],
+    calls: { "tab.title": () => null, "tab.footer": () => null, "tab.directory": () => null, "tab.notify": () => null,
+      "tab.modified": () => null, "tab.error": () => null, "tab.keep": () => null, "tab.state.read": () => null, "tab.state.write": () => null },
+    contributions: { extension: [], formatter: [] },
+    sidecar: { [SIDECAR]: (body) => sidecar.send(body) } });
   t.after(() => view.close());
   sidecar.attach(view);
   const { createViewBridge } = await import("@soksak/plugin-api/view");
@@ -773,7 +740,7 @@ test("a contributed extension applies to its name extensions and a failing modul
     } }, modules: { "ui/y.js": formatter } },
   ] });
   assert.ok(editor.root.querySelector(".probe-mark"), "the contributed extension did not apply");
-  assert.deepEqual(editor.view.observed.contributions.map(({ plugin, reason }) => [plugin, reason]),
+  assert.deepEqual(editor.view.failed.map(({ plugin, reason }) => [plugin, reason]),
     [["broken", "broken: the module does not export extension(file)"]]);
   assert.deepEqual(await editor.run("editor.format"), { changed: true });
   assert.equal(await editor.run("editor.read"), "let a = 1;\n// TODO: b");
@@ -814,9 +781,9 @@ test("the open records the file, its size and the watch with their results", asy
   const [open] = eventsOf(editor.logs, "open");
   assert.equal(open.level, "info");
   assert.deepEqual({ ...open.fields, micros: isMicros(open.fields.micros) }, { path: "src/main.js", bytes: 22, lines: 3, newline: "lf",
-    micros: true, ok: true, surface: SURFACE });
+    micros: true, ok: true });
   const [watch] = eventsOf(editor.logs, "watch.start");
-  assert.deepEqual({ ...watch.fields, micros: isMicros(watch.fields.micros) }, { path: "src/main.js", micros: true, ok: true, surface: SURFACE });
+  assert.deepEqual({ ...watch.fields, micros: isMicros(watch.fields.micros) }, { path: "src/main.js", micros: true, ok: true });
   assert.deepEqual(eventsOf(editor.logs, "request").map((entry) => [entry.level, entry.fields.operation, entry.fields.ok]),
     [["debug", "read", true], ["debug", "watch", true]]);
 });
@@ -840,7 +807,7 @@ test("a save records its bytes, overwrite and result, and a refused save records
   await editor.until(() => editor.logs.some((entry) => entry.event === "save" && entry.level === "info"));
   const [saved] = eventsOf(editor.logs, "save");
   assert.equal(saved.level, "info");
-  assert.deepEqual({ ...saved.fields, micros: isMicros(saved.fields.micros) }, { path: "src/main.js", bytes: 22, overwrite: false, micros: true, ok: true, surface: SURFACE });
+  assert.deepEqual({ ...saved.fields, micros: isMicros(saved.fields.micros) }, { path: "src/main.js", bytes: 22, overwrite: false, micros: true, ok: true });
   await editor.run("editor.edit", { changes: [{ from: 0, to: 0, insert: "x" }] });
   const conflict = decision(editor);
   editor.sidecar.change("src/main.js", "elsewhere\n");
@@ -858,12 +825,12 @@ test("a change on disk records the change, the read and the decision", async (t)
   const loaded = decision(editor);
   editor.sidecar.change("src/main.js", "new text\n");
   await loaded;
-  assert.deepEqual(eventsOf(editor.logs, "watch.change").map((entry) => entry.fields), [{ path: "src/main.js", surface: SURFACE }]);
+  assert.deepEqual(eventsOf(editor.logs, "watch.change").map((entry) => entry.fields), [{ path: "src/main.js" }]);
   const [read] = eventsOf(editor.logs, "read");
   assert.equal(read.fields.reason, "watch");
   assert.equal(read.fields.bytes, 9);
   assert.equal(read.fields.ok, true);
-  assert.deepEqual(eventsOf(editor.logs, "disk.decision").map((entry) => entry.fields), [{ path: "src/main.js", decision: "loaded", modified: false, surface: SURFACE }]);
+  assert.deepEqual(eventsOf(editor.logs, "disk.decision").map((entry) => entry.fields), [{ path: "src/main.js", decision: "loaded", modified: false }]);
   const same = decision(editor);
   editor.sidecar.change("src/main.js", "new text\n");
   await same;
@@ -872,7 +839,7 @@ test("a change on disk records the change, the read and the decision", async (t)
   const conflict = decision(editor);
   editor.sidecar.change("src/main.js", "other\n");
   await conflict;
-  assert.deepEqual(eventsOf(editor.logs, "disk.decision").at(-1).fields, { path: "src/main.js", decision: "conflict", modified: true, surface: SURFACE });
+  assert.deepEqual(eventsOf(editor.logs, "disk.decision").at(-1).fields, { path: "src/main.js", decision: "conflict", modified: true });
 });
 
 test("a read of the reload command and a failed read are recorded", async (t) => {
@@ -893,7 +860,7 @@ test("the stop of the watch is recorded as an error event", async (t) => {
   const stopped = editor.nextLog("watch.error");
   await editor.sidecar.report({ error: "the watch ended" });
   await stopped;
-  assert.deepEqual(eventsOf(editor.logs, "watch.error"), [{ level: "error", event: "watch.error", fields: { path: "src/main.js", error: "the watch ended", surface: SURFACE } }]);
+  assert.deepEqual(eventsOf(editor.logs, "watch.error"), [{ level: "error", event: "watch.error", fields: { path: "src/main.js", error: "the watch ended" } }]);
 });
 
 test("every command result is recorded with its time, and a refused command records its error", async (t) => {
@@ -903,7 +870,7 @@ test("every command result is recorded with its time, and a refused command reco
   await assert.rejects(editor.run("editor.read", { from: 5, to: 1 }), /editor\.read requires/);
   const [ok, failed] = eventsOf(editor.logs, "command");
   assert.equal(ok.level, "debug");
-  assert.deepEqual({ ...ok.fields, micros: isMicros(ok.fields.micros) }, { name: "editor.select", micros: true, ok: true, surface: SURFACE });
+  assert.deepEqual({ ...ok.fields, micros: isMicros(ok.fields.micros) }, { name: "editor.select", micros: true, ok: true });
   assert.equal(failed.level, "warn");
   assert.equal(failed.fields.name, "editor.read");
   assert.equal(failed.fields.ok, false);
@@ -933,13 +900,13 @@ test("a failed contribution and a format are recorded", async (t) => {
   await editor.until(() => editor.logs.some((entry) => entry.event === "format"));
   const [format] = eventsOf(editor.logs, "format");
   assert.equal(format.level, "info");
-  assert.deepEqual({ ...format.fields, micros: isMicros(format.fields.micros) }, { path: "src/main.js", formatter: "probe", changed: true, micros: true, ok: true, surface: SURFACE });
+  assert.deepEqual({ ...format.fields, micros: isMicros(format.fields.micros) }, { path: "src/main.js", formatter: "probe", changed: true, micros: true, ok: true });
 });
 
 test("the end of the surface records the close", async (t) => {
   const editor = await openEditor(t);
   await editor.close();
-  assert.deepEqual(eventsOf(editor.logs, "close").map((entry) => entry.fields), [{ path: "src/main.js", pending: 0, surface: SURFACE }]);
+  assert.deepEqual(eventsOf(editor.logs, "close").map((entry) => entry.fields), [{ path: "src/main.js", pending: 0 }]);
 });
 
 test("a tab without a path opens a blank document named as a new document", async (t) => {
@@ -1053,8 +1020,8 @@ test("a formatter that throws a value without a message shows the value as the t
       "editor.formatter": [{ range: "^1.0.0", module: "ui/fmt.js", extensions: ["js"] }],
     } }, modules: { "ui/fmt.js": formatter } },
   ] });
-  // The host carries the failure to the caller as an Error with the value's text; the thrown value itself is recorded by the page.
-  await assert.rejects(editor.run("editor.format"), (error) => error instanceof Error && error.message === "formatter broke");
+  // The command rejects with the thrown value; the value is recorded by the page as its text.
+  await assert.rejects(editor.run("editor.format"), (error) => error === "formatter broke");
   assert.deepEqual(eventsOf(editor.logs, "format").filter((entry) => entry.level === "warn").map((entry) => entry.fields.error),
     ["-32603: formatter broke"]);
   assert.equal(editor.reports.error.at(-1), "서식을 맞추지 못했습니다 · formatter broke");
@@ -1081,12 +1048,12 @@ test("a Markdown image failure after the tab is disposed is recorded as an event
       return sidecar.report({ id: body.id, error: "missing: docs/assets/gone.png" });
     } });
   const toggled = editor.run("editor.markdown.toggle").catch((error) => error);
-  await editor.until(() => editor.view.calls.some((call) => call.command === "runtime.sidecar.send" && call.params.body.operation === "readBytes"));
+  await editor.until(() => editor.view.sidecarSends.some((send) => send.body.operation === "readBytes"));
   await editor.close();
   release();
   await toggled;
   assert.deepEqual(eventsOf(editor.logs, "markdown.image").map((entry) => [entry.level, entry.fields]),
-    [["warn", { path: "docs/readme.md", reason: "disposed", error: "-32603: the editor closed before the files sidecar replied", surface: SURFACE }]]);
+    [["warn", { path: "docs/readme.md", reason: "disposed", error: "-32603: the editor closed before the files sidecar replied" }]]);
 });
 
 test("Markdown renders in place and toggles without changing the document", async (t) => {

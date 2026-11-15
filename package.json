@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "build": "node scripts/build-vendor.mjs",
-    "test": "node scripts/build-vendor.mjs --check && node scripts/build-test.mjs && node --test --test-timeout=120000 test/*.test.mjs"
+    "test": "node scripts/build-vendor.mjs --check && node scripts/build-test.mjs && node --import=./test/fixtures/plugin-api/register.mjs --test --test-timeout=120000 test/*.test.mjs"
   },
   "devDependencies": {
     "@codemirror/commands": "6.11.1",
@@ -55,7 +55,6 @@
     "@lezer/lr": "1.4.11",
     "@marijn/find-cluster-break": "1.0.4",
     "@soksak/kit": "https://github.com/soksak-app/kit/releases/download/v0.0.14/soksak-kit-0.0.14.tgz",
-    "@soksak/plugin-api": "https://github.com/soksak-app/core/releases/download/v0.0.41/soksak-plugin-api-0.0.41.tgz",
     "acorn": "8.19.0",
     "ajv": "^8.20.0",
     "crelt": "1.0.7",

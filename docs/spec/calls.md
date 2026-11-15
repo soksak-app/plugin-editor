@@ -4,7 +4,7 @@
 
 The editor page follows the call rule of core 0.0.40 (core `docs/spec/plugin-processes.md`, rule 3): a call has no time limit. It ends by its reply, by its cancel or by the end of its peer, and no timer ends it. `plugin.json` declares no `timeout` for a command, because core 0.0.40 refuses that member (`<where>: timeout is not a member of a command declaration`).
 
-The call model of the tests, `test/models/calls.mjs`, follows the call layer of core (`packages/plugin-api/calls.js`) and replays the copy of its `calls.json`:
+The call rule of the tests follows the call contract of core 0.0.40 (core `docs/spec/plugin-processes.md`, rule 3), which the tests state at the plugin API interface:
 
 - A reply resolves the call, and an error reply rejects it with the message and the code of the error.
 - A request with an abort signal sends `{id, cancel: true}` when the signal aborts, and the call is rejected with `cancelled`. A reply to a cancelled call is a late reply: it is reported with its delay and is not passed to the call.

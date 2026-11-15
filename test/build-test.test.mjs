@@ -1,5 +1,5 @@
 // Exercises the test builder (scripts/build-test.mjs) in isolated fixtures: the UI imports it accepts and rewrites, and the imports it
-// rejects with the reason of each rule. The SDK packages of the UI are not rewritten: the build keeps their specifiers as written.
+// rejects with the reason of each rule. The plugin API specifiers of the UI are not rewritten: the build keeps them as written.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -10,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sdk = "@soksak/fixture-api";
+const pluginApi = "@soksak/plugin-api/view";
 
 /**
  * Creates a plugin folder with the build script, the manifest, the package file and the given sources. `ui` and `test` map each
@@ -40,15 +41,14 @@ function build(directory) {
   return result;
 }
 
-test("the test build keeps the SDK import of a UI source as written, because the SDK of package.json resolves it", (t) => {
+test("the test build keeps the plugin API import of a UI source as written, because the import map of the application resolves it", (t) => {
   const directory = fixture(t, {
-    dependencies: { [sdk]: "file:./fixture-api.tgz" },
-    ui: { "entry.js": `import { value } from ${JSON.stringify(sdk)};\nexport { value };\n` },
+    ui: { "entry.js": `import { value } from ${JSON.stringify(pluginApi)};\nexport { value };\n` },
   });
   const result = build(directory);
   assert.equal(result.status, 0, result.stderr);
   const built = fs.readFileSync(path.join(directory, "build/test/ui/entry.js"), "utf8");
-  assert.ok(built.includes(`from ${JSON.stringify(sdk)};`), "the built UI imports the SDK specifier unchanged");
+  assert.ok(built.includes(`from ${JSON.stringify(pluginApi)};`), "the built UI imports the plugin API specifier unchanged");
 });
 
 test("the test build resolves a shared extension module to its built bundle", async (t) => {

@@ -15,7 +15,6 @@ test("the core compatibility documents state the engines.soksak that the package
 
 // Core 0.0.41 is the core release that adds the surface of the view to each log record, which the content_frame event
 // (plugin.editor.view.content_frame) requires (E62-3); earlier releases omit it, so the frame payload fails the event catalog.
-// The package pins the plugin API of core 0.0.41 and runs its view bridge against that release (E62).
 test("the package requires core 0.0.41, the core release that adds the view surface to each content frame record (E62-3)", () => {
   assert.equal(pkg.engines.soksak, "^0.0.41");
 });
@@ -30,5 +29,13 @@ test("the core compatibility documents state that the range admits every later 0
   assert.ok(text("core-compatibility.ko.md").includes(`core ${first}부터 그 뒤의 모든 0.0 release를 허용한다`), "core-compatibility.ko.md");
   for (const file of ["core-compatibility.md", "core-compatibility.ko.md"]) {
     assert.doesNotMatch(text(file), /unverified|검증하지 않은/, `${file} excludes the later releases`);
+  }
+});
+
+// The plugin relates to core only through engines.soksak: it names no plugin API release, because the application resolves
+// @soksak/plugin-api for the page at run time (E66).
+test("package.json declares no dependency on the plugin API", () => {
+  for (const kind of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+    assert.deepEqual(Object.keys(pkg[kind] ?? {}).filter((name) => name.startsWith("@soksak/plugin-api")), [], kind);
   }
 });

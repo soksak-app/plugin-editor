@@ -1,23 +1,25 @@
-// The editor view of the tests: the page module of ui/ (built into build/test/ui/view.js) opened on the view host of this repository
-// (test/fixtures/host.mjs). The page builds its own bridge, surface context and editor, so the tests call its commands through the
-// command requests of the host and read its exposed statuses through the exposure requests that the host forwards. The fixtures are
-// the parts that lie outside the plugin: the files sidecar, the core commands and the tab state.
-import assert from "node:assert/strict";
+// The editor view of the tests: the page module of ui/ (built into build/test/ui/view.js) opened on the plugin API fixture of this
+// repository (test/fixtures/plugin-api). The page builds its own bridge, surface context and editor over that fixture, so the tests
+// run its commands through the commands that the page registered and read its statuses through the providers that it registered. The
+// fixtures are the parts that lie outside the plugin: the files sidecar, the core commands and the tab state.
 import { readFileSync } from "node:fs";
-import { openPageView } from "./fixtures/host.mjs";
+import { openPageView } from "./fixtures/page-view.mjs";
 import { filesSidecar, SIDECAR, SURFACE } from "./files-sidecar.mjs";
 
 const manifest = JSON.parse(readFileSync(new URL("../plugin.json", import.meta.url), "utf8"));
 const diagnosticDeclaration = JSON.parse(readFileSync(new URL("../diagnostics.json", import.meta.url), "utf8"));
-const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const PAGE = new URL("../build/test/ui/view.js", import.meta.url);
-const PREFIX = "plugin.editor.";
+// The calls of the page that report to the tab and are answered with null.
+const TAB_REPORTS = ["tab.title", "tab.footer", "tab.directory", "tab.notify", "tab.modified", "tab.error", "tab.keep"];
 
-// The request ids of the exposure requests of the views of this process.
-let nextRequest = 0;
-
-/** The installed plugins of the window: the editor itself, which declares its extension points, and the plugins of the test. */
-export const installedOf = (contributions) => [{ id: manifest.id, package: pkg.name, version: pkg.version, manifest }, ...contributions];
+/**
+ * The contributions that the test arranges for the points of the editor: each plugin {id, manifest, modules} contributes the items of
+ * `editor.<point>`, and modules maps the module path of an item to the URL that the page imports.
+ */
+export const contributionsOf = (plugins) => Object.fromEntries(["extension", "formatter"].map((point) => [point,
+  plugins.flatMap((plugin) => (plugin.manifest.contributes?.[`editor.${point}`] ?? []).map((item, index) => ({
+    plugin: plugin.id, index, item, module: plugin.modules[item.module],
+  })))]));
 
 /** The exposure declarations of the view: the plugin's entries, and the diagnostic entries when the start declares them. */
 const declarationsOf = (exposeDiagnostic) => ({
@@ -29,17 +31,15 @@ const declarationsOf = (exposeDiagnostic) => ({
 /**
  * Opens the editor view of one tab and loads its page. The options are the start values of the tab (params, project, diagnostic),
  * the files of the project (the files sidecar; sidecarFor replaces its route), the tab state, the core commands (commands: {name: fn}),
- * the statuses of the window, the settings, the native calls of the surface, the installed plugins that contribute to the editor
- * (contributions), the faults of the routes (faults), the color scheme of the window (scheme) and beforeLoad(view), which runs before the
- * page module loads.
+ * the installed plugins that contribute to the editor (contributions), the color scheme of the window (scheme) and beforeLoad(view), which
+ * runs before the page module loads.
  *
- * Returns the editor: view (the view of the host), files, sidecar, root (the shadow root of the editor), run, status, watch, changes,
+ * Returns the editor: view (the view of the fixture), files, sidecar, root (the shadow root of the editor), run, status, watch, changes,
  * push, settle, until, nextLog, reports, logs and close. close ends the view once; the test cleanup ends it too when the test fails.
  */
 export async function openEditor(t, { params = { path: "src/main.js" }, files = new Map([["src/main.js", "let a = 1;\n// TODO: b\n"]]),
-  project = { id: "project", root: "/project" }, diagnostic = false, exposeDiagnostic = diagnostic, stored = null, settings = {}, textSize = 1, statuses = {},
-  commands = {}, native = {}, contributions = [], faults = {}, sidecarFor = null, scheme = "dark",
-  beforeLoad = () => {}, hold = null } = {}) {
+  project = { id: "project", root: "/project" }, diagnostic = false, exposeDiagnostic = diagnostic, stored = null,
+  commands = {}, contributions = [], frameStop = undefined, sidecarFor = null, scheme = "dark", beforeLoad = () => {}, hold = null } = {}) {
   const sidecar = filesSidecar(files);
   // hold names the operation whose first reply is held: the page does not finish its mount until the test releases it, so the
   // load is not awaited and the held reply is returned as held.
@@ -52,19 +52,16 @@ export async function openEditor(t, { params = { path: "src/main.js" }, files = 
     start,
     declarations,
     scheme,
-    host: {
-      installed: installedOf(contributions),
-      sidecars: [SIDECAR],
-      statuses,
-      settings,
-      textSize,
-      faults,
-      state: { read: () => stateValue, write: (value) => { stateValue = value; } },
-      unload: manifest.surface.unload,
-      commands,
-      sidecar: { [SIDECAR]: sidecarFor === null ? (body) => sidecar.send(body) : (body) => sidecarFor(body, sidecar) },
-      native,
+    sidecars: [SIDECAR],
+    calls: {
+      ...Object.fromEntries(TAB_REPORTS.map((name) => [name, () => null])),
+      "tab.state.read": () => stateValue,
+      "tab.state.write": (value) => { stateValue = value; return null; },
+      ...commands,
     },
+    contributions: contributionsOf(contributions),
+    frameStop,
+    sidecar: { [SIDECAR]: sidecarFor === null ? (body) => sidecar.send(body) : (body) => sidecarFor(body, sidecar) },
   });
   // The view ends with the test, also when its page fails to load, so a failed test does not leave the view open.
   t.after(() => view.close());
@@ -74,29 +71,7 @@ export async function openEditor(t, { params = { path: "src/main.js" }, files = 
   view.window.Range.prototype.getBoundingClientRect = empty;
   view.window.Element.prototype.getClientRects = () => [];
   sidecar.attach(view);
-  // The waits of the test on the records of the view: each call, sent message and log batch checks them, so a wait resolves in the
-  // turn of the record that completes it.
-  const waits = new Set();
-  const recorded = () => {
-    for (const wait of [...waits]) {
-      if (!wait.condition()) continue;
-      waits.delete(wait);
-      wait.resolve();
-    }
-  };
-  const until = (condition) => {
-    if (condition()) return Promise.resolve();
-    const wait = { condition, ...Promise.withResolvers() };
-    waits.add(wait);
-    return wait.promise;
-  };
-  for (const list of [view.sent, view.calls, view.events]) {
-    Object.defineProperty(list, "push", { value: (...items) => {
-      const length = Array.prototype.push.apply(list, items);
-      recorded();
-      return length;
-    } });
-  }
+  const { until } = view;
   beforeLoad(view);
   const mounted = view.load(PAGE);
   // A held load ends with its page: a rejected load is reported to the awaiting test, so the rejection is not left unhandled here.
@@ -110,24 +85,7 @@ export async function openEditor(t, { params = { path: "src/main.js" }, files = 
     await until(() => shadowRootOf() !== null);
   }
   const root = shadowRootOf();
-  // An exposure request of the view: the host forwards it as the exposure-request event of the surface, and the answer is the
-  // exposureReply that the page sends for its id.
-  const exposed = async (method, requestParams) => {
-    const id = `request-${++nextRequest}`;
-    await view.push("exposure-request", { id, surface: SURFACE, method, params: requestParams });
-    await view.settled();
-    const reply = view.calls.findLast((call) => call.command === "runtime.native.call" && call.params.name === "exposureReply"
-      && call.params.payload.id === id);
-    assert.ok(reply, `the page did not answer the exposure request ${method}`);
-    if (reply.params.payload.error !== undefined) throw new Error(reply.params.payload.error.message);
-    return reply.params.payload.result;
-  };
-  const calls = (command) => view.calls.filter((call) => call.command === command).map((call) => call.params);
-  // The writer stores each event of the plugin under its catalog name plugin.editor.<event>; the records keep the name that the emitter
-  // of the plugin gives, as the events of the plugin do (ui/events.js).
-  const records = () => view.events.map(({ level, event, fields }) => ({
-    level, event: event.startsWith(PREFIX) ? event.slice(PREFIX.length) : event, fields,
-  }));
+  const calls = (command) => view.requests.filter((call) => call.command === command).map((call) => call.params);
   let closing = null;
   const editor = {
     view,
@@ -137,25 +95,25 @@ export async function openEditor(t, { params = { path: "src/main.js" }, files = 
     /** The held first reply of the operation named by hold, or null; mounted settles when the page module has loaded. */
     held,
     mounted,
-    /** Runs a command of the editor, and resolves with its result or rejects with its error. */
-    run: (name, commandParams = {}) => view.request(name, commandParams),
-    /** The value of an exposed status of the editor. */
-    status: (name) => exposed("status.get", { name }),
-    /** Watches a status of the editor; each later value is a changed call (reports.changed). */
-    watch: (name) => exposed("status.watch", { name }),
-    /** The values that the watch of the status `name` sent to the main page, in order. */
+    /** Runs a command that the page registered, and resolves with its result or rejects with its error. */
+    run: (name, commandParams = {}) => view.run(name, commandParams),
+    /** The value of a status that the page registered. */
+    status: async (name) => view.read(name),
+    /** Watches a status of the editor; each later value is a watched record (reports.changed). */
+    watch: async (name) => { view.watch(name); },
+    /** The values that the watch of the status `name` received, in order. */
     changes: (name) => editor.reports.changed.filter((payload) => payload.name === name).map((payload) => payload.value),
-    /** Delivers a host event of the surface to the page through the subscriptions that the page holds. */
+    /** Delivers a native event to the page through the subscription that the page holds. */
     push: (event, data) => view.push(event, data),
     settle: () => view.settled(),
     until,
     /** Resolves with the first record of event after the call that predicate accepts: the record of the handling that the test awaits. */
     nextLog(event, predicate = () => true) {
       const mark = view.events.length;
-      const found = () => records().slice(mark).find((entry) => entry.event === event && predicate(entry.fields));
+      const found = () => view.events.slice(mark).find((entry) => entry.event === event && predicate(entry.fields));
       return until(() => found() !== undefined).then(found);
     },
-    /** The tab reports, in order: the values of each report call of the page, the core commands and the watch changes of the view. */
+    /** The tab reports, in order: the values of each report call of the page, the core commands and the watch values of the view. */
     get reports() {
       return {
         title: calls("tab.title"),
@@ -163,15 +121,14 @@ export async function openEditor(t, { params = { path: "src/main.js" }, files = 
         error: calls("tab.error"),
         keep: calls("tab.keep").map(({ reason, on }) => [reason, on]),
         state: calls("tab.state.write"),
-        commands: view.calls.filter((call) => call.command.startsWith("core."))
-          .map(({ command, params }) => [command, params]),
-        changed: view.calls.filter((call) => call.command === "runtime.native.call" && call.params.name === "changed")
-          .map((call) => call.params.payload),
+        commands: view.requests.filter((call) => call.command.startsWith("core."))
+          .map(({ command, params: commandParams }) => [command, commandParams]),
+        changed: view.watched,
       };
     },
     /** The records that the writer of the page has sent, in order: {level, event, fields}. */
-    get logs() { return records(); },
-    /** Ends the view as the page ends: the pagehide of the window, then the close of the view host. */
+    get logs() { return view.events; },
+    /** Ends the view as the page ends: the pagehide of the window, then the end of the session. */
     close() {
       closing ??= view.close();
       return closing;

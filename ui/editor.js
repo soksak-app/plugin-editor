@@ -921,15 +921,22 @@ export async function mount(root, context) {
       revokeMarkdownImageUrls(markdownImageUrls);
       markdownImageUrls = new Map();
       view.scrollDOM.removeEventListener("scroll", writeTabState);
-      await disposeDiagnostics?.();
-      (await subscription.dispose)();
+      // Each step runs even when an earlier one fails, so the sidecar requests end and the exposure is released; the failures are thrown together.
+      const failures = [];
+      const step = async (release) => {
+        try { await release(); } catch (error) { failures.push(error); }
+      };
+      await step(() => disposeDiagnostics?.());
+      await step(async () => (await subscription.dispose)());
       fileListeners.clear();
       findListeners.clear();
       emitEvent("info", "plugin.editor.close", { path, pending: files.pending() });
-      files.dispose();
-      view.destroy();
-      await expose.dispose();
+      await step(() => files.dispose());
+      await step(() => view.destroy());
+      await step(() => expose.dispose());
       root.replaceChildren();
+      if (failures.length === 1) throw failures[0];
+      if (failures.length > 1) throw new AggregateError(failures, "editor cleanup failed");
     },
   };
 }

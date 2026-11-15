@@ -65,9 +65,6 @@ importers:
       '@soksak/kit':
         specifier: https://github.com/soksak-app/kit/releases/download/v0.0.14/soksak-kit-0.0.14.tgz
         version: https://github.com/soksak-app/kit/releases/download/v0.0.14/soksak-kit-0.0.14.tgz
-      '@soksak/plugin-api':
-        specifier: https://github.com/soksak-app/core/releases/download/v0.0.41/soksak-plugin-api-0.0.41.tgz
-        version: https://github.com/soksak-app/core/releases/download/v0.0.41/soksak-plugin-api-0.0.41.tgz(jsdom@30.1.2)
       acorn:
         specifier: 8.19.0
         version: 8.19.0
@@ -409,15 +406,6 @@ packages:
     version: 0.0.14
     hasBin: true
 
-  '@soksak/plugin-api@https://github.com/soksak-app/core/releases/download/v0.0.41/soksak-plugin-api-0.0.41.tgz':
-    resolution: {integrity: sha512-+Tq8O+nW3llAJrUb5XwCJwMIlez7VJ5Tw9KzBpxUfZ0cbaF9CSarsv1Q7HVzywmCxgWIQrunSMl0eXXtzZe2Wg==, tarball: https://github.com/soksak-app/core/releases/download/v0.0.41/soksak-plugin-api-0.0.41.tgz}
-    version: 0.0.41
-    peerDependencies:
-      jsdom: ^30.0.1
-    peerDependenciesMeta:
-      jsdom:
-        optional: true
-
   acorn@8.19.0:
     resolution: {integrity: sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw==}
     engines: {node: '>=0.4.0'}
@@ -446,9 +434,6 @@ packages:
   entities@8.1.0:
     resolution: {integrity: sha512-kxL7msIffSuh9aaFAMD7rxAIuTRMAHMeBtgHW2yUdWw732ZNh4MehkF2gdjvtdmikkaIP9bFDDJOPlsvm7avrA==}
     engines: {node: '>=20.19.0'}
-
-  es-module-lexer@3.0.4:
-    resolution: {integrity: sha512-BldNY5mwkVu+cQ5Ymn3e6hB9Sx8XHx4ZevWbiUyZbfKxJxYO27Hf0wfzkxIaD5CAJMaGl3YspKELj0ff/7nCMA==}
 
   esbuild@0.28.2:
     resolution: {integrity: sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==}
@@ -891,12 +876,6 @@ snapshots:
       ajv: 8.20.0
       smol-toml: 1.9.1
 
-  '@soksak/plugin-api@https://github.com/soksak-app/core/releases/download/v0.0.41/soksak-plugin-api-0.0.41.tgz(jsdom@30.1.2)':
-    dependencies:
-      es-module-lexer: 3.0.4
-    optionalDependencies:
-      jsdom: 30.1.2
-
   acorn@8.19.0: {}
 
   ajv@8.20.0:
@@ -927,8 +906,6 @@ snapshots:
   decimal.js@10.6.0: {}
 
   entities@8.1.0: {}
-
-  es-module-lexer@3.0.4: {}
 
   esbuild@0.28.2:
     optionalDependencies:

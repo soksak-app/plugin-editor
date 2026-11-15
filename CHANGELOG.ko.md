@@ -2,6 +2,8 @@
 
 [English](CHANGELOG.md)
 
+- E66-1: editor 해제는 앞 단계가 실패해도 각 단계(진단, theme 구독, sidecar 요청, view, exposure)를 실행하고 실패들을 함께 던진다. Red: `a failing diagnostic disposal still records the close and disposes the exposure of the closed editor` 가 `the closed editor did not record its close` 로 실패했다. Green: 통과한다.
+- E66: 플러그인은 plugin API 에 대한 의존을 선언하지 않는다. `@soksak/plugin-api` 를 `package.json` 과 `pnpm-lock.yaml` 에서 제거했고, test script 는 page 의 세 지정자를 `test/fixtures/plugin-api/` 의 fixture 모듈로 해석하는 resolve hook `test/fixtures/plugin-api/register.mjs` 를 읽는다. fixture 는 각 호출을 기록하고 시험이 마련한 대로 답한다. wire fixture `test/fixtures/host.mjs` 는 `test/fixtures/page-view.mjs` 로 바뀌었다. 시험은 page 가 plugin API 에 하는 호출을 단언한다. 삭제한 단언: view runtime 이 record 에 더하는 `surface`, bridge 의 batch 오류 경로, status watch 의 changed 호출과 version, 공유 frame observer 의 대상과 disconnect, host 가 던진 값을 Error 로 바꾸는 변환. `pnpm test` 는 156 중 156 을 통과한다(이전 147).
 - E65: version은 0.0.28이고, E64을 release한다.
 - E64: 시험은 `openPageView` 로 여는 `test/fixtures/host.mjs` 로 view host 에 답한다. fixture 는 jsdom window 와 start 값을 만들고, 각 `sok-view` 호출에 docs/spec/native-surfaces.md 의 view wire 로 답하며, ready 메시지 뒤에 theme 을 보내고, sidecar 세션을 경로로 연결하며, page 의 batch 를 기록한다. 시험은 더 이상 `@soksak/plugin-api/testing` 을 import 하지 않아, core 의 view host 변경이 시험 결과를 바꾸지 않는다. 기대값은 그대로이며 `pnpm test` 는 147 개 중 147 개를 통과한다. 변경 전 tree 도 같았다. 한 reload 시험은 writer 가 답보다 먼저 보낼 수 있으므로 기록이 log 에 나타날 때까지 기다린다. 한 workflow 검사의 이름은 더 이상 시험 host 를 말하지 않는다. `ui/` 에서 결함은 발견되지 않았다.
 - E63: version은 0.0.27이고, E62을 `engines.soksak` `^0.0.41`로 release한다.
