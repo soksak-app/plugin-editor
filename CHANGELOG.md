@@ -2,6 +2,7 @@
 
 [한국어](CHANGELOG.ko.md)
 
+- E69: The version is 0.0.30, which releases E68 with `engines.soksak` `^0.0.41`.
 - E68: `package.json` ships `ui/view-context.js`, which `ui/view.js` imports, and `test/pack.test.mjs` judges each relative import of a shipped module against the file list of `pnpm pack --dry-run`, parsed with `acorn` and `acorn-walk`. Red: the test reported `ui/view.js imports ./view-context.js, which the release does not hold`. Green: it passes, with the 157 tests of `make test`.
 - E67: The version is 0.0.29, which releases E66 with `engines.soksak` `^0.0.41`.
 - E66-1: The editor disposal runs each step even when an earlier one fails (the diagnostics, the theme subscription, the sidecar requests, the view, the exposure) and throws the failures together. Red: `a failing diagnostic disposal still records the close and disposes the exposure of the closed editor` failed with `the closed editor did not record its close`. Green: it passes.

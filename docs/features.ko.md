@@ -1,5 +1,6 @@
 # 기능
 
+- [~] E69 — P0: view context module을 배포하는 E68을 `engines.soksak` `^0.0.41`로 version 0.0.30으로 release하고 registry에 올린다. 진행: push 뒤 main의 release run이 게시한다.
 - [o] E68 — P0: release는 배포되는 module이 import하는 모든 module을 갖는다. 입력: 0.0.29 release의 editor view는 `plugin file not found: soksak://editor/ui/view-context.js`로 불러오기에 실패했다. `ui/view.js`가 `./view-context.js`를 import하는데 `package.json`의 `files` 목록이 그것을 적지 않았기 때문이며, 그래서 파일이 연 tab에 편집기가 보이지 않았다. 기대: `files` 목록은 `ui/view-context.js`를 적고, 배포되는 module의 상대 import가 `pnpm pack`이 배포하지 않는 파일을 가리키면 test가 실패한다.
 - [o] E67 — P0: plugin API에 dependency를 선언하지 않는 E66를 `engines.soksak` `^0.0.41`로 release하고 registry에 올린다. main의 release run이 v 게시했고 registry가 올린다(registry G117).
 - [o] E66-1 — P1: editor 해제의 한 단계가 실패해도 뒤의 단계를 건너뛰지 않는다. 입력: page 가 닫힐 때 editor 진단의 해제가 예외를 던진다. 기대: editor 는 그래도 close 를 기록하고, sidecar 요청을 끝내며, view 를 파괴하고, exposure 를 해제한 뒤 그 실패들을 던진다. 결과: Red, `a failing diagnostic disposal still records the close and disposes the exposure of the closed editor` 가 변경 전 page 에서 `the closed editor did not record its close` 로 실패했고, Green, 각 해제 단계를 실행하는 page 에서 통과한다.

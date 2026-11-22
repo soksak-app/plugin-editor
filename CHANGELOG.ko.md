@@ -2,6 +2,7 @@
 
 [English](CHANGELOG.md)
 
+- E69: version은 0.0.30이고, E68를 `engines.soksak` `^0.0.41`로 release한다.
 - E68: `package.json`은 `ui/view.js`가 import하는 `ui/view-context.js`를 배포하고, `test/pack.test.mjs`는 배포되는 module의 상대 import를 `acorn`과 `acorn-walk`로 읽어 `pnpm pack --dry-run`의 파일 목록과 비교한다. Red: test가 `ui/view.js imports ./view-context.js, which the release does not hold`를 보고했다. Green: test가 통과하고, `make test`의 test 157개도 통과한다.
 - E67: version은 0.0.29이고, E66를 `engines.soksak` `^0.0.41`로 release한다.
 - E66-1: editor 해제는 앞 단계가 실패해도 각 단계(진단, theme 구독, sidecar 요청, view, exposure)를 실행하고 실패들을 함께 던진다. Red: `a failing diagnostic disposal still records the close and disposes the exposure of the closed editor` 가 `the closed editor did not record its close` 로 실패했다. Green: 통과한다.
