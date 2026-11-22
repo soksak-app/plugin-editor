@@ -68,6 +68,9 @@ importers:
       acorn:
         specifier: 8.19.0
         version: 8.19.0
+      acorn-walk:
+        specifier: 8.3.5
+        version: 8.3.5
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
@@ -405,6 +408,10 @@ packages:
     resolution: {integrity: sha512-xeTLFb6TopYTwfs7U9iZjlbxYN4sa9lhfBVGaXgtNGyhhNNJ7y0wvLegOnhTXZeHTbpW8m02g4RZo0OLoqKSZA==, tarball: https://github.com/soksak-app/kit/releases/download/v0.0.14/soksak-kit-0.0.14.tgz}
     version: 0.0.14
     hasBin: true
+
+  acorn-walk@8.3.5:
+    resolution: {integrity: sha512-HEHNfbars9v4pgpW6SO1KSPkfoS0xVOM/9UzkJltjlsHZmJasxg8aXkuZa7SMf8vKGIBhpUsPluQSqhJFCqebw==}
+    engines: {node: '>=0.4.0'}
 
   acorn@8.19.0:
     resolution: {integrity: sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw==}
@@ -875,6 +882,10 @@ snapshots:
     dependencies:
       ajv: 8.20.0
       smol-toml: 1.9.1
+
+  acorn-walk@8.3.5:
+    dependencies:
+      acorn: 8.19.0
 
   acorn@8.19.0: {}
 
